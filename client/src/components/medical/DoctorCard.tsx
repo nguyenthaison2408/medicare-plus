@@ -1,0 +1,585 @@
+import React from 'react';
+import {
+  View,
+  Text,
+  Image,
+  StyleSheet,
+  ViewStyle,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { COLORS, RADIUS, SHADOWS, TYPOGRAPHY } from '../../theme';
+import { DoctorItem } from '../../data/mockData';
+import { AppButton } from '../common/AppButton';
+import { Badge } from '../common/Badge';
+import { PressableScale } from '../common/Animations';
+
+export interface FeaturedDoctorCardProps {
+  doctor: DoctorItem;
+  onPress?: (doctor: DoctorItem) => void;
+  onBookPress?: (doctor: DoctorItem) => void;
+  style?: ViewStyle;
+}
+
+export const FeaturedDoctorCard: React.FC<FeaturedDoctorCardProps> = ({
+  doctor,
+  onPress,
+  onBookPress,
+  style,
+}) => {
+  return (
+    <PressableScale
+      activeScale={0.97}
+      onPress={() => onPress?.(doctor)}
+      accessibilityRole="button"
+      accessibilityLabel={`Bác sĩ ${doctor.name}, chuyên khoa ${doctor.specialty}`}
+      style={[styles.featuredCard, SHADOWS.sm, style]}
+    >
+      <View style={styles.featuredTopRow}>
+        <View style={styles.avatarContainer}>
+          <Image
+            source={{ uri: doctor.avatar }}
+            style={styles.avatarSm}
+            accessibilityLabel={`Ảnh bác sĩ ${doctor.name}`}
+          />
+          {doctor.verified && (
+            <View style={styles.verifiedBadgeSm}>
+              <Ionicons name="checkmark-circle" size={14} color={COLORS.primary} />
+            </View>
+          )}
+        </View>
+        <View style={styles.featuredInfo}>
+          <Text style={styles.specialtyMeta} numberOfLines={1}>
+            {doctor.specialty} • {doctor.experienceYears} năm KN
+          </Text>
+          <Text style={styles.doctorNameSm} numberOfLines={2}>
+            {doctor.name}
+          </Text>
+          <Text style={styles.hospitalSm} numberOfLines={1}>
+            {doctor.hospital}
+          </Text>
+        </View>
+      </View>
+
+      <View style={styles.ratingStrip}>
+        <View style={styles.ratingLeft}>
+          <Ionicons name="star" size={13} color={COLORS.warning} />
+          <Text style={styles.ratingScore}>{doctor.rating}</Text>
+          <Text style={styles.ratingCount}>({doctor.reviewCount}+)</Text>
+        </View>
+        <Text style={styles.availableTag} numberOfLines={1}>
+          {doctor.availableText}
+        </Text>
+      </View>
+
+      <AppButton
+        title="Đặt lịch"
+        variant="primary"
+        size="sm"
+        leftIcon="calendar-outline"
+        onPress={() => onBookPress?.(doctor)}
+      />
+    </PressableScale>
+  );
+};
+
+export interface DoctorProfileHeaderCardProps {
+  doctor: DoctorItem;
+  style?: ViewStyle;
+}
+
+export const DoctorProfileHeaderCard: React.FC<DoctorProfileHeaderCardProps> = ({
+  doctor,
+  style,
+}) => {
+  return (
+    <View style={[styles.profileMainCard, SHADOWS.sm, style]}>
+      <View style={styles.profileTopRow}>
+        <View style={styles.avatarLgWrap}>
+          <Image source={{ uri: doctor.avatar }} style={styles.avatarLg} />
+          <View style={styles.verifiedBadgeLg}>
+            <Ionicons name="checkmark-circle" size={18} color={COLORS.secondary} />
+          </View>
+        </View>
+
+        <View style={styles.profileInfoCol}>
+          <View style={styles.badgesWrap}>
+            <Badge
+              label="Bác sĩ xác thực"
+              variant="teal"
+              icon="checkmark-circle"
+            />
+          </View>
+          <Text style={styles.doctorNameLg} numberOfLines={2}>
+            {doctor.name}
+          </Text>
+          <Text style={styles.degreeText} numberOfLines={1}>
+            {doctor.degree}
+          </Text>
+          <Text style={styles.degreeHospitalText} numberOfLines={1}>
+            {doctor.hospital}
+          </Text>
+          <Text style={styles.subSpecialtyText} numberOfLines={2}>
+            {doctor.subSpecialty}
+          </Text>
+        </View>
+      </View>
+
+      {/* 4-column Quick Stats Strip */}
+      <View style={styles.statsStrip}>
+        <View style={styles.statCol}>
+          <Text style={[styles.statVal, { color: COLORS.primary }]} numberOfLines={1}>
+            {doctor.experienceYears} năm
+          </Text>
+          <Text style={styles.statLabel} numberOfLines={1}>Kinh nghiệm</Text>
+        </View>
+        <View style={styles.statDivider} />
+        <View style={styles.statCol}>
+          <View style={styles.ratingRowInline}>
+            <Ionicons name="star" size={13} color={COLORS.warning} />
+            <Text style={styles.statVal} numberOfLines={1}>{doctor.rating}</Text>
+          </View>
+          <Text style={styles.statLabel} numberOfLines={1}>{doctor.reviewCount}+ lượt</Text>
+        </View>
+        <View style={styles.statDivider} />
+        <View style={styles.statCol}>
+          <Text style={styles.statVal} numberOfLines={1}>{doctor.patientCount}</Text>
+          <Text style={styles.statLabel} numberOfLines={1}>Bệnh nhân</Text>
+        </View>
+        <View style={styles.statDivider} />
+        <View style={styles.statCol}>
+          <Text style={[styles.statVal, { color: COLORS.secondary }]} numberOfLines={1}>
+            {doctor.responseTime}
+          </Text>
+          <Text style={styles.statLabel} numberOfLines={1}>Phản hồi</Text>
+        </View>
+      </View>
+
+      {/* Fee & Insurance Banner */}
+      <View style={styles.feeBanner}>
+        <View style={styles.feeBannerLeft}>
+          <Ionicons name="shield-checkmark-outline" size={18} color={COLORS.primary} />
+          <View style={{ flex: 1, minWidth: 0, marginLeft: 8 }}>
+            <Text style={styles.feeTitle} numberOfLines={1}>
+              Phí tư vấn chuyên sâu
+            </Text>
+            <Text style={styles.feeSub} numberOfLines={1}>
+              {doctor.bhytSupport}
+            </Text>
+          </View>
+        </View>
+        <Text style={styles.feePrice}>{doctor.fee}</Text>
+      </View>
+    </View>
+  );
+};
+
+export interface BookingDoctorSummaryCardProps {
+  doctor: DoctorItem;
+  style?: ViewStyle;
+}
+
+export const BookingDoctorSummaryCard: React.FC<BookingDoctorSummaryCardProps> = ({
+  doctor,
+  style,
+}) => {
+  return (
+    <View style={[styles.summaryCard, SHADOWS.sm, style]}>
+      <View style={styles.summaryTop}>
+        <View style={styles.avatarContainer}>
+          <Image source={{ uri: doctor.avatar }} style={styles.avatarMd} />
+          <View style={styles.verifiedBadgeSm}>
+            <Ionicons name="checkmark-circle" size={15} color={COLORS.secondary} />
+          </View>
+        </View>
+        <View style={{ flex: 1, minWidth: 0, marginLeft: 12 }}>
+          <Text style={styles.doctorNameLg} numberOfLines={2}>
+            {doctor.name}
+          </Text>
+          <Text style={styles.degreeText} numberOfLines={1}>
+            {doctor.degree}
+          </Text>
+          <Text style={styles.degreeHospitalText} numberOfLines={1}>
+            {doctor.hospital}
+          </Text>
+          <View style={styles.summaryPillsRow}>
+            <Badge
+              label={`${doctor.rating} (${doctor.reviewCount}+)`}
+              variant="blue"
+              icon="star"
+            />
+            <Badge
+              label={`${doctor.experienceYears} năm KN`}
+              variant="surface"
+              icon="briefcase-outline"
+            />
+          </View>
+        </View>
+      </View>
+
+      <View style={styles.summaryFooter}>
+        <View style={[styles.summaryLocationRow, { flex: 1, minWidth: 0, marginRight: 8 }]}>
+          <Ionicons name="location-outline" size={15} color={COLORS.primary} />
+          <Text style={[styles.summaryLocationText, { flex: 1 }]} numberOfLines={1}>
+            Cơ sở 1 - ĐHYD TP.HCM
+          </Text>
+        </View>
+        <View style={{ alignItems: 'flex-end', flexShrink: 0 }}>
+          <Text style={styles.feePrice}>{doctor.fee}</Text>
+          <Text style={styles.feeSub}>Hỗ trợ BHYT</Text>
+        </View>
+      </View>
+    </View>
+  );
+};
+
+export interface PatientReviewCardProps {
+  initials: string;
+  initialsBg?: string;
+  authorName: string;
+  metaText: string;
+  comment: string;
+}
+
+export const PatientReviewCard: React.FC<PatientReviewCardProps> = ({
+  initials,
+  initialsBg = COLORS.primaryContainer,
+  authorName,
+  metaText,
+  comment,
+}) => {
+  return (
+    <View style={styles.reviewCard}>
+      <View style={styles.reviewHeader}>
+        <View style={[styles.initialsCircle, { backgroundColor: initialsBg }]}>
+          <Text style={styles.initialsText}>{initials}</Text>
+        </View>
+        <View style={{ flex: 1, minWidth: 0, marginHorizontal: 10 }}>
+          <Text style={styles.reviewAuthor} numberOfLines={1}>
+            {authorName}
+          </Text>
+          <Text style={styles.reviewMeta} numberOfLines={1}>
+            {metaText}
+          </Text>
+        </View>
+        <View style={styles.starsRow}>
+          {[1, 2, 3, 4, 5].map((s) => (
+            <Ionicons key={s} name="star" size={12} color={COLORS.warning} />
+          ))}
+        </View>
+      </View>
+      <Text style={styles.reviewComment}>“{comment}”</Text>
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  featuredCard: {
+    width: 275,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.lg,
+    padding: 16,
+    marginRight: 12,
+    borderWidth: 1,
+    borderColor: COLORS.borderSubtle,
+    justifyContent: 'space-between',
+  },
+  featuredTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  avatarContainer: {
+    position: 'relative',
+  },
+  avatarSm: {
+    width: 68,
+    height: 68,
+    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.surfaceContainer,
+    borderWidth: 2,
+    borderColor: COLORS.primaryContainer,
+  },
+  verifiedBadgeSm: {
+    position: 'absolute',
+    bottom: -3,
+    right: -3,
+    backgroundColor: COLORS.surface,
+    borderRadius: 10,
+  },
+  featuredInfo: {
+    flex: 1,
+    minWidth: 0,
+    marginLeft: 12,
+  },
+  specialtyMeta: {
+    fontSize: TYPOGRAPHY.size.xs,
+    fontWeight: '700',
+    color: COLORS.primary,
+  },
+  doctorNameSm: {
+    fontSize: TYPOGRAPHY.size.base,
+    fontWeight: '800',
+    color: COLORS.textPrimary,
+    marginTop: 2,
+  },
+  hospitalSm: {
+    fontSize: TYPOGRAPHY.size.xs,
+    color: COLORS.textSecondary,
+    marginTop: 3,
+  },
+  ratingStrip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 4,
+    backgroundColor: COLORS.surfaceContainerLow,
+    borderRadius: RADIUS.sm,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    marginBottom: 10,
+  },
+  ratingLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  ratingScore: {
+    fontSize: TYPOGRAPHY.size.xs,
+    fontWeight: '800',
+    color: COLORS.textPrimary,
+    marginLeft: 4,
+  },
+  ratingCount: {
+    fontSize: TYPOGRAPHY.size.xxs,
+    color: COLORS.textSecondary,
+    marginLeft: 3,
+  },
+  availableTag: {
+    fontSize: TYPOGRAPHY.size.xxs,
+    fontWeight: '700',
+    color: COLORS.secondary,
+  },
+  profileMainCard: {
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.lg,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: COLORS.divider,
+  },
+  profileTopRow: {
+    flexDirection: 'row',
+    marginBottom: 14,
+  },
+  avatarLgWrap: {
+    position: 'relative',
+    marginRight: 12,
+  },
+  avatarLg: {
+    width: 78,
+    height: 92,
+    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.surfaceContainer,
+  },
+  verifiedBadgeLg: {
+    position: 'absolute',
+    bottom: -4,
+    right: -4,
+    backgroundColor: COLORS.surface,
+    borderRadius: 12,
+    padding: 1,
+  },
+  profileInfoCol: {
+    flex: 1,
+    minWidth: 0,
+  },
+  badgesWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginBottom: 6,
+  },
+  doctorNameLg: {
+    fontSize: TYPOGRAPHY.size.base,
+    fontWeight: '800',
+    color: COLORS.textPrimary,
+  },
+  degreeText: {
+    fontSize: TYPOGRAPHY.size.xs,
+    color: COLORS.textSecondary,
+    marginTop: 2,
+  },
+  degreeHospitalText: {
+    fontSize: TYPOGRAPHY.size.xs,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+    marginTop: 2,
+    lineHeight: 17,
+  },
+  subSpecialtyText: {
+    fontSize: TYPOGRAPHY.size.xs,
+    fontWeight: '700',
+    color: COLORS.primary,
+    marginTop: 4,
+  },
+  statsStrip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: COLORS.surfaceContainerLow,
+    borderRadius: RADIUS.md,
+    paddingVertical: 10,
+    paddingHorizontal: 6,
+    marginBottom: 12,
+  },
+  statCol: {
+    flex: 1,
+    minWidth: 0,
+    paddingHorizontal: 2,
+    alignItems: 'center',
+  },
+  statDivider: {
+    width: 1,
+    height: 26,
+    backgroundColor: COLORS.outlineVariant,
+  },
+  ratingRowInline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  statVal: {
+    fontSize: TYPOGRAPHY.size.md,
+    fontWeight: '800',
+    color: COLORS.textPrimary,
+  },
+  statLabel: {
+    fontSize: 10,
+    color: COLORS.textSecondary,
+    marginTop: 2,
+    textAlign: 'center',
+  },
+  feeBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 8,
+    backgroundColor: COLORS.surfaceContainerLow,
+    borderRadius: RADIUS.md,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  feeBannerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    minWidth: 160,
+  },
+  feeTitle: {
+    fontSize: TYPOGRAPHY.size.xs,
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+  },
+  feeSub: {
+    fontSize: TYPOGRAPHY.size.xxs,
+    fontWeight: '600',
+    color: COLORS.secondary,
+  },
+  feePrice: {
+    fontSize: TYPOGRAPHY.size.base,
+    fontWeight: '800',
+    color: COLORS.primary,
+    flexShrink: 0,
+  },
+  summaryCard: {
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.lg,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: COLORS.borderSubtle,
+  },
+  summaryTop: {
+    flexDirection: 'row',
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.divider,
+  },
+  avatarMd: {
+    width: 62,
+    height: 62,
+    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.surfaceContainer,
+  },
+  summaryPillsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 8,
+  },
+  summaryFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 8,
+    paddingTop: 10,
+  },
+  summaryLocationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    flex: 1,
+    minWidth: 0,
+  },
+  summaryLocationText: {
+    fontSize: TYPOGRAPHY.size.xs,
+    color: COLORS.textSecondary,
+    fontWeight: '600',
+    flexShrink: 1,
+  },
+  reviewCard: {
+    backgroundColor: COLORS.surfaceContainerLow,
+    borderRadius: RADIUS.md,
+    padding: 12,
+    marginBottom: 10,
+  },
+  reviewHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  initialsCircle: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  initialsText: {
+    fontSize: TYPOGRAPHY.size.xs,
+    fontWeight: '800',
+    color: COLORS.textPrimary,
+  },
+  reviewAuthor: {
+    fontSize: TYPOGRAPHY.size.sm,
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+  },
+  reviewMeta: {
+    fontSize: TYPOGRAPHY.size.xxs,
+    color: COLORS.textSecondary,
+    marginTop: 1,
+  },
+  starsRow: {
+    flexDirection: 'row',
+    gap: 2,
+    flexShrink: 0,
+  },
+  reviewComment: {
+    fontSize: TYPOGRAPHY.size.xs,
+    lineHeight: 18,
+    color: COLORS.textPrimary,
+  },
+});
+

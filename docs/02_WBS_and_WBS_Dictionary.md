@@ -1,158 +1,157 @@
-﻿# CÆ  Cáº¤U PHÃ‚N RÃƒ CÃ”NG VIá»†C (WBS) & Tá»ª ÄIá»‚N WBS (WBS DICTIONARY)
-## Dá»° ÃN: Ná»€N Táº¢NG QUáº¢N LÃ PHÃ’NG KHÃM & Äáº¶T Lá»ŠCH KHÃM TRá»°C TUYáº¾N (MEDICARE PLUS)
-**MÃ£ dá»± Ã¡n:** `VKU-SPM-MEDICARE` | **PhiÃªn báº£n:** v1.0 | **NgÃ y ban hÃ nh:** 12/09/2026
+# CƠ CẤU PHÂN RÃ CÔNG VIỆC (WBS) & TỪ ĐIỂN WBS (WBS DICTIONARY)
+## DỰ ÁN: NỀN TẢNG QUẢN LÝ PHÒNG KHÁM & ĐẶT LỊCH KHÁM TRỰC TUYẾN (MEDICARE PLUS)
+**Mã dự án:** `VKU-SPM-MEDICARE` | **Phiên bản:** v1.0 | **Ngày ban hành:** 12/09/2026
 
 ---
 
-### PHáº¦N 1: CÃ‚Y CÆ  Cáº¤U PHÃ‚N RÃƒ CÃ”NG VIá»†C (WBS HIERARCHY â€” 100% RULE)
+### PHẦN 1: CÂY CƠ CẤU PHÂN RÃ CÔNG VIỆC (WBS HIERARCHY — 100% RULE)
 
 > [!NOTE]
-> Cáº¥u trÃºc WBS dÆ°á»›i Ä‘Ã¢y tuÃ¢n thá»§ nghiÃªm ngáº·t **NguyÃªn táº¯c 100% (The 100% Rule)** cá»§a chuáº©n PMBOK: Tá»•ng há»£p táº¥t cáº£ cÃ¡c gÃ³i cÃ´ng viá»‡c con á»Ÿ cáº¥p dÆ°á»›i bao quÃ¡t 100% pháº¡m vi cÃ´ng viá»‡c cá»§a cáº¥p trÃªn mÃ  khÃ´ng thá»«a, khÃ´ng thiáº¿u vÃ  khÃ´ng trÃ¹ng láº·p.
+> Cấu trúc WBS dưới đây tuân thủ nghiêm ngặt **Nguyên tắc 100% (The 100% Rule)** của chuẩn PMBOK: Tổng hợp tất cả các gói công việc con ở cấp dưới bao quát 100% phạm vi công việc của cấp trên mà không thừa, không thiếu và không trùng lặp.
 
 ```text
-1.0 Dá»° ÃN Ná»€N Táº¢NG QUáº¢N LÃ PHÃ’NG KHÃM MEDICARE PLUS
-â”œâ”€â”€ 1.1 Khá»Ÿi táº¡o & Quáº£n trá»‹ Dá»± Ã¡n (Project Management & Governance)
-â”‚   â”œâ”€â”€ 1.1.1 XÃ¢y dá»±ng Äiá»u lá»‡ dá»± Ã¡n (Project Charter) & Ma tráº­n RACI
-â”‚   â”œâ”€â”€ 1.1.2 Thiáº¿t láº­p Há»‡ sinh thÃ¡i GitHub (Repo, Org, Projects, Branch Protection)
-â”‚   â”œâ”€â”€ 1.1.3 Láº­p káº¿ hoáº¡ch quáº£n trá»‹ rá»§i ro & Ma tráº­n truyá»n thÃ´ng
-â”‚   â””â”€â”€ 1.1.4 Äiá»u phá»‘i Sprint, Tá»• chá»©c Daily Scrum & Há»p Retrospective
-â”œâ”€â”€ 1.2 PhÃ¢n tÃ­ch Nghiá»‡p vá»¥ & Thiáº¿t káº¿ Há»‡ thá»‘ng (Analysis & Architecture)
-â”‚   â”œâ”€â”€ 1.2.1 Kháº£o sÃ¡t nghiá»‡p vá»¥ phÃ²ng khÃ¡m & Láº­p Äáº·c táº£ yÃªu cáº§u (SRS)
-â”‚   â”œâ”€â”€ 1.2.2 Thiáº¿t káº¿ Kiáº¿n trÃºc há»‡ thá»‘ng tá»•ng thá»ƒ & SÆ¡ Ä‘á»“ CSDL (ERD/Schema)
-â”‚   â”œâ”€â”€ 1.2.3 Thiáº¿t káº¿ Wireframe & UI/UX Design System (Figma)
-â”‚   â””â”€â”€ 1.2.4 Thiáº¿t láº­p Háº¡ táº§ng Cloud & CI/CD Pipeline (Docker, GitHub Actions)
-â”œâ”€â”€ 1.3 PhÃ¡t triá»ƒn Ná»n táº£ng Backend & API (Backend Services & DB Engine)
-â”‚   â”œâ”€â”€ 1.3.1 Module XÃ¡c thá»±c, PhÃ¢n quyá»n ngÆ°á»i dÃ¹ng & Báº£o máº­t JWT/RBAC
-â”‚   â”œâ”€â”€ 1.3.2 Module Quáº£n lÃ½ Danh má»¥c BÃ¡c sÄ©, ChuyÃªn khoa & Ca lÃ m viá»‡c
-â”‚   â”œâ”€â”€ 1.3.3 Module LÃµi Äáº·t lá»‹ch khÃ¡m & Xá»­ lÃ½ KhÃ³a Slot (Locking Engine)
-â”‚   â”œâ”€â”€ 1.3.4 Module Há»“ sÆ¡ Bá»‡nh Ã¡n Äiá»‡n tá»­ (EMR) & ÄÆ¡n thuá»‘c
-â”‚   â””â”€â”€ 1.3.5 Module Tá»± Ä‘á»™ng hÃ³a ThÃ´ng bÃ¡o & Nháº¯c háº¹n (Email/SMS Notification)
-â”œâ”€â”€ 1.4 PhÃ¡t triá»ƒn á»¨ng dá»¥ng Frontend & Mobile (Patient Portal & Staff Dashboard)
-â”‚   â”œâ”€â”€ 1.4.1 Cá»•ng thÃ´ng tin Bá»‡nh nhÃ¢n (Web Portal: TÃ¬m kiáº¿m, Chá»n slot, Äáº·t háº¹n)
-â”‚   â”œâ”€â”€ 1.4.2 Dashboard BÃ¡c sÄ© & Tiáº¿p tÃ¢n (Quáº£n lÃ½ HÃ ng Ä‘á»£i, Xem EMR, Tiáº¿p Ä‘Ã³n QR)
-â”‚   â”œâ”€â”€ 1.4.3 á»¨ng dá»¥ng Di Ä‘á»™ng Bá»‡nh nhÃ¢n (Mobile Android App â€” Flutter)
-â”‚   â””â”€â”€ 1.4.4 TÃ­ch há»£p API Client, Quáº£n lÃ½ State & Xá»­ lÃ½ Ngoáº¡i lá»‡ máº¡ng
-â”œâ”€â”€ 1.5 Äáº£m báº£o Cháº¥t lÆ°á»£ng & Kiá»ƒm thá»­ (Quality Assurance & Testing)
-â”‚   â”œâ”€â”€ 1.5.1 Thiáº¿t káº¿ Ma tráº­n Kiá»ƒm thá»­ (Test Matrix) & Káº¿ hoáº¡ch Test (Test Plan)
-â”‚   â”œâ”€â”€ 1.5.2 Viáº¿t Bá»™ kiá»ƒm thá»­ Tá»± Ä‘á»™ng Unit Test & Integration Test (API & Core)
-â”‚   â”œâ”€â”€ 1.5.3 Kiá»ƒm thá»­ Hiá»‡u nÄƒng & Táº£i Ä‘á»“ng thá»i (Load Testing 100 CCU Concurrency)
-â”‚   â””â”€â”€ 1.5.4 Kiá»ƒm thá»­ Báº£o máº­t phÃ¢n quyá»n & Kiá»ƒm toÃ¡n lá»— há»•ng (Security & RBAC Audit)
-â””â”€â”€ 1.6 Nghiá»‡m thu, Chuyá»ƒn giao & ÄÃ³ng dá»± Ã¡n (UAT, Deployment & Closure)
-    â”œâ”€â”€ 1.6.1 Triá»ƒn khai Há»‡ thá»‘ng lÃªn MÃ´i trÆ°á»ng Live Production (Cloudflare/Vercel/Render)
-    â”œâ”€â”€ 1.6.2 Kiá»ƒm thá»­ Cháº¥p nháº­n NgÆ°á»i dÃ¹ng (UAT) & Nghiá»‡m thu ChuyÃªn ngÃ nh Song hÃ nh
-    â”œâ”€â”€ 1.6.3 BiÃªn soáº¡n Há»“ sÆ¡ Ká»¹ thuáº­t, Cáº©m nang sá»­ dá»¥ng & GÃ³i báº±ng chá»©ng kiá»ƒm toÃ¡n
-    â””â”€â”€ 1.6.4 Tá»• chá»©c BÃ¡o cÃ¡o Tá»•ng káº¿t & Báº£o vá»‡ Äá»“ Ã¡n trÆ°á»›c Há»™i Ä‘á»“ng ChuyÃªn mÃ´n
+1.0 DỰ ÁN NỀN TẢNG QUẢN LÝ PHÒNG KHÁM MEDICARE PLUS
+├── 1.1 Khởi tạo & Quản trị Dự án (Project Management & Governance)
+│   ├── 1.1.1 Xây dựng Điều lệ dự án (Project Charter) & Ma trận RACI
+│   ├── 1.1.2 Thiết lập Hệ sinh thái GitHub (Repo, Org, Projects, Branch Protection)
+│   ├── 1.1.3 Lập kế hoạch quản trị rủi ro & Ma trận truyền thông
+│   └── 1.1.4 Điều phối Sprint, Tổ chức Daily Scrum & Họp Retrospective
+├── 1.2 Phân tích Nghiệp vụ & Thiết kế Hệ thống (Analysis & Architecture)
+│   ├── 1.2.1 Khảo sát nghiệp vụ phòng khám & Lập Đặc tả yêu cầu (SRS)
+│   ├── 1.2.2 Thiết kế Kiến trúc hệ thống tổng thể & Sơ đồ CSDL (ERD/Schema)
+│   ├── 1.2.3 Thiết kế Wireframe & UI/UX Design System (Figma)
+│   └── 1.2.4 Thiết lập Hạ tầng Cloud & CI/CD Pipeline (Docker, GitHub Actions)
+├── 1.3 Phát triển Nền tảng Backend & API (Backend Services & DB Engine)
+│   ├── 1.3.1 Module Xác thực, Phân quyền người dùng & Bảo mật JWT/RBAC
+│   ├── 1.3.2 Module Quản lý Danh mục Bác sĩ, Chuyên khoa & Ca làm việc
+│   ├── 1.3.3 Module Lõi Đặt lịch khám & Xử lý Khóa Slot (Locking Engine)
+│   ├── 1.3.4 Module Hồ sơ Bệnh án Điện tử (EMR) & Đơn thuốc
+│   └── 1.3.5 Module Tự động hóa Thông báo & Nhắc hẹn (Email/SMS Notification)
+├── 1.4 Phát triển Ứng dụng Frontend & Mobile (Patient Portal & Staff Dashboard)
+│   ├── 1.4.1 Cổng thông tin Bệnh nhân (Web Portal: Tìm kiếm, Chọn slot, Đặt hẹn)
+│   ├── 1.4.2 Dashboard Bác sĩ & Tiếp tân (Quản lý Hàng đợi, Xem EMR, Tiếp đón QR)
+│   ├── 1.4.3 Ứng dụng Di động Bệnh nhân (Mobile Android App — Flutter)
+│   └── 1.4.4 Tích hợp API Client, Quản lý State & Xử lý Ngoại lệ mạng
+├── 1.5 Đảm bảo Chất lượng & Kiểm thử (Quality Assurance & Testing)
+│   ├── 1.5.1 Thiết kế Ma trận Kiểm thử (Test Matrix) & Kế hoạch Test (Test Plan)
+│   ├── 1.5.2 Viết Bộ kiểm thử Tự động Unit Test & Integration Test (API & Core)
+│   ├── 1.5.3 Kiểm thử Hiệu năng & Tải đồng thời (Load Testing 100 CCU Concurrency)
+│   └── 1.5.4 Kiểm thử Bảo mật phân quyền & Kiểm toán lỗ hổng (Security & RBAC Audit)
+└── 1.6 Nghiệm thu, Chuyển giao & Đóng dự án (UAT, Deployment & Closure)
+    ├── 1.6.1 Triển khai Hệ thống lên Môi trường Live Production (Cloudflare/Vercel/Render)
+    ├── 1.6.2 Kiểm thử Chấp nhận Người dùng (UAT) & Nghiệm thu Chuyên ngành Song hành
+    ├── 1.6.3 Biên soạn Hồ sơ Kỹ thuật, Cẩm nang sử dụng & Gói bằng chứng kiểm toán
+    └── 1.6.4 Tổ chức Báo cáo Tổng kết & Bảo vệ Đồ án trước Hội đồng Chuyên môn
 ```
 
 ---
 
-### PHáº¦N 2: Tá»ª ÄIá»‚N WBS CHI TIáº¾T (WBS DICTIONARY)
+### PHẦN 2: TỪ ĐIỂN WBS CHI TIẾT (WBS DICTIONARY)
 
-Táº¥t cáº£ cÃ¡c GÃ³i cÃ´ng viá»‡c (Work Package - WP) á»Ÿ má»©c phÃ¢n rÃ£ tháº¥p nháº¥t Ä‘á»u cÃ³ thá»i lÆ°á»£ng thá»±c hiá»‡n tá»« 1 Ä‘áº¿n 2 tuáº§n (hoáº·c tÆ°Æ¡ng Ä‘Æ°Æ¡ng 16â€“35 giá» lÃ m viá»‡c), cÃ³ chá»‰ tiÃªu bÃ n giao vÃ  tiÃªu chÃ­ hoÃ n thÃ nh (DoD) rÃµ rÃ ng:
+Tất cả các Gói công việc (Work Package - WP) ở mức phân rã thấp nhất đều có thời lượng thực hiện từ 1 đến 2 tuần (hoặc tương đương 16–35 giờ làm việc), có chỉ tiêu bàn giao và tiêu chí hoàn thành (DoD) rõ ràng:
 
-#### GÃ³i cÃ´ng viá»‡c 1.1.2: Thiáº¿t láº­p Há»‡ sinh thÃ¡i GitHub
-* **MÃ£ WBS:** `1.1.2` | **GÃ³i cha:** `1.1 Khá»Ÿi táº¡o & Quáº£n trá»‹ Dá»± Ã¡n`
-* **NgÆ°á»i phá»¥ trÃ¡ch (Owner):** Nguyá»…n VÄƒn An (PM) & Tráº§n ÄÃ¬nh BÃ¬nh (Tech Lead)
-* **Thá»i lÆ°á»£ng Æ°á»›c lÆ°á»£ng:** 1 tuáº§n (18 giá» lÃ m viá»‡c) | **Story Points:** 5 SP
-* **MÃ´ táº£ cÃ´ng viá»‡c:** Thiáº¿t láº­p GitHub Organization, khá»Ÿi táº¡o Repository `medicare-plus-platform`, cáº¥u hÃ¬nh quy táº¯c Branch Protection cho nhÃ¡nh `main` (yÃªu cáº§u review báº¯t buá»™c vÃ  CI pass). Khá»Ÿi táº¡o GitHub Projects vá»›i 5 cá»™t chuáº©n (Backlog, Ready, In Progress, In Review, Done), thiáº¿t láº­p nhÃ£n (labels), máº«u Issue Template vÃ  Pull Request Template.
-* **Äáº§u vÃ o (Inputs):** Äiá»u lá»‡ dá»± Ã¡n Ä‘Ã£ kÃ½ duyá»‡t, Danh sÃ¡ch 5 thÃ nh viÃªn nhÃ³m.
-* **Äáº§u ra bÃ n giao (Deliverables):** Repo cÃ´ng khai trÃªn GitHub, GitHub Projects Board hoáº¡t Ä‘á»™ng, file `.github/pull_request_template.md` vÃ  `.github/ISSUE_TEMPLATE/`.
-* **TiÃªu chÃ­ hoÃ n thÃ nh (DoD):** KhÃ´ng thÃ nh viÃªn nÃ o cÃ³ thá»ƒ push trá»±c tiáº¿p vÃ o `main`; Ã­t nháº¥t 1 issue máº«u vÃ  1 PR máº«u Ä‘Æ°á»£c táº¡o thá»­ nghiá»‡m thÃ nh cÃ´ng.
-* **Quan há»‡ phá»¥ thuá»™c (Dependencies):** Sau gÃ³i 1.1.1.
-
----
-
-#### GÃ³i cÃ´ng viá»‡c 1.2.2: Thiáº¿t káº¿ Kiáº¿n trÃºc Há»‡ thá»‘ng & SÆ¡ Ä‘á»“ CSDL (ERD/Schema)
-* **MÃ£ WBS:** `1.2.2` | **GÃ³i cha:** `1.2 PhÃ¢n tÃ­ch Nghiá»‡p vá»¥ & Thiáº¿t káº¿ Há»‡ thá»‘ng`
-* **NgÆ°á»i phá»¥ trÃ¡ch (Owner):** Tráº§n ÄÃ¬nh BÃ¬nh (Tech Lead) & LÃª Thá»‹ Cáº©m (Backend)
-* **Thá»i lÆ°á»£ng Æ°á»›c lÆ°á»£ng:** 1.5 tuáº§n (26 giá» lÃ m viá»‡c) | **Story Points:** 8 SP
-* **MÃ´ táº£ cÃ´ng viá»‡c:** Láº­p sÆ¡ Ä‘á»“ kiáº¿n trÃºc há»‡ thá»‘ng (Client-Server, REST API, Database Pooling); mÃ´ hÃ¬nh hÃ³a thá»±c thá»ƒ CSDL (ERD) gá»“m cÃ¡c báº£ng: `users`, `roles`, `doctors`, `departments`, `schedules`, `time_slots`, `appointments`, `medical_records`, `prescriptions`, `audit_logs`. Táº¡o script migration ban Ä‘áº§u trÃªn PostgreSQL.
-* **Äáº§u vÃ o (Inputs):** Báº£n Ä‘áº·c táº£ yÃªu cáº§u SRS tá»« gÃ³i 1.2.1.
-* **Äáº§u ra bÃ n giao (Deliverables):** File tÃ i liá»‡u kiáº¿n trÃºc ká»¹ thuáº­t kÃ¨m sÆ¡ Ä‘á»“ ERD trá»±c quan (dbdiagram.io), file migration SQL chuáº©n hÃ³a.
-* **TiÃªu chÃ­ hoÃ n thÃ nh (DoD):** SÆ¡ Ä‘á»“ quan há»‡ Ä‘áº¡t chuáº©n chuáº©n hÃ³a 3NF, script cháº¡y táº¡o báº£ng thÃ nh cÃ´ng trÃªn local vÃ  PostgreSQL Supabase khÃ´ng cÃ³ lá»—i khÃ³a ngoáº¡i.
-* **Quan há»‡ phá»¥ thuá»™c (Dependencies):** Sau gÃ³i 1.2.1.
+#### Gói công việc 1.1.2: Thiết lập Hệ sinh thái GitHub
+* **Mã WBS:** `1.1.2` | **Gói cha:** `1.1 Khởi tạo & Quản trị Dự án`
+* **Người phụ trách (Owner):** Nguyễn Thái Sơn (PM) & Vi Hữu Thành (Tech Lead)
+* **Thời lượng ước lượng:** 1 tuần (18 giờ làm việc) | **Story Points:** 5 SP
+* **Mô tả công việc:** Thiết lập GitHub Organization, khởi tạo Repository `medicare-plus-platform`, cấu hình quy tắc Branch Protection cho nhánh `main` (yêu cầu review bắt buộc và CI pass). Khởi tạo GitHub Projects với 5 cột chuẩn (Backlog, Ready, In Progress, In Review, Done), thiết lập nhãn (labels), mẫu Issue Template và Pull Request Template.
+* **Đầu vào (Inputs):** Điều lệ dự án đã ký duyệt, Danh sách 5 thành viên nhóm.
+* **Đầu ra bàn giao (Deliverables):** Repo công khai trên GitHub, GitHub Projects Board hoạt động, file `.github/pull_request_template.md` và `.github/ISSUE_TEMPLATE/`.
+* **Tiêu chí hoàn thành (DoD):** Không thành viên nào có thể push trực tiếp vào `main`; ít nhất 1 issue mẫu và 1 PR mẫu được tạo thử nghiệm thành công.
+* **Quan hệ phụ thuộc (Dependencies):** Sau gói 1.1.1.
 
 ---
 
-#### GÃ³i cÃ´ng viá»‡c 1.2.4: Thiáº¿t láº­p Háº¡ táº§ng Cloud & CI/CD Pipeline
-* **MÃ£ WBS:** `1.2.4` | **GÃ³i cha:** `1.2 PhÃ¢n tÃ­ch Nghiá»‡p vá»¥ & Thiáº¿t káº¿ Há»‡ thá»‘ng`
-* **NgÆ°á»i phá»¥ trÃ¡ch (Owner):** Tráº§n ÄÃ¬nh BÃ¬nh (Tech Lead)
-* **Thá»i lÆ°á»£ng Æ°á»›c lÆ°á»£ng:** 1 tuáº§n (16 giá» lÃ m viá»‡c) | **Story Points:** 5 SP
-* **MÃ´ táº£ cÃ´ng viá»‡c:** Táº¡o Dockerfile cho backend API vÃ  cáº¥u hÃ¬nh workflow GitHub Actions (`.github/workflows/ci.yml`). Tá»± Ä‘á»™ng cháº¡y Linting, Typecheck vÃ  Unit Test má»—i khi cÃ³ PR vÃ o nhÃ¡nh `main`/`develop`. LiÃªn káº¿t tá»± Ä‘á»™ng deploy lÃªn Vercel (Frontend) vÃ  Render (Backend Web Service).
-* **Äáº§u vÃ o (Inputs):** MÃ£ nguá»“n khung ban Ä‘áº§u, tÃ i khoáº£n cloud staging.
-* **Äáº§u ra bÃ n giao (Deliverables):** File cáº¥u hÃ¬nh CI/CD hoÃ n chá»‰nh, badge build passing trÃªn README.md cá»§a repo.
-* **TiÃªu chÃ­ hoÃ n thÃ nh (DoD):** Khi má»Ÿ má»™t Pull Request thá»­ nghiá»‡m, GitHub Actions tá»± Ä‘á»™ng kÃ­ch hoáº¡t vÃ  tráº£ vá» káº¿t quáº£ `Check passed` mÃ u xanh lÃ¡ cÃ¢y; merge PR tá»± Ä‘á»™ng kÃ­ch hoáº¡t deploy báº£n build má»›i lÃªn URL staging.
-* **Quan há»‡ phá»¥ thuá»™c (Dependencies):** Song hÃ nh vá»›i 1.1.2 vÃ  1.2.2.
+#### Gói công việc 1.2.2: Thiết kế Kiến trúc Hệ thống & Sơ đồ CSDL (ERD/Schema)
+* **Mã WBS:** `1.2.2` | **Gói cha:** `1.2 Phân tích Nghiệp vụ & Thiết kế Hệ thống`
+* **Người phụ trách (Owner):** Vi Hữu Thành (Tech Lead) & Đặng Thanh Vũ (Backend)
+* **Thời lượng ước lượng:** 1.5 tuần (26 giờ làm việc) | **Story Points:** 8 SP
+* **Mô tả công việc:** Lập sơ đồ kiến trúc hệ thống (Client-Server, REST API, Database Pooling); mô hình hóa thực thể CSDL (ERD) gồm các bảng: `users`, `roles`, `doctors`, `departments`, `schedules`, `time_slots`, `appointments`, `medical_records`, `prescriptions`, `audit_logs`. Tạo script migration ban đầu trên PostgreSQL.
+* **Đầu vào (Inputs):** Bản đặc tả yêu cầu SRS từ gói 1.2.1.
+* **Đầu ra bàn giao (Deliverables):** File tài liệu kiến trúc kỹ thuật kèm sơ đồ ERD trực quan (dbdiagram.io), file migration SQL chuẩn hóa.
+* **Tiêu chí hoàn thành (DoD):** Sơ đồ quan hệ đạt chuẩn chuẩn hóa 3NF, script chạy tạo bảng thành công trên local và PostgreSQL Supabase không có lỗi khóa ngoại.
+* **Quan hệ phụ thuộc (Dependencies):** Sau gói 1.2.1.
 
 ---
 
-#### GÃ³i cÃ´ng viá»‡c 1.3.1: Module XÃ¡c thá»±c, PhÃ¢n quyá»n NgÆ°á»i dÃ¹ng (Auth & RBAC)
-* **MÃ£ WBS:** `1.3.1` | **GÃ³i cha:** `1.3 PhÃ¡t triá»ƒn Ná»n táº£ng Backend & API`
-* **NgÆ°á»i phá»¥ trÃ¡ch (Owner):** LÃª Thá»‹ Cáº©m (Backend Engineer)
-* **Thá»i lÆ°á»£ng Æ°á»›c lÆ°á»£ng:** 1.5 tuáº§n (24 giá» lÃ m viá»‡c) | **Story Points:** 8 SP
-* **MÃ´ táº£ cÃ´ng viá»‡c:** CÃ i Ä‘áº·t cÃ¡c API Ä‘Äƒng kÃ½, Ä‘Äƒng nháº­p tÃ i khoáº£n bá»‡nh nhÃ¢n, bÃ¡c sÄ© vÃ  nhÃ¢n viÃªn lá»… tÃ¢n; cáº¥p phÃ¡t JWT Access Token vÃ  Refresh Token; mÃ£ hÃ³a máº­t kháº©u báº±ng bcrypt; xÃ¢y dá»±ng middleware kiá»ƒm tra phÃ¢n quyá»n RBAC (Role-Based Access Control) trÃªn cÃ¡c route nháº¡y cáº£m.
-* **Äáº§u vÃ o (Inputs):** Schema CSDL báº£ng `users` vÃ  `roles` tá»« gÃ³i 1.2.2.
-* **Äáº§u ra bÃ n giao (Deliverables):** CÃ¡c endpoints `/api/v1/auth/register`, `/login`, `/refresh`, `/me`; Swagger docs mÃ´ táº£ chi tiáº¿t header `Authorization: Bearer <token>`.
-* **TiÃªu chÃ­ hoÃ n thÃ nh (DoD):** CÃ³ Ã­t nháº¥t 8 Unit Tests kiá»ƒm tra cÃ¡c trÆ°á»ng há»£p Ä‘Äƒng nháº­p Ä‘Ãºng, sai máº­t kháº©u, token háº¿t háº¡n, vÃ  truy cáº­p trÃ¡i quyá»n (HTTP 403 Forbidden); test coverage Ä‘áº¡t $\ge 80\%$.
-* **Quan há»‡ phá»¥ thuá»™c (Dependencies):** Sau gÃ³i 1.2.2 vÃ  1.2.4.
+#### Gói công việc 1.2.4: Thiết lập Hạ tầng Cloud & CI/CD Pipeline
+* **Mã WBS:** `1.2.4` | **Gói cha:** `1.2 Phân tích Nghiệp vụ & Thiết kế Hệ thống`
+* **Người phụ trách (Owner):** Vi Hữu Thành (Tech Lead)
+* **Thời lượng ước lượng:** 1 tuần (16 giờ làm việc) | **Story Points:** 5 SP
+* **Mô tả công việc:** Tạo Dockerfile cho backend API và cấu hình workflow GitHub Actions (`.github/workflows/ci.yml`). Tự động chạy Linting, Typecheck và Unit Test mỗi khi có PR vào nhánh `main`/`develop`. Liên kết tự động deploy lên Vercel (Frontend) và Render (Backend Web Service).
+* **Đầu vào (Inputs):** Mã nguồn khung ban đầu, tài khoản cloud staging.
+* **Đầu ra bàn giao (Deliverables):** File cấu hình CI/CD hoàn chỉnh, badge build passing trên README.md của repo.
+* **Tiêu chí hoàn thành (DoD):** Khi mở một Pull Request thử nghiệm, GitHub Actions tự động kích hoạt và trả về kết quả `Check passed` màu xanh lá cây; merge PR tự động kích hoạt deploy bản build mới lên URL staging.
+* **Quan hệ phụ thuộc (Dependencies):** Song hành với 1.1.2 và 1.2.2.
 
 ---
 
-#### GÃ³i cÃ´ng viá»‡c 1.3.3: Module LÃµi Äáº·t lá»‹ch KhÃ¡m & Xá»­ lÃ½ KhÃ³a Slot (Locking Engine)
-* **MÃ£ WBS:** `1.3.3` | **GÃ³i cha:** `1.3 PhÃ¡t triá»ƒn Ná»n táº£ng Backend & API`
-* **NgÆ°á»i phá»¥ trÃ¡ch (Owner):** LÃª Thá»‹ Cáº©m (Backend) & Tráº§n ÄÃ¬nh BÃ¬nh (Tech Lead)
-* **Thá»i lÆ°á»£ng Æ°á»›c lÆ°á»£ng:** 2 tuáº§n (35 giá» lÃ m viá»‡c) | **Story Points:** 13 SP
-* **MÃ´ táº£ cÃ´ng viá»‡c:** XÃ¢y dá»±ng logic sinh Ä‘á»™ng cÃ¡c khung giá» khÃ¡m (15 phÃºt/slot) theo ca lÃ m viá»‡c cá»§a bÃ¡c sÄ©; thiáº¿t káº¿ thuáº­t toÃ¡n Ä‘áº·t lá»‹ch an toÃ n vá»›i cÆ¡ cháº¿ khÃ³a táº¡m thá»i (Pessimistic Locking / PostgreSQL `SELECT FOR UPDATE` hoáº·c Redis lock trong 5 phÃºt) Ä‘á»ƒ giáº£i quyáº¿t triá»‡t Ä‘á»ƒ rá»§i ro Race Condition khi nhiá»u bá»‡nh nhÃ¢n cÃ¹ng chá»n má»™t slot khÃ¡m.
-* **Äáº§u vÃ o (Inputs):** Schema báº£ng `time_slots` vÃ  `appointments`; API Auth tá»« 1.3.1.
-* **Äáº§u ra bÃ n giao (Deliverables):** API `/api/v1/appointments/book`, `/slots/available`, logic giáº£i phÃ³ng slot tá»± Ä‘á»™ng khi háº¿t háº¡n táº¡m giá»¯.
-* **TiÃªu chÃ­ hoÃ n thÃ nh (DoD):** VÆ°á»£t qua ká»‹ch báº£n kiá»ƒm thá»­ táº£i Ä‘á»“ng thá»i (Concurrent Request Test) vá»›i 10 request Ä‘á»“ng thá»i tranh cháº¥p 1 slot: Ä‘áº£m báº£o duy nháº¥t 1 giao dá»‹ch thÃ nh cÃ´ng (HTTP 201), 9 giao dá»‹ch cÃ²n láº¡i nháº­n mÃ£ lá»—i xung Ä‘á»™t (HTTP 409 Conflict).
-* **Quan há»‡ phá»¥ thuá»™c (Dependencies):** Sau gÃ³i 1.3.1 vÃ  1.3.2.
+#### Gói công việc 1.3.1: Module Xác thực, Phân quyền Người dùng (Auth & RBAC)
+* **Mã WBS:** `1.3.1` | **Gói cha:** `1.3 Phát triển Nền tảng Backend & API`
+* **Người phụ trách (Owner):** Đặng Thanh Vũ (Backend Engineer)
+* **Thời lượng ước lượng:** 1.5 tuần (24 giờ làm việc) | **Story Points:** 8 SP
+* **Mô tả công việc:** Cài đặt các API đăng ký, đăng nhập tài khoản bệnh nhân, bác sĩ và nhân viên lễ tân; cấp phát JWT Access Token và Refresh Token; mã hóa mật khẩu bằng bcrypt; xây dựng middleware kiểm tra phân quyền RBAC (Role-Based Access Control) trên các route nhạy cảm.
+* **Đầu vào (Inputs):** Schema CSDL bảng `users` và `roles` từ gói 1.2.2.
+* **Đầu ra bàn giao (Deliverables):** Các endpoints `/api/v1/auth/register`, `/login`, `/refresh`, `/me`; Swagger docs mô tả chi tiết header `Authorization: Bearer <token>`.
+* **Tiêu chí hoàn thành (DoD):** Có ít nhất 8 Unit Tests kiểm tra các trường hợp đăng nhập đúng, sai mật khẩu, token hết hạn, và truy cập trái quyền (HTTP 403 Forbidden); test coverage đạt $\ge 80\%$.
+* **Quan hệ phụ thuộc (Dependencies):** Sau gói 1.2.2 và 1.2.4.
 
 ---
 
-#### GÃ³i cÃ´ng viá»‡c 1.4.1: Cá»•ng thÃ´ng tin Bá»‡nh nhÃ¢n (Web Patient Portal)
-* **MÃ£ WBS:** `1.4.1` | **GÃ³i cha:** `1.4 PhÃ¡t triá»ƒn á»¨ng dá»¥ng Frontend & Mobile`
-* **NgÆ°á»i phá»¥ trÃ¡ch (Owner):** Pháº¡m Quá»‘c DÅ©ng (Frontend Engineer)
-* **Thá»i lÆ°á»£ng Æ°á»›c lÆ°á»£ng:** 2 tuáº§n (32 giá» lÃ m viá»‡c) | **Story Points:** 13 SP
-* **MÃ´ táº£ cÃ´ng viá»‡c:** XÃ¢y dá»±ng giao diá»‡n Web Responsive báº±ng Next.js/React vÃ  Tailwind CSS cho phÃ©p bá»‡nh nhÃ¢n: Tra cá»©u danh sÃ¡ch bÃ¡c sÄ© theo chuyÃªn khoa, xem thÃ´ng tin vÃ  Ä‘Ã¡nh giÃ¡, chá»n ngÃ y khÃ¡m trÃªn lá»‹ch trá»±c quan, chá»n khung giá» cÃ²n trá»‘ng vÃ  Ä‘iá»n thÃ´ng tin triá»‡u chá»©ng Ä‘á»ƒ Ä‘áº·t háº¹n; xem trang lá»‹ch sá»­ vÃ  phiáº¿u khÃ¡m Ä‘iá»‡n tá»­ cÃ³ mÃ£ QR.
-* **Äáº§u vÃ o (Inputs):** Báº£n thiáº¿t káº¿ Figma tá»« gÃ³i 1.2.3, Swagger API backend tá»« gÃ³i 1.3.2 vÃ  1.3.3.
-* **Äáº§u ra bÃ n giao (Deliverables):** MÃ£ nguá»“n frontend trÃªn nhÃ¡nh `feature/patient-portal`, giao diá»‡n hiá»ƒn thá»‹ mÆ°á»£t mÃ  trÃªn cáº£ mÃ¡y tÃ­nh bÃ n vÃ  Ä‘iá»‡n thoáº¡i di Ä‘á»™ng.
-* **TiÃªu chÃ­ hoÃ n thÃ nh (DoD):** TÆ°Æ¡ng thÃ­ch 100% trÃªn Chrome, Safari, Edge; Ä‘iá»ƒm Google Lighthouse Performance $\ge 85$; káº¿t ná»‘i API Ä‘áº·t lá»‹ch thÃ nh cÃ´ng vá»›i tráº¡ng thÃ¡i cáº­p nháº­t tá»©c thÃ¬.
-* **Quan há»‡ phá»¥ thuá»™c (Dependencies):** Song hÃ nh vÃ  phá»¥ thuá»™c vÃ o API gÃ³i 1.3.3.
+#### Gói công việc 1.3.3: Module Lõi Đặt lịch Khám & Xử lý Khóa Slot (Locking Engine)
+* **Mã WBS:** `1.3.3` | **Gói cha:** `1.3 Phát triển Nền tảng Backend & API`
+* **Người phụ trách (Owner):** Đặng Thanh Vũ (Backend) & Vi Hữu Thành (Tech Lead)
+* **Thời lượng ước lượng:** 2 tuần (35 giờ làm việc) | **Story Points:** 13 SP
+* **Mô tả công việc:** Xây dựng logic sinh động các khung giờ khám (15 phút/slot) theo ca làm việc của bác sĩ; thiết kế thuật toán đặt lịch an toàn với cơ chế khóa tạm thời (Pessimistic Locking / PostgreSQL `SELECT FOR UPDATE` hoặc Redis lock trong 5 phút) để giải quyết triệt để rủi ro Race Condition khi nhiều bệnh nhân cùng chọn một slot khám.
+* **Đầu vào (Inputs):** Schema bảng `time_slots` và `appointments`; API Auth từ 1.3.1.
+* **Đầu ra bàn giao (Deliverables):** API `/api/v1/appointments/book`, `/slots/available`, logic giải phóng slot tự động khi hết hạn tạm giữ.
+* **Tiêu chí hoàn thành (DoD):** Vượt qua kịch bản kiểm thử tải đồng thời (Concurrent Request Test) với 10 request đồng thời tranh chấp 1 slot: đảm bảo duy nhất 1 giao dịch thành công (HTTP 201), 9 giao dịch còn lại nhận mã lỗi xung đột (HTTP 409 Conflict).
+* **Quan hệ phụ thuộc (Dependencies):** Sau gói 1.3.1 và 1.3.2.
 
 ---
 
-#### GÃ³i cÃ´ng viá»‡c 1.4.2: Dashboard BÃ¡c sÄ© & Tiáº¿p tÃ¢n PhÃ²ng khÃ¡m
-* **MÃ£ WBS:** `1.4.2` | **GÃ³i cha:** `1.4 PhÃ¡t triá»ƒn á»¨ng dá»¥ng Frontend & Mobile`
-* **NgÆ°á»i phá»¥ trÃ¡ch (Owner):** Pháº¡m Quá»‘c DÅ©ng (Frontend) & LÃª Thá»‹ Cáº©m (Backend)
-* **Thá»i lÆ°á»£ng Æ°á»›c lÆ°á»£ng:** 2 tuáº§n (30 giá» lÃ m viá»‡c) | **Story Points:** 10 SP
-* **MÃ´ táº£ cÃ´ng viá»‡c:** PhÃ¡t triá»ƒn giao diá»‡n quáº£n trá»‹ cho Lá»… tÃ¢n vÃ  BÃ¡c sÄ©: MÃ n hÃ¬nh quÃ©t/nháº­p mÃ£ QR check-in tiáº¿p Ä‘Ã³n; báº£ng hÃ ng Ä‘á»£i khÃ¡m bá»‡nh trá»±c quan (Chá» khÃ¡m, Äang khÃ¡m, ÄÃ£ khÃ¡m xong); mÃ n hÃ¬nh bÃ¡c sÄ© nháº­p káº¿t quáº£ cháº©n Ä‘oÃ¡n, ghi chÃº bá»‡nh Ã¡n vÃ  kÃª Ä‘Æ¡n thuá»‘c gá»­i vÃ o há»“ sÆ¡ EMR.
-* **Äáº§u vÃ o (Inputs):** API EMR tá»« 1.3.4, Thiáº¿t káº¿ giao diá»‡n Dashboard tá»« 1.2.3.
-* **Äáº§u ra bÃ n giao (Deliverables):** Giao diá»‡n quáº£n trá»‹ táº¡i route `/admin` vÃ  `/doctor`, tÃ­ch há»£p kiá»ƒm tra quyá»n RBAC phÃ­a client.
-* **TiÃªu chÃ­ hoÃ n thÃ nh (DoD):** Tiáº¿p tÃ¢n thá»±c hiá»‡n check-in cho bá»‡nh nhÃ¢n báº±ng mÃ£ QR thÃ nh cÃ´ng trong vÃ²ng < 3 giÃ¢y; bÃ¡c sÄ© lÆ°u bá»‡nh Ã¡n vÃ  xuáº¥t phiáº¿u Ä‘Æ¡n thuá»‘c PDF thÃ nh cÃ´ng.
-* **Quan há»‡ phá»¥ thuá»™c (Dependencies):** Sau gÃ³i 1.3.4 vÃ  1.4.1.
+#### Gói công việc 1.4.1: Cổng thông tin Bệnh nhân (Web Patient Portal)
+* **Mã WBS:** `1.4.1` | **Gói cha:** `1.4 Phát triển Ứng dụng Frontend & Mobile`
+* **Người phụ trách (Owner):** Nguyễn Từ Anh Nguyên (Frontend Engineer)
+* **Thời lượng ước lượng:** 2 tuần (32 giờ làm việc) | **Story Points:** 13 SP
+* **Mô tả công việc:** Xây dựng giao diện Web Responsive bằng Next.js/React và Tailwind CSS cho phép bệnh nhân: Tra cứu danh sách bác sĩ theo chuyên khoa, xem thông tin và đánh giá, chọn ngày khám trên lịch trực quan, chọn khung giờ còn trống và điền thông tin triệu chứng để đặt hẹn; xem trang lịch sử và phiếu khám điện tử có mã QR.
+* **Đầu vào (Inputs):** Bản thiết kế Figma từ gói 1.2.3, Swagger API backend từ gói 1.3.2 và 1.3.3.
+* **Đầu ra bàn giao (Deliverables):** Mã nguồn frontend trên nhánh `feature/patient-portal`, giao diện hiển thị mượt mà trên cả máy tính bàn và điện thoại di động.
+* **Tiêu chí hoàn thành (DoD):** Tương thích 100% trên Chrome, Safari, Edge; điểm Google Lighthouse Performance $\ge 85$; kết nối API đặt lịch thành công với trạng thái cập nhật tức thì.
+* **Quan hệ phụ thuộc (Dependencies):** Song hành và phụ thuộc vào API gói 1.3.3.
 
 ---
 
-#### GÃ³i cÃ´ng viá»‡c 1.5.3: Kiá»ƒm thá»­ Hiá»‡u nÄƒng & Táº£i Ä‘á»“ng thá»i (Load Testing)
-* **MÃ£ WBS:** `1.5.3` | **GÃ³i cha:** `1.5 Äáº£m báº£o Cháº¥t lÆ°á»£ng & Kiá»ƒm thá»­`
-* **NgÆ°á»i phá»¥ trÃ¡ch (Owner):** HoÃ ng Minh Em (QA Engineer)
-* **Thá»i lÆ°á»£ng Æ°á»›c lÆ°á»£ng:** 1 tuáº§n (18 giá» lÃ m viá»‡c) | **Story Points:** 5 SP
-* **MÃ´ táº£ cÃ´ng viá»‡c:** Sá»­ dá»¥ng cÃ´ng cá»¥ k6 / Apache JMeter viáº¿t ká»‹ch báº£n giáº£ láº­p 100 ngÆ°á»i dÃ¹ng Ä‘á»“ng thá»i (100 CCU) truy cáº­p tra cá»©u lá»‹ch bÃ¡c sÄ© vÃ  20 ngÆ°á»i dÃ¹ng gá»­i request Ä‘áº·t háº¹n trong cÃ¹ng 1 giÃ¢y Ä‘á»ƒ kiá»ƒm tra Ä‘á»™ trá»… (Latency) vÃ  tá»· lá»‡ lá»—i (Error Rate) cá»§a backend API.
-* **Äáº§u vÃ o (Inputs):** MÃ´i trÆ°á»ng API Staging tá»« gÃ³i 1.3.3 vÃ  1.6.1.
-* **Äáº§u ra bÃ n giao (Deliverables):** Ká»‹ch báº£n test script `load-test.js`, bÃ¡o cÃ¡o hiá»‡u nÄƒng dáº¡ng biá»ƒu Ä‘á»“ HTML xuáº¥t tá»« k6.
-* **TiÃªu chÃ­ hoÃ n thÃ nh (DoD):** $95\%$ sá»‘ request cÃ³ thá»i gian pháº£n há»“i (p95 latency) $< 400\text{ms}$; tá»· lá»‡ lá»—i HTTP 5xx báº±ng $0.0\%$; khÃ´ng xáº£y ra hiá»‡n tÆ°á»£ng duplicate booking trong CSDL.
-* **Quan há»‡ phá»¥ thuá»™c (Dependencies):** Sau gÃ³i 1.3.3 vÃ  1.5.2.
+#### Gói công việc 1.4.2: Dashboard Bác sĩ & Tiếp tân Phòng khám
+* **Mã WBS:** `1.4.2` | **Gói cha:** `1.4 Phát triển Ứng dụng Frontend & Mobile`
+* **Người phụ trách (Owner):** Nguyễn Từ Anh Nguyên (Frontend) & Đặng Thanh Vũ (Backend)
+* **Thời lượng ước lượng:** 2 tuần (30 giờ làm việc) | **Story Points:** 10 SP
+* **Mô tả công việc:** Phát triển giao diện quản trị cho Lễ tân và Bác sĩ: Màn hình quét/nhập mã QR check-in tiếp đón; bảng hàng đợi khám bệnh trực quan (Chờ khám, Đang khám, Đã khám xong); màn hình bác sĩ nhập kết quả chẩn đoán, ghi chú bệnh án và kê đơn thuốc gửi vào hồ sơ EMR.
+* **Đầu vào (Inputs):** API EMR từ 1.3.4, Thiết kế giao diện Dashboard từ 1.2.3.
+* **Đầu ra bàn giao (Deliverables):** Giao diện quản trị tại route `/admin` và `/doctor`, tích hợp kiểm tra quyền RBAC phía client.
+* **Tiêu chí hoàn thành (DoD):** Tiếp tân thực hiện check-in cho bệnh nhân bằng mã QR thành công trong vòng < 3 giây; bác sĩ lưu bệnh án và xuất phiếu đơn thuốc PDF thành công.
+* **Quan hệ phụ thuộc (Dependencies):** Sau gói 1.3.4 và 1.4.1.
 
 ---
 
-#### GÃ³i cÃ´ng viá»‡c 1.6.2: Kiá»ƒm thá»­ Cháº¥p nháº­n NgÆ°á»i dÃ¹ng (UAT) & Nghiá»‡m thu ChuyÃªn ngÃ nh Song hÃ nh
-* **MÃ£ WBS:** `1.6.2` | **GÃ³i cha:** `1.6 Nghiá»‡m thu, Chuyá»ƒn giao & ÄÃ³ng dá»± Ã¡n`
-* **NgÆ°á»i phá»¥ trÃ¡ch (Owner):** Nguyá»…n VÄƒn An (PM) & HoÃ ng Minh Em (QA)
-* **Thá»i lÆ°á»£ng Æ°á»›c lÆ°á»£ng:** 1.5 tuáº§n (20 giá» lÃ m viá»‡c) | **Story Points:** 5 SP
-* **MÃ´ táº£ cÃ´ng viá»‡c:** Triá»ƒn khai phiÃªn báº£n Live Production trÃªn Cloud; tá»• chá»©c phiÃªn thá»­ nghiá»‡m ngÆ°á»i dÃ¹ng (UAT Beta Testing) vá»›i nhÃ³m 20 sinh viÃªn vÃ  cÃ¡n bá»™ y táº¿ VKU; demo nghiá»‡m thu ká»¹ thuáº­t vÃ  chá»©c nÄƒng vá»›i Giáº£ng viÃªn hÆ°á»›ng dáº«n Ä‘á»“ Ã¡n chuyÃªn ngÃ nh song hÃ nh ThS. LÃª ÄÄƒng Quang; tá»•ng há»£p káº¿t quáº£ pháº£n há»“i ngÆ°á»i dÃ¹ng vÃ  ma tráº­n kiá»ƒm thá»­ UAT trá»±c tiáº¿p vÃ o ChÆ°Æ¡ng 7 BÃ¡o cÃ¡o tá»•ng káº¿t ká»¹ thuáº­t.
-* **Äáº§u vÃ o (Inputs):** Há»‡ thá»‘ng cháº¡y thá»±c táº¿ trÃªn Cloud (1.6.1), Ma tráº­n ká»‹ch báº£n kiá»ƒm thá»­ UAT.
-* **Äáº§u ra bÃ n giao (Deliverables):** Ma tráº­n káº¿t quáº£ cháº¡y UAT (UAT Test Execution Matrix) vÃ  báº£ng Ä‘Ã¡nh giÃ¡ Ä‘á»™ hÃ i lÃ²ng ngÆ°á»i dÃ¹ng (tÃ­ch há»£p trong BÃ¡o cÃ¡o tá»•ng káº¿t).
-* **TiÃªu chÃ­ hoÃ n thÃ nh (DoD):** $100\%$ cÃ¡c ca kiá»ƒm thá»­ chÃ­nh Ä‘áº¡t chuáº©n nghiá»‡m thu; Giáº£ng viÃªn chuyÃªn ngÃ nh xÃ¡c nháº­n há»‡ thá»‘ng hoÃ n thÃ nh má»¥c tiÃªu ká»¹ thuáº­t.
-* **Quan há»‡ phá»¥ thuá»™c (Dependencies):** Sau gÃ³i 1.6.1 vÃ  1.4.2.
+#### Gói công việc 1.5.3: Kiểm thử Hiệu năng & Tải đồng thời (Load Testing)
+* **Mã WBS:** `1.5.3` | **Gói cha:** `1.5 Đảm bảo Chất lượng & Kiểm thử`
+* **Người phụ trách (Owner):** Nguyễn Từ Anh Nguyên (QA Engineer)
+* **Thời lượng ước lượng:** 1 tuần (18 giờ làm việc) | **Story Points:** 5 SP
+* **Mô tả công việc:** Sử dụng công cụ k6 / Apache JMeter viết kịch bản giả lập 100 người dùng đồng thời (100 CCU) truy cập tra cứu lịch bác sĩ và 20 người dùng gửi request đặt hẹn trong cùng 1 giây để kiểm tra độ trễ (Latency) và tỷ lệ lỗi (Error Rate) của backend API.
+* **Đầu vào (Inputs):** Môi trường API Staging từ gói 1.3.3 và 1.6.1.
+* **Đầu ra bàn giao (Deliverables):** Kịch bản test script `load-test.js`, báo cáo hiệu năng dạng biểu đồ HTML xuất từ k6.
+* **Tiêu chí hoàn thành (DoD):** $95\%$ số request có thời gian phản hồi (p95 latency) $< 400\text{ms}$; tỷ lệ lỗi HTTP 5xx bằng $0.0\%$; không xảy ra hiện tượng duplicate booking trong CSDL.
+* **Quan hệ phụ thuộc (Dependencies):** Sau gói 1.3.3 và 1.5.2.
 
+---
+
+#### Gói công việc 1.6.2: Kiểm thử Chấp nhận Người dùng (UAT) & Nghiệm thu Chuyên ngành Song hành
+* **Mã WBS:** `1.6.2` | **Gói cha:** `1.6 Nghiệm thu, Chuyển giao & Đóng dự án`
+* **Người phụ trách (Owner):** Nguyễn Thái Sơn (PM) & Nguyễn Từ Anh Nguyên (QA)
+* **Thời lượng ước lượng:** 1.5 tuần (20 giờ làm việc) | **Story Points:** 5 SP
+* **Mô tả công việc:** Triển khai phiên bản Live Production trên Cloud; tổ chức phiên thử nghiệm người dùng (UAT Beta Testing) với nhóm 20 sinh viên và cán bộ y tế VKU; demo nghiệm thu kỹ thuật và chức năng với Giảng viên hướng dẫn đồ án chuyên ngành song hành ThS. Lê Đăng Quang; tổng hợp kết quả phản hồi người dùng và ma trận kiểm thử UAT trực tiếp vào Chương 7 Báo cáo tổng kết kỹ thuật.
+* **Đầu vào (Inputs):** Hệ thống chạy thực tế trên Cloud (1.6.1), Ma trận kịch bản kiểm thử UAT.
+* **Đầu ra bàn giao (Deliverables):** Ma trận kết quả chạy UAT (UAT Test Execution Matrix) và bảng đánh giá độ hài lòng người dùng (tích hợp trong Báo cáo tổng kết).
+* **Tiêu chí hoàn thành (DoD):** $100\%$ các ca kiểm thử chính đạt chuẩn nghiệm thu; Giảng viên chuyên ngành xác nhận hệ thống hoàn thành mục tiêu kỹ thuật.
+* **Quan hệ phụ thuộc (Dependencies):** Sau gói 1.6.1 và 1.4.2.

@@ -1,186 +1,184 @@
-﻿# ÄIá»€U Lá»† Dá»° ÃN (PROJECT CHARTER)
-## Dá»° ÃN: Ná»€N Táº¢NG QUáº¢N LÃ PHÃ’NG KHÃM & Äáº¶T Lá»ŠCH KHÃM TRá»°C TUYáº¾N (MEDICARE PLUS)
-**MÃ£ dá»± Ã¡n (Project Code):** `VKU-SPM-MEDICARE`  
-**Há»c pháº§n:** Quáº£n Trá»‹ Dá»± Ãn Pháº§n Má»m (Software Project Management)  
-**ÄÆ¡n vá»‹ Ä‘Ã o táº¡o:** Khoa Khoa há»c MÃ¡y tÃ­nh â€” TrÆ°á»ng Äáº¡i há»c CÃ´ng nghá»‡ ThÃ´ng tin & Truyá»n thÃ´ng Viá»‡t - HÃ n (VKU)  
-**Giáº£ng viÃªn phá»¥ trÃ¡ch:** TS. Nguyá»…n Thanh Tuáº¥n  
-**NgÃ y ban hÃ nh:** 05/09/2026 | **PhiÃªn báº£n:** v1.0 (Final Approved)
+# ĐIỀU LỆ DỰ ÁN (PROJECT CHARTER)
+## DỰ ÁN: NỀN TẢNG QUẢN LÝ PHÒNG KHÁM & ĐẶT LỊCH KHÁM TRỰC TUYẾN (MEDICARE PLUS)
+**Mã dự án (Project Code):** `VKU-SPM-MEDICARE`  
+**Học phần:** Quản Trị Dự Án Phần Mềm (Software Project Management)  
+**Đơn vị đào tạo:** Khoa Khoa học Máy tính — Trường Đại học Công nghệ Thông tin & Truyền thông Việt - Hàn (VKU)  
+**Giảng viên phụ trách:** TS. Nguyễn Thanh Tuấn  
+**Ngày ban hành:** 05/09/2026 | **Phiên bản:** v1.0 (Final Approved)
 
 ---
 
-### 1. THÃ”NG TIN Tá»”NG QUAN Dá»° ÃN (PROJECT OVERVIEW)
-* **TÃªn dá»± Ã¡n tiáº¿ng Viá»‡t:** Ná»n táº£ng Quáº£n lÃ½ PhÃ²ng khÃ¡m & Äáº·t lá»‹ch KhÃ¡m trá»±c tuyáº¿n
-* **TÃªn dá»± Ã¡n tiáº¿ng Anh:** MediCare Plus â€” Cloud Clinic Management & Smart Scheduling Platform
-* **Äáº¡i diá»‡n NhÃ³m thá»±c hiá»‡n:** NhÃ³m 04 (Lá»›p 22IT4 & 22IT5)
-* **Thá»i gian thá»±c hiá»‡n:** 15 tuáº§n (Tá»« Tuáº§n 1 Ä‘áº¿n Tuáº§n 15 cá»§a há»c ká»³, 05/09/2026 â€“ 20/12/2026)
-* **PhÆ°Æ¡ng phÃ¡p luáº­n phÃ¡t triá»ƒn:** Agile / Scrum (Sprint 2 tuáº§n, káº¿t há»£p Kanban Board trÃªn GitHub Projects)
+### 1. THÔNG TIN TỔNG QUAN DỰ ÁN (PROJECT OVERVIEW)
+* **Tên dự án tiếng Việt:** Nền tảng Quản lý Phòng khám & Đặt lịch Khám trực tuyến
+* **Tên dự án tiếng Anh:** MediCare Plus — Cloud Clinic Management & Smart Scheduling Platform
+* **Đại diện Nhóm thực hiện:** Nhóm 04 (Lớp 23IT)
+* **Thời gian thực hiện:** 15 tuần (Từ Tuần 1 đến Tuần 15 của học kỳ, 05/09/2026 – 20/12/2026)
+* **Phương pháp luận phát triển:** Agile / Scrum (Sprint 2 tuần, kết hợp Kanban Board trên GitHub Projects)
 
 ---
 
-### 2. NGUá»’N Gá»C Äá»€ TÃ€I (SOURCING PATHWAY)
-* **Lá»±a chá»n Pathway:** **Pathway 1: Káº¿ thá»«a / Song hÃ nh Äá»“ Ã¡n ChuyÃªn ngÃ nh (Web Engineering & Cross-Platform Mobile)**.
-* **MÃ´ táº£ song hÃ nh:** Dá»± Ã¡n bao bá»c khung quáº£n trá»‹ chuyÃªn nghiá»‡p (Professional SPM Framework) quanh sáº£n pháº©m ká»¹ thuáº­t pháº§n má»m Ä‘ang xÃ¢y dá»±ng trong há»c pháº§n CÃ´ng nghá»‡ Web TiÃªn tiáº¿n vÃ  Láº­p trÃ¬nh Di Ä‘á»™ng. MÃ´n QLDA khÃ´ng báº¯t code láº¡i tá»« Ä‘áº§u mÃ  táº­p trung Ä‘Ã¡nh giÃ¡ quy trÃ¬nh, chá»‰ sá»‘ quáº£n trá»‹, báº£ng task, quáº£n lÃ½ rá»§i ro vÃ  gÃ³i báº±ng chá»©ng kiá»ƒm soÃ¡t.
-* **KhÃ¡ch hÃ ng / Stakeholder nghiá»‡m thu thá»±c táº¿:**
-  * **Giáº£ng viÃªn hÆ°á»›ng dáº«n Ä‘á»“ Ã¡n chuyÃªn ngÃ nh song hÃ nh:** ThS. LÃª ÄÄƒng Quang (Khoa Khoa há»c MÃ¡y tÃ­nh â€” VKU).
-  * **Giáº£ng viÃªn phá»¥ trÃ¡ch há»c pháº§n QLDA:** TS. Nguyá»…n Thanh Tuáº¥n (Khoa Khoa há»c MÃ¡y tÃ­nh â€” VKU).
-  * **NhÃ³m ngÆ°á»i dÃ¹ng thá»­ nghiá»‡m thá»±c táº¿ (End-User Beta Testers):** Ban ChÄƒm sÃ³c Sá»©c khá»e Sinh viÃªn & NhÃ³m sinh viÃªn tÃ¬nh nguyá»‡n VKU.
+### 2. NGUỒN GỐC ĐỀ TÀI (SOURCING PATHWAY)
+* **Lựa chọn Pathway:** **Pathway 1: Kế thừa / Song hành Đồ án Chuyên ngành (Web Engineering & Cross-Platform Mobile)**.
+* **Mô tả song hành:** Dự án bao bọc khung quản trị chuyên nghiệp (Professional SPM Framework) quanh sản phẩm kỹ thuật phần mềm đang xây dựng trong học phần Công nghệ Web Tiên tiến và Lập trình Di động. Môn QLDA không bắt code lại từ đầu mà tập trung đánh giá quy trình, chỉ số quản trị, bảng task, quản lý rủi ro và gói bằng chứng kiểm soát.
+* **Khách hàng / Stakeholder nghiệm thu thực tế:**
+  * **Giảng viên hướng dẫn đồ án chuyên ngành song hành:** ThS. Lê Đăng Quang (Khoa Khoa học Máy tính — VKU).
+  * **Giảng viên phụ trách học phần QLDA:** TS. Nguyễn Thanh Tuấn (Khoa Khoa học Máy tính — VKU).
+  * **Nhóm người dùng thử nghiệm thực tế (End-User Beta Testers):** Ban Chăm sóc Sức khỏe Sinh viên & Nhóm sinh viên tình nguyện VKU.
 
 ---
 
-### 3. Bá»I Cáº¢NH NGHIá»†P Vá»¤ & Má»¤C TIÃŠU SMART (BUSINESS CASE & SMART OBJECTIVES)
-#### 3.1. Bá»‘i cáº£nh & Váº¥n Ä‘á» cá»‘t lÃµi (Problem Statement)
-CÃ¡c phÃ²ng khÃ¡m tÆ° nhÃ¢n quy mÃ´ vá»«a vÃ  nhá» hiá»‡n nay táº¡i khu vá»±c ÄÃ  Náºµng - Miá»n Trung Ä‘ang Ä‘á»‘i máº·t vá»›i cÃ¡c nÃºt tháº¯t váº­n hÃ nh:
-* **85% quy trÃ¬nh Ä‘áº·t lá»‹ch thá»±c hiá»‡n qua Ä‘iá»‡n thoáº¡i/sá»• tay:** Dáº«n Ä‘áº¿n trÃ¹ng lá»‹ch (overbooking), bá»‡nh nhÃ¢n chá» Ä‘á»£i trung bÃ¬nh 45â€“60 phÃºt táº¡i sáº£nh.
-* **Há»“ sÆ¡ bá»‡nh Ã¡n giáº¥y phÃ¢n tÃ¡n:** BÃ¡c sÄ© máº¥t thá»i gian tra cá»©u tiá»n sá»­ bá»‡nh, dá»… tháº¥t láº¡c káº¿t quáº£ cáº­n lÃ¢m sÃ ng.
-* **Tá»· lá»‡ "No-show" (Ä‘áº·t háº¹n nhÆ°ng khÃ´ng Ä‘áº¿n) lÃªn tá»›i 28%:** Do thiáº¿u há»‡ thá»‘ng nháº¯c lá»‹ch tá»± Ä‘á»™ng qua SMS/Email/Notification.
+### 3. BỐI CẢNH NGHIỆP VỤ & MỤC TIÊU SMART (BUSINESS CASE & SMART OBJECTIVES)
+#### 3.1. Bối cảnh & Vấn đề cốt lõi (Problem Statement)
+Các phòng khám tư nhân quy mô vừa và nhỏ hiện nay tại khu vực Đà Nẵng - Miền Trung đang đối mặt với các nút thắt vận hành:
+* **85% quy trình đặt lịch thực hiện qua điện thoại/sổ tay:** Dẫn đến trùng lịch (overbooking), bệnh nhân chờ đợi trung bình 45–60 phút tại sảnh.
+* **Hồ sơ bệnh án giấy phân tán:** Bác sĩ mất thời gian tra cứu tiền sử bệnh, dễ thất lạc kết quả cận lâm sàng.
+* **Tỷ lệ "No-show" (đặt hẹn nhưng không đến) lên tới 28%:** Do thiếu hệ thống nhắc lịch tự động qua SMS/Email/Notification.
 
-#### 3.2. Má»¥c tiÃªu dá»± Ã¡n SMART (SMART Project Objectives)
-* **S (Specific):** XÃ¢y dá»±ng ná»n táº£ng tÃ­ch há»£p gá»“m Web Portal cho bá»‡nh nhÃ¢n, á»¨ng dá»¥ng di Ä‘á»™ng (Android), vÃ  Dashboard quáº£n trá»‹ cho BÃ¡c sÄ© / Lá»… tÃ¢n, há»— trá»£ quáº£n lÃ½ lá»‹ch khÃ¡m, Ä‘áº·t háº¹n theo khung giá» (Time-slot), há»“ sÆ¡ bá»‡nh Ã¡n Ä‘iá»‡n tá»­ (EMR) vÃ  thÃ´ng bÃ¡o nháº¯c lá»‹ch tá»± Ä‘á»™ng.
+#### 3.2. Mục tiêu dự án SMART (SMART Project Objectives)
+* **S (Specific):** Xây dựng nền tảng tích hợp gồm Web Portal cho bệnh nhân, Ứng dụng di động (Android), và Dashboard quản trị cho Bác sĩ / Lễ tân, hỗ trợ quản lý lịch khám, đặt hẹn theo khung giờ (Time-slot), hồ sơ bệnh án điện tử (EMR) và thông báo nhắc lịch tự động.
 * **M (Measurable):** 
-  * Giáº£m thá»i gian chá» Ä‘á»£i táº¡i phÃ²ng khÃ¡m xuá»‘ng dÆ°á»›i 15 phÃºt.
-  * Giáº£m tá»· lá»‡ No-show xuá»‘ng dÆ°á»›i 10% thÃ´ng qua há»‡ thá»‘ng tá»± Ä‘á»™ng nháº¯c háº¹n Ä‘a kÃªnh.
-  * Äáº¡t 100% test cases pass trÃªn CI pipeline, thá»i gian pháº£n há»“i API < 300ms vá»›i 100 CCU.
-* **A (Achievable):** NhÃ³m gá»“m 5 thÃ nh viÃªn cÃ³ chuyÃªn mÃ´n ká»¹ thuáº­t phÃ¹ há»£p, káº¿ thá»«a kiáº¿n trÃºc backend hiá»‡n Ä‘áº¡i vÃ  hoÃ n thÃ nh sáº£n pháº©m trong 15 tuáº§n qua 5 Sprints.
-* **R (Relevant):** Giáº£i quyáº¿t trá»±c tiáº¿p bÃ i toÃ¡n chuyá»ƒn Ä‘á»•i sá»‘ y táº¿ tÆ° nhÃ¢n, cung cáº¥p giáº£i phÃ¡p thá»±c táº¿ cÃ³ biÃªn báº£n nghiá»‡m thu tá»« phÃ²ng khÃ¡m Ä‘á»‘i tÃ¡c.
-* **T (Time-bound):** BÃ n giao phiÃªn báº£n MVP táº¡i Sprint 2 (Tuáº§n 6), triá»ƒn khai UAT táº¡i Sprint 4 (Tuáº§n 12), vÃ  Ä‘Ã³ng gÃ³i bÃ n giao toÃ n diá»‡n vÃ o Tuáº§n 14.
+  * Giảm thời gian chờ đợi tại phòng khám xuống dưới 15 phút.
+  * Giảm tỷ lệ No-show xuống dưới 10% thông qua hệ thống tự động nhắc hẹn đa kênh.
+  * Đạt 100% test cases pass trên CI pipeline, thời gian phản hồi API < 300ms với 100 CCU.
+* **A (Achievable):** Nhóm gồm 4 thành viên có chuyên môn kỹ thuật phù hợp, kế thừa kiến trúc backend hiện đại và hoàn thành sản phẩm trong 15 tuần qua 5 Sprints.
+* **R (Relevant):** Giải quyết trực tiếp bài toán chuyển đổi số y tế tư nhân, cung cấp giải pháp thực tế có biên bản nghiệm thu từ phòng khám đối tác.
+* **T (Time-bound):** Bàn giao phiên bản MVP tại Sprint 2 (Tuần 6), triển khai UAT tại Sprint 4 (Tuần 12), và đóng gói bàn giao toàn diện vào Tuần 14.
 
 ---
 
-### 4. PHáº M VI Dá»° ÃN (PROJECT SCOPE BASELINE)
-#### 4.1. Trong pháº¡m vi (In-Scope Deliverables)
-1. **Module XÃ¡c thá»±c & PhÃ¢n quyá»n (Auth & RBAC):** ÄÄƒng nháº­p/ÄÄƒng kÃ½ qua JWT/OAuth2 (Google), phÃ¢n quyá»n 4 vai trÃ²: Bá»‡nh nhÃ¢n, BÃ¡c sÄ©, NhÃ¢n viÃªn tiáº¿p tÃ¢n, Quáº£n trá»‹ viÃªn phÃ²ng khÃ¡m (Admin).
-2. **Module Äáº·t lá»‹ch khÃ¡m thÃ´ng minh (Smart Appointment Booking):** Tra cá»©u bÃ¡c sÄ© theo chuyÃªn khoa, chá»n ngÃ y khÃ¡m vÃ  khung giá» trá»‘ng (15 phÃºt/slot), cÆ¡ cháº¿ khÃ³a slot táº¡m thá»i (concurrency control) chá»‘ng double-booking.
-3. **Module Quáº£n lÃ½ Lá»‹ch háº¹n & HÃ ng Ä‘á»£i tiáº¿p Ä‘Ã³n (Clinic Queue & Reception Management):** Tiáº¿p Ä‘Ã³n bá»‡nh nhÃ¢n báº±ng mÃ£ QR, cáº­p nháº­t tráº¡ng thÃ¡i lá»‹ch khÃ¡m thá»i gian thá»±c (Chá» khÃ¡m, Äang khÃ¡m, HoÃ n thÃ nh, Há»§y).
-4. **Module Há»“ sÆ¡ Bá»‡nh Ã¡n Äiá»‡n tá»­ (Electronic Medical Records - EMR):** BÃ¡c sÄ© ghi nháº­n triá»‡u chá»©ng, cháº©n Ä‘oÃ¡n ICD-10, kÃª Ä‘Æ¡n thuá»‘c Ä‘iá»‡n tá»­ vÃ  táº£i Ä‘Ã­nh kÃ¨m hÃ¬nh áº£nh káº¿t quáº£ xÃ©t nghiá»‡m/siÃªu Ã¢m.
-5. **Module Nháº¯c háº¹n tá»± Ä‘á»™ng (Notification Engine):** Gá»­i email xÃ¡c nháº­n Ä‘áº·t háº¹n tá»©c thÃ¬, gá»­i thÃ´ng bÃ¡o nháº¯c lá»‹ch tá»± Ä‘á»™ng trÆ°á»›c 24 giá» vÃ  2 giá».
-6. **MÃ´i trÆ°á»ng Cloud & CI/CD Pipeline:** Triá»ƒn khai Live Production hoÃ n chá»‰nh trÃªn Vercel (Frontend), Render/Docker (Backend API), Supabase PostgreSQL (Database), báº£o máº­t HTTPS 100%.
+### 4. PHẠM VI DỰ ÁN (PROJECT SCOPE BASELINE)
+#### 4.1. Trong phạm vi (In-Scope Deliverables)
+1. **Module Xác thực & Phân quyền (Auth & RBAC):** Đăng nhập/Đăng ký qua JWT/OAuth2 (Google), phân quyền 4 vai trò: Bệnh nhân, Bác sĩ, Nhân viên tiếp tân, Quản trị viên phòng khám (Admin).
+2. **Module Đặt lịch khám thông minh (Smart Appointment Booking):** Tra cứu bác sĩ theo chuyên khoa, chọn ngày khám và khung giờ trống (15 phút/slot), cơ chế khóa slot tạm thời (concurrency control) chống double-booking.
+3. **Module Quản lý Lịch hẹn & Hàng đợi tiếp đón (Clinic Queue & Reception Management):** Tiếp đón bệnh nhân bằng mã QR, cập nhật trạng thái lịch khám thời gian thực (Chờ khám, Đang khám, Hoàn thành, Hủy).
+4. **Module Hồ sơ Bệnh án Điện tử (Electronic Medical Records - EMR):** Bác sĩ ghi nhận triệu chứng, chẩn đoán ICD-10, kê đơn thuốc điện tử và tải đính kèm hình ảnh kết quả xét nghiệm/siêu âm.
+5. **Module Nhắc hẹn tự động (Notification Engine):** Gửi email xác nhận đặt hẹn tức thì, gửi thông báo nhắc lịch tự động trước 24 giờ và 2 giờ.
+6. **Môi trường Cloud & CI/CD Pipeline:** Triển khai Live Production hoàn chỉnh trên Vercel (Frontend), Render/Docker (Backend API), Supabase PostgreSQL (Database), bảo mật HTTPS 100%.
 
-#### 4.2. NgoÃ i pháº¡m vi (Out-of-Scope)
-* TÃ­ch há»£p cá»•ng thanh toÃ¡n trá»±c tiáº¿p vá»›i báº£o hiá»ƒm y táº¿ nhÃ  nÆ°á»›c (BHYT) trong giai Ä‘oáº¡n 1.
-* TÃ­nh nÄƒng khÃ¡m bá»‡nh tá»« xa qua video call (Telemedicine WebRTC) â€” dá»i sang Version 2.0.
-* TÃ­ch há»£p mÃ¡y xÃ©t nghiá»‡m pháº§n cá»©ng ná»™i bá»™ cá»§a phÃ²ng khÃ¡m qua giao thá»©c DICOM/HL7.
+#### 4.2. Ngoài phạm vi (Out-of-Scope)
+* Tích hợp cổng thanh toán trực tiếp với bảo hiểm y tế nhà nước (BHYT) trong giai đoạn 1.
+* Tính năng khám bệnh từ xa qua video call (Telemedicine WebRTC) — dời sang Version 2.0.
+* Tích hợp máy xét nghiệm phần cứng nội bộ của phòng khám qua giao thức DICOM/HL7.
 
 ---
 
-### 5. CÃC Má»C TIáº¾N Äá»˜ CHÃNH (MILESTONE SCHEDULE)
+### 5. CÁC MỐC TIẾN ĐỘ CHÍNH (MILESTONE SCHEDULE)
 
-| Má»‘c Milestone | Tuáº§n | Ná»™i dung bÃ n giao chÃ­nh (Key Deliverables) | TiÃªu chÃ­ nghiá»‡m thu (Acceptance Criteria) |
+| Mốc Milestone | Tuần | Nội dung bàn giao chính (Key Deliverables) | Tiêu chí nghiệm thu (Acceptance Criteria) |
 | :--- | :---: | :--- | :--- |
-| **M0: Project Kickoff** | W01 | Project Charter, Thiáº¿t láº­p GitHub Org, Khá»Ÿi táº¡o GitHub Projects | Charter Ä‘Æ°á»£c kÃ½ duyá»‡t, Repo báº­t Branch Protection |
-| **M1: Baseline Architecture** | W03 | Thiáº¿t káº¿ CSDL, Kiáº¿n trÃºc Micro-monolith, Thiáº¿t láº­p CI/CD pipeline | CI Action build test pass, Schema DB migration hoÃ n táº¥t |
-| **M2: Sprint 1 MVP Release** | W06 | HoÃ n thÃ nh Module Auth, Tra cá»©u BÃ¡c sÄ© & Äáº·t lá»‹ch cá»‘t lÃµi | Demo cháº¡y luá»“ng Ä‘áº·t lá»‹ch local & staging, Risk Register v1 |
-| **M3: Mid-term Review** | W08 | ÄÃ¡nh giÃ¡ giá»¯a ká»³, Burndown Chart Sprint 1 & 2, BÃ¡o cÃ¡o tiáº¿n Ä‘á»™ | Há»™i Ä‘á»“ng nghiá»‡m thu 50% khá»‘i lÆ°á»£ng, Velocity á»•n Ä‘á»‹nh |
-| **M4: Sprint 2 Core System** | W11 | Triá»ƒn khai Dashboard BÃ¡c sÄ©, Há»“ sÆ¡ EMR, Concurrency slot | Triá»ƒn khai Live Cloud, UAT ná»™i bá»™, Risk Register v2 |
-| **M5: UAT & Field Testing** | W13 | Triá»ƒn khai thá»­ nghiá»‡m táº¡i PhÃ²ng khÃ¡m An TÃ¢m, Thu tháº­p feedback | BiÃªn báº£n thá»­ nghiá»‡m cÃ³ chá»¯ kÃ½ Stakeholder tháº­t |
-| **M6: Final Defense & Handover**| W15 | ToÃ n bá»™ GÃ³i báº±ng chá»©ng 8 má»¥c, Live Demo 16 phÃºt trÆ°á»›c Há»™i Ä‘á»“ng | BÃ¡o cÃ¡o 7 chÆ°Æ¡ng hoÃ n táº¥t, Slide báº£o vá»‡ chuáº©n |
+| **M0: Project Kickoff** | W01 | Project Charter, Thiết lập GitHub Org, Khởi tạo GitHub Projects | Charter được ký duyệt, Repo bật Branch Protection |
+| **M1: Baseline Architecture** | W03 | Thiết kế CSDL, Kiến trúc Micro-monolith, Thiết lập CI/CD pipeline | CI Action build test pass, Schema DB migration hoàn tất |
+| **M2: Sprint 1 MVP Release** | W06 | Hoàn thành Module Auth, Tra cứu Bác sĩ & Đặt lịch cốt lõi | Demo chạy luồng đặt lịch local & staging, Risk Register v1 |
+| **M3: Mid-term Review** | W08 | Đánh giá giữa kỳ, Burndown Chart Sprint 1 & 2, Báo cáo tiến độ | Hội đồng nghiệm thu 50% khối lượng, Velocity ổn định |
+| **M4: Sprint 2 Core System** | W11 | Triển khai Dashboard Bác sĩ, Hồ sơ EMR, Concurrency slot | Triển khai Live Cloud, UAT nội bộ, Risk Register v2 |
+| **M5: UAT & Field Testing** | W13 | Triển khai thử nghiệm tại Phòng khám An Tâm, Thu thập feedback | Biên bản thử nghiệm có chữ ký Stakeholder thật |
+| **M6: Final Defense & Handover**| W15 | Toàn bộ Gói bằng chứng 8 mục, Live Demo 16 phút trước Hội đồng | Báo cáo 7 chương hoàn tất, Slide bảo vệ chuẩn |
 
 ---
 
-### 6. NGÃ‚N SÃCH & PHÃ‚N Bá»” NGUá»’N Lá»°C (BUDGET & RESOURCES)
-* **Tá»•ng ngÃ¢n sÃ¡ch tÃ i chÃ­nh:** 0 VNÄ (Tá»‘i Æ°u hÃ³a 100% báº±ng háº¡ táº§ng Cloud Free-tier & Open Source phá»¥c vá»¥ nghiÃªn cá»©u & chuyá»ƒn Ä‘á»•i sá»‘).
-* **Nguá»“n lá»±c háº¡ táº§ng:**
-  * **Frontend Web:** Vercel Hosting (Free Tier, SSL Let's Encrypt tá»± Ä‘á»™ng).
+### 6. NGÂN SÁCH & PHÂN BỔ NGUỒN LỰC (BUDGET & RESOURCES)
+* **Tổng ngân sách tài chính:** 0 VNĐ (Tối ưu hóa 100% bằng hạ tầng Cloud Free-tier & Open Source phục vụ nghiên cứu & chuyển đổi số).
+* **Nguồn lực hạ tầng:**
+  * **Frontend Web:** Vercel Hosting (Free Tier, SSL Let's Encrypt tự động).
   * **Backend API:** Render Web Service (Free Tier, Docker Containerized).
   * **Database:** Supabase PostgreSQL Managed Instance (500MB storage, connection pooling qua PgBouncer).
-  * **MÃ£ nguá»“n & CI/CD:** GitHub Free Organization (2,000 CI Actions minutes/month).
+  * **Mã nguồn & CI/CD:** GitHub Free Organization (2,000 CI Actions minutes/month).
   * **Email Service:** Resend API / Gmail SMTP (Free tier 3,000 emails/month).
-* **Nguá»“n lá»±c nhÃ¢n lá»±c:** 5 Ká»¹ sÆ° pháº§n má»m sinh viÃªn VKU (~15â€“20 giá» lÃ m viá»‡c/thÃ nh viÃªn/tuáº§n trong 15 tuáº§n = ~1,350 man-hours).
+* **Nguồn lực nhân lực:** 5 Kỹ sư phần mềm sinh viên VKU (~15–20 giờ làm việc/thành viên/tuần trong 15 tuần = ~1,350 man-hours).
 
 ---
 
-### 7. Ná»€N Táº¢NG QUáº¢N TRá»Š & Há»† SINH THÃI GITHUB (PROJECT ECOSYSTEM)
-Theo quy Ä‘á»‹nh chuáº©n hÃ³a cá»§a há»c pháº§n QLDA táº¡i VKU, nhÃ³m sá»­ dá»¥ng duy nháº¥t ná»n táº£ng **GitHub Ecosystem** Ä‘á»ƒ quáº£n lÃ½ xuyÃªn suá»‘t:
+### 7. NỀN TẢNG QUẢN TRỊ & HỆ SINH THÁI GITHUB (PROJECT ECOSYSTEM)
+Theo quy định chuẩn hóa của học phần QLDA tại VKU, nhóm sử dụng duy nhất nền tảng **GitHub Ecosystem** để quản lý xuyên suốt:
 1. **GitHub Repository:** `nguyenthaison2408/medicare-plus`
-   * Báº­t **Branch Protection** trÃªn nhÃ¡nh `main`: Cáº¥m commit trá»±c tiáº¿p (Direct Push), yÃªu cáº§u Ã­t nháº¥t 01 Peer Review Approved vÃ  táº¥t cáº£ checks cá»§a GitHub Actions pháº£i Passed.
-   * Quy chuáº©n commit tuÃ¢n thá»§ **Conventional Commits**:  
+   * Bật **Branch Protection** trên nhánh `main`: Cấm commit trực tiếp (Direct Push), yêu cầu ít nhất 01 Peer Review Approved và tất cả checks của GitHub Actions phải Passed.
+   * Quy chuẩn commit tuân thủ **Conventional Commits**:  
      `feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`, `ci:`.
 2. **GitHub Projects (Board & Table Views):**
-   * Quáº£n lÃ½ Sprint Backlog vÃ  Kanban Flow vá»›i 5 cá»™t: `Backlog`, `Ready`, `In Progress`, `In Review`, `Done`.
-   * Gáº¯n nhÃ£n phÃ¢n loáº¡i: `priority:high`, `type:bug`, `type:feature`, `size:SP-3`, `sprint-1`.
+   * Quản lý Sprint Backlog và Kanban Flow với 5 cột: `Backlog`, `Ready`, `In Progress`, `In Review`, `Done`.
+   * Gắn nhãn phân loại: `priority:high`, `type:bug`, `type:feature`, `size:SP-3`, `sprint-1`.
 3. **GitHub Issues:**
-   * Má»—i User Story Ä‘Æ°á»£c viáº¿t theo cáº¥u trÃºc: *"LÃ  [vai trÃ²], tÃ´i muá»‘n [hÃ nh Ä‘á»™ng] Ä‘á»ƒ [lá»£i Ã­ch]"*.
-   * Báº¯t buá»™c cÃ³ **Acceptance Criteria (Gherkin format: Given-When-Then)** vÃ  gÃ¡n Assignee, Milestone.
+   * Mỗi User Story được viết theo cấu trúc: *"Là [vai trò], tôi muốn [hành động] để [lợi ích]"*.
+   * Bắt buộc có **Acceptance Criteria (Gherkin format: Given-When-Then)** và gán Assignee, Milestone.
 4. **GitHub Pull Requests (PRs):**
-   * Má»i PR pháº£i liÃªn káº¿t vá»›i Issue (`Fixes #IssueID`), cÃ³ mÃ´ táº£ thay Ä‘á»•i, áº£nh chá»¥p self-test vÃ  ghi chÃº kiá»ƒm thá»­.
+   * Mọi PR phải liên kết với Issue (`Fixes #IssueID`), có mô tả thay đổi, ảnh chụp self-test và ghi chú kiểm thử.
 5. **GitHub Actions (CI Workflow):**
-   * Tá»± Ä‘á»™ng cháº¡y Linting (ESLint, Prettier), Unit Tests (Jest, PyTest), vÃ  Build verification trÃªn má»—i PR vÃ o nhÃ¡nh `main` vÃ  `develop`.
+   * Tự động chạy Linting (ESLint, Prettier), Unit Tests (Jest, PyTest), và Build verification trên mỗi PR vào nhánh `main` và `develop`.
 
 ---
 
-### 8. TIÃŠU CHUáº¨N CHáº¤T LÆ¯á»¢NG & Äá»ŠNH NGHÄ¨A HOÃ€N THÃ€NH (DEFINITION OF DONE - DoD)
-Má»™t User Story hoáº·c CÃ´ng viá»‡c (Work Package) chá»‰ Ä‘Æ°á»£c kÃ©o sang cá»™t **Done** khi thá»a mÃ£n 6 tiÃªu chÃ­ sau:
-1. MÃ£ nguá»“n Ä‘Ã£ Ä‘Æ°á»£c kiá»ƒm tra cÃº phÃ¡p (Linting) vÃ  build thÃ nh cÃ´ng khÃ´ng cÃ³ lá»—i hoáº·c cáº£nh bÃ¡o nghiÃªm trá»ng.
-2. ÄÃ£ viáº¿t Unit Test vÃ  tÃ­ch há»£p kiá»ƒm thá»­ tá»± Ä‘á»™ng, Ä‘á»™ bao phá»§ mÃ£ nguá»“n (Code Coverage) Ä‘áº¡t $\ge 70\%$.
-3. ÄÆ°á»£c triá»ƒn khai vÃ  kiá»ƒm thá»­ chá»©c nÄƒng thÃ nh cÃ´ng trÃªn mÃ´i trÆ°á»ng Staging/Live Cloud.
-4. ÄÃ£ táº¡o Pull Request, cÃ³ Ã­t nháº¥t 01 thÃ nh viÃªn khÃ¡c (Peer Reviewer) duyá»‡t vÃ  nháº¥n Approve.
-5. ÄÃ¡p á»©ng Ä‘áº§y Ä‘á»§ táº¥t cáº£ cÃ¡c TiÃªu chÃ­ cháº¥p nháº­n (Acceptance Criteria) Ä‘Æ°á»£c mÃ´ táº£ trong GitHub Issue.
-6. TÃ i liá»‡u ká»¹ thuáº­t, Swagger API doc hoáº·c hÆ°á»›ng dáº«n sá»­ dá»¥ng Ä‘Ã£ Ä‘Æ°á»£c cáº­p nháº­t tÆ°Æ¡ng á»©ng.
+### 8. TIÊU CHUẨN CHẤT LƯỢNG & ĐỊNH NGHĨA HOÀN THÀNH (DEFINITION OF DONE - DoD)
+Một User Story hoặc Công việc (Work Package) chỉ được kéo sang cột **Done** khi thỏa mãn 6 tiêu chí sau:
+1. Mã nguồn đã được kiểm tra cú pháp (Linting) và build thành công không có lỗi hoặc cảnh báo nghiêm trọng.
+2. Đã viết Unit Test và tích hợp kiểm thử tự động, độ bao phủ mã nguồn (Code Coverage) đạt $\ge 70\%$.
+3. Được triển khai và kiểm thử chức năng thành công trên môi trường Staging/Live Cloud.
+4. Đã tạo Pull Request, có ít nhất 01 thành viên khác (Peer Reviewer) duyệt và nhấn Approve.
+5. Đáp ứng đầy đủ tất cả các Tiêu chí chấp nhận (Acceptance Criteria) được mô tả trong GitHub Issue.
+6. Tài liệu kỹ thuật, Swagger API doc hoặc hướng dẫn sử dụng đã được cập nhật tương ứng.
 
 ---
 
-### 9. GIáº¢ Äá»ŠNH & RÃ€NG BUá»˜C (ASSUMPTIONS & CONSTRAINTS)
-#### 9.1. Giáº£ Ä‘á»‹nh (Assumptions)
-* BÃ¡c sÄ© vÃ  lá»… tÃ¢n táº¡i phÃ²ng khÃ¡m Ä‘á»‘i tÃ¡c sáºµn sÃ ng dÃ nh 2â€“3 buá»•i Ä‘á»ƒ thá»­ nghiá»‡m há»‡ thá»‘ng vÃ  cung cáº¥p pháº£n há»“i UAT.
-* CÃ¡c dá»‹ch vá»¥ Cloud Free-tier (Vercel, Render, Supabase) duy trÃ¬ thá»i gian hoáº¡t Ä‘á»™ng (uptime) á»•n Ä‘á»‹nh trong suá»‘t quÃ¡ trÃ¬nh thá»­ nghiá»‡m.
-* CÃ¡c thÃ nh viÃªn trong nhÃ³m cam káº¿t tham gia Ä‘áº§y Ä‘á»§ cÃ¡c buá»•i há»p Daily Scrum vÃ  Sprint Review/Retro.
+### 9. GIẢ ĐỊNH & RÀNG BUỘC (ASSUMPTIONS & CONSTRAINTS)
+#### 9.1. Giả định (Assumptions)
+* Bác sĩ và lễ tân tại phòng khám đối tác sẵn sàng dành 2–3 buổi để thử nghiệm hệ thống và cung cấp phản hồi UAT.
+* Các dịch vụ Cloud Free-tier (Vercel, Render, Supabase) duy trì thời gian hoạt động (uptime) ổn định trong suốt quá trình thử nghiệm.
+* Các thành viên trong nhóm cam kết tham gia đầy đủ các buổi họp Daily Scrum và Sprint Review/Retro.
 
-#### 9.2. RÃ ng buá»™c (Constraints)
-* **Thá»i gian:** Cá»‘ Ä‘á»‹nh 15 tuáº§n há»c ká»³, háº¡n chÃ³t báº£o vá»‡ khÃ´ng Ä‘Æ°á»£c phÃ©p lÃ¹i láº¡i.
-* **NgÃ¢n sÃ¡ch:** 0 VNÄ cho chi phÃ­ báº£n quyá»n dá»‹ch vá»¥; pháº£i tá»‘i Æ°u trong ngÆ°á»¡ng miá»…n phÃ­ cá»§a cÃ¡c nhÃ  cung cáº¥p cloud.
-* **Quy chuáº©n há»c pháº§n:** Pháº£i vÆ°á»£t qua Cá»•ng chÃ¢n thá»±c (Authenticity Gate) vá»›i lá»‹ch sá»­ Git tháº­t, sáº£n pháº©m cháº¡y tháº­t vÃ  Stakeholder tháº­t.
+#### 9.2. Ràng buộc (Constraints)
+* **Thời gian:** Cố định 15 tuần học kỳ, hạn chót bảo vệ không được phép lùi lại.
+* **Ngân sách:** 0 VNĐ cho chi phí bản quyền dịch vụ; phải tối ưu trong ngưỡng miễn phí của các nhà cung cấp cloud.
+* **Quy chuẩn học phần:** Phải vượt qua Cổng chân thực (Authenticity Gate) với lịch sử Git thật, sản phẩm chạy thật và Stakeholder thật.
 
 ---
 
-### 10. CÆ  Cáº¤U Tá»” CHá»¨C & 5 VAI TRÃ’ Ká»¸ THUáº¬T CHUáº¨N (TEAM GOVERNANCE & ROLES)
+### 10. CƠ CẤU TỔ CHỨC & 4 VAI TRÒ KỸ THUẬT CHUẨN (TEAM GOVERNANCE & ROLES)
 
-| Vai trÃ² chuáº©n (Standard Role) | Há» vÃ  TÃªn | MÃ£ sinh viÃªn | TrÃ¡ch nhiá»‡m chÃ­nh trong dá»± Ã¡n | Tá»· lá»‡ Ä‘Ã³ng gÃ³p |
+| Vai trò chuẩn (Standard Role) | Họ và Tên | Mã sinh viên | Trách nhiệm chính trong dự án | Tỷ lệ đóng góp |
 | :--- | :--- | :---: | :--- | :---: |
-| **Project Lead / PM / Scrum Master** | **Nguyá»…n VÄƒn An** | 22IT001 | Äiá»u phá»‘i tá»•ng thá»ƒ, quáº£n lÃ½ tiáº¿n Ä‘á»™ GitHub Projects, kiá»ƒm soÃ¡t Scope Creep, Ä‘iá»u phá»‘i rá»§i ro vÃ  giao tiáº¿p Stakeholder | 20% |
-| **Technical Lead / System Architect** | **Tráº§n ÄÃ¬nh BÃ¬nh** | 22IT002 | Thiáº¿t káº¿ kiáº¿n trÃºc tá»•ng thá»ƒ, thiáº¿t káº¿ CSDL, thiáº¿t láº­p CI/CD GitHub Actions, kiá»ƒm duyá»‡t Pull Request cá»‘t lÃµi | 20% |
-| **Backend Engineer** | **LÃª Thá»‹ Cáº©m** | 22IT003 | PhÃ¡t triá»ƒn RESTful API, xá»­ lÃ½ business logic Ä‘áº·t lá»‹ch, báº£o máº­t JWT/RBAC, tÃ­ch há»£p Email/Notification | 20% |
-| **Frontend / Mobile Engineer** | **Pháº¡m Quá»‘c DÅ©ng** | 22IT004 | XÃ¢y dá»±ng Web Portal (React/Next.js) & Mobile App (Flutter), tá»‘i Æ°u UX/UI, tÃ­ch há»£p API client | 20% |
-| **QA & Test Engineer** | **HoÃ ng Minh Em** | 22IT005 | Thiáº¿t káº¿ Test Matrix, viáº¿t Unit/Integration Tests, kiá»ƒm tra Acceptance Criteria & DoD, quáº£n lÃ½ GÃ³i báº±ng chá»©ng | 20% |
+| **Project Lead / PM / Scrum Master** | **Nguyễn Thái Sơn** | **23IT.EB086** | Điều phối tổng thể, quản lý tiến độ GitHub Projects, kiểm soát Scope Creep, điều phối rủi ro và giao tiếp Stakeholder | **25%** |
+| **Technical Lead / System Architect** | **Vi Hữu Thành** | **23IT.EB06** | Thiết kế kiến trúc tổng thể, thiết kế CSDL, thiết lập CI/CD GitHub Actions, kiểm duyệt Pull Request cốt lõi | **25%** |
+| **Backend Engineer** | **Đặng Thanh Vũ** | **23IT.EB120** | Phát triển RESTful API, xử lý business logic đặt lịch, bảo mật JWT/RBAC, tích hợp Email/Notification | **25%** |
+| **Frontend / Mobile & QA Engineer** | **Nguyễn Từ Anh Nguyên** | **23IT.EB06** | Xây dựng Web Portal (React/Next.js) & Mobile App, thiết kế Test Matrix, kiểm thử DoD & Gói bằng chứng | **25%** |
 
-#### Ma tráº­n RACI (Responsible - Accountable - Consulted - Informed)
+#### Ma trận RACI (Responsible - Accountable - Consulted - Informed)
 
-| Háº¡ng má»¥c cÃ´ng viá»‡c / GÃ³i phÃ¢n rÃ£ | PM (An) | Tech Lead (BÃ¬nh) | Backend (Cáº©m) | Frontend (DÅ©ng) | QA (Em) |
-| :--- | :---: | :---: | :---: | :---: | :---: |
-| 1. Láº­p káº¿ hoáº¡ch, WBS & Äiá»u lá»‡ dá»± Ã¡n | **A / R** | C | C | C | I |
-| 2. Thiáº¿t káº¿ Kiáº¿n trÃºc & Thiáº¿t láº­p CI/CD | C | **A / R** | R | R | I |
-| 3. PhÃ¡t triá»ƒn API & Database Backend | I | C | **A / R** | I | R |
-| 4. XÃ¢y dá»±ng Giao diá»‡n Web & Mobile | I | C | I | **A / R** | R |
-| 5. Thiáº¿t káº¿ Test Matrix & Tá»± Ä‘á»™ng hÃ³a Test | I | C | R | R | **A / R** |
-| 6. Kiá»ƒm soÃ¡t Rá»§i ro & Quáº£n lÃ½ Thay Ä‘á»•i (CR) | **A / R** | C | I | I | I |
-| 7. Nghiá»‡m thu UAT & ÄÃ³ng gÃ³i há»“ sÆ¡ ná»™p | **A / R** | R | R | R | R |
+| Hạng mục công việc / Gói phân rã | PM (Sơn) | Tech Lead (Thành) | Backend (Vũ) | Frontend & QA (Nguyên) |
+| :--- | :---: | :---: | :---: | :---: |
+| 1. Lập kế hoạch, WBS & Điều lệ dự án | **A / R** | C | C | C |
+| 2. Thiết kế Kiến trúc & Thiết lập CI/CD | C | **A / R** | R | R |
+| 3. Phát triển API & Database Backend | I | C | **A / R** | R |
+| 4. Xây dựng Giao diện Web & Mobile | I | C | I | **A / R** |
+| 5. Thiết kế Test Matrix & Tự động hóa Test | I | C | R | **A / R** |
+| 6. Kiểm soát Rủi ro & Quản lý Thay đổi (CR) | **A / R** | C | I | I |
+| 7. Nghiệm thu UAT & Đóng gói hồ sơ nộp | **A / R** | R | R | R |
 
-*(ChÃº thÃ­ch: A = Accountable - Chá»‹u trÃ¡ch nhiá»‡m giáº£i trÃ¬nh; R = Responsible - NgÆ°á»i trá»±c tiáº¿p thá»±c hiá»‡n; C = Consulted - NgÆ°á»i Ä‘Æ°á»£c tham váº¥n; I = Informed - NgÆ°á»i nháº­n thÃ´ng tin)*
-
----
-
-### 11. ÄÃNH GIÃ Rá»¦I RO SÆ  Bá»˜ (PRELIMINARY RISK ASSESSMENT)
-* **R-01 (Rá»§i ro ká»¹ thuáº­t):** Hiá»‡n tÆ°á»£ng Race Condition khi 2 bá»‡nh nhÃ¢n cÃ¹ng Ä‘áº·t 1 khung giá» khÃ¡m táº¡i cÃ¹ng 1 giÃ¢y (Double-booking).  
-  * *Biá»‡n phÃ¡p giáº£m thiá»ƒu:* Sá»­ dá»¥ng Database Transaction káº¿t há»£p cÆ¡ cháº¿ Distributed Locking (Redis hoáº·c PostgreSQL Row-level Lock).
-* **R-02 (Rá»§i ro pháº¡m vi - Scope Creep):** Stakeholder yÃªu cáº§u bá»• sung tÃ­nh nÄƒng thanh toÃ¡n trá»±c tuyáº¿n MoMo/VNPay vÃ  gá»i video tá»« xa.  
-  * *Biá»‡n phÃ¡p giáº£m thiá»ƒu:* Thiáº¿t láº­p quy trÃ¬nh Change Control Board (CCB), cam káº¿t tuÃ¢n thá»§ Scope Baseline, dá»i tÃ­nh nÄƒng má»Ÿ rá»™ng sang V2.
-* **R-03 (Rá»§i ro tiáº¿n Ä‘á»™):** ThÃ nh viÃªn trong nhÃ³m quÃ¡ táº£i vÃ¬ lá»‹ch thi vÃ  Ä‘á»“ Ã¡n song hÃ nh giá»¯a ká»³.  
-  * *Biá»‡n phÃ¡p giáº£m thiá»ƒu:* Theo dÃµi váº­n tá»‘c Sprint Velocity, chia nhá» User Story thÃ nh task $\le 8$ giá», kÃ­ch hoáº¡t cÆ¡ cháº¿ Peer Support.
+*(Chú thích: A = Accountable - Chịu trách nhiệm giải trình; R = Responsible - Người trực tiếp thực hiện; C = Consulted - Người được tham vấn; I = Informed - Người nhận thông tin)*
 
 ---
 
-### 12. Káº¾ HOáº CH TRUYá»€N THÃ”NG & BÃO CÃO (COMMUNICATION PLAN)
-* **Daily Standup:** Há»p nhanh 15 phÃºt má»—i sÃ¡ng thá»© 2, 4, 6 qua Google Meet/Discord (3 cÃ¢u há»i: ÄÃ£ lÃ m gÃ¬? Sáº½ lÃ m gÃ¬? CÃ³ khÃ³ khÄƒn gÃ¬?).
-* **Sprint Planning & Review:** Diá»…n ra vÃ o Chá»§ nháº­t cuá»‘i má»—i Sprint Ä‘á»ƒ chá»‘t pháº¡m vi, Æ°á»›c lÆ°á»£ng Story Point vÃ  demo sáº£n pháº©m.
-* **Sprint Retrospective:** Sá»­ dá»¥ng mÃ´ hÃ¬nh **4Ls (Liked, Learned, Lacked, Longed for)** Ä‘á»ƒ cáº£i tiáº¿n quy trÃ¬nh lÃ m viá»‡c.
-* **BÃ¡o cÃ¡o Giáº£ng viÃªn:** Cáº­p nháº­t báº£ng GitHub Projects vÃ  ná»™p checkpoint tiáº¿n Ä‘á»™ Ä‘á»‹nh ká»³ vÃ o Tuáº§n 4, Tuáº§n 8 (Mid-term) vÃ  Tuáº§n 14.
+### 11. ĐÁNH GIÁ RỦI RO SƠ BỘ (PRELIMINARY RISK ASSESSMENT)
+* **R-01 (Rủi ro kỹ thuật):** Hiện tượng Race Condition khi 2 bệnh nhân cùng đặt 1 khung giờ khám tại cùng 1 giây (Double-booking).  
+  * *Biện pháp giảm thiểu:* Sử dụng Database Transaction kết hợp cơ chế Distributed Locking (Redis hoặc PostgreSQL Row-level Lock).
+* **R-02 (Rủi ro phạm vi - Scope Creep):** Stakeholder yêu cầu bổ sung tính năng thanh toán trực tuyến MoMo/VNPay và gọi video từ xa.  
+  * *Biện pháp giảm thiểu:* Thiết lập quy trình Change Control Board (CCB), cam kết tuân thủ Scope Baseline, dời tính năng mở rộng sang V2.
+* **R-03 (Rủi ro tiến độ):** Thành viên trong nhóm quá tải vì lịch thi và đồ án song hành giữa kỳ.  
+  * *Biện pháp giảm thiểu:* Theo dõi vận tốc Sprint Velocity, chia nhỏ User Story thành task $\le 8$ giờ, kích hoạt cơ chế Peer Support.
 
 ---
 
-### 13. PHÃŠ DUYá»†T & CHá»® KÃ XÃC NHáº¬N (PROJECT AUTHORIZATION & SIGN-OFF)
-Báº±ng viá»‡c kÃ½ tÃªn dÆ°á»›i Ä‘Ã¢y, cÃ¡c bÃªn liÃªn quan xÃ¡c nháº­n Ä‘á»“ng thuáº­n vá»›i toÃ n bá»™ cÃ¡c Ä‘iá»u khoáº£n, pháº¡m vi, ngÃ¢n sÃ¡ch vÃ  lá»‹ch trÃ¬nh cam káº¿t trong Äiá»u lá»‡ Dá»± Ã¡n nÃ y:
+### 12. KẾ HOẠCH TRUYỀN THÔNG & BÁO CÁO (COMMUNICATION PLAN)
+* **Daily Standup:** Họp nhanh 15 phút mỗi sáng thứ 2, 4, 6 qua Google Meet/Discord (3 câu hỏi: Đã làm gì? Sẽ làm gì? Có khó khăn gì?).
+* **Sprint Planning & Review:** Diễn ra vào Chủ nhật cuối mỗi Sprint để chốt phạm vi, ước lượng Story Point và demo sản phẩm.
+* **Sprint Retrospective:** Sử dụng mô hình **4Ls (Liked, Learned, Lacked, Longed for)** để cải tiến quy trình làm việc.
+* **Báo cáo Giảng viên:** Cập nhật bảng GitHub Projects và nộp checkpoint tiến độ định kỳ vào Tuần 4, Tuần 8 (Mid-term) và Tuần 14.
 
-| Giáº£ng viÃªn HÆ°á»›ng dáº«n ChuyÃªn ngÃ nh | Giáº£ng viÃªn Phá»¥ trÃ¡ch Há»c pháº§n QLDA | Äáº¡i diá»‡n NhÃ³m / Project Manager |
+---
+
+### 13. PHÊ DUYỆT & CHỮ KÝ XÁC NHẬN (PROJECT AUTHORIZATION & SIGN-OFF)
+Bằng việc ký tên dưới đây, các bên liên quan xác nhận đồng thuận với toàn bộ các điều khoản, phạm vi, ngân sách và lịch trình cam kết trong Điều lệ Dự án này:
+
+| Giảng viên Hướng dẫn Chuyên ngành | Giảng viên Phụ trách Học phần QLDA | Đại diện Nhóm / Project Manager |
 | :---: | :---: | :---: |
-| *(ÄÃ£ kÃ½ & PhÃª duyá»‡t ná»™i dung)* | *(ÄÃ£ phÃª duyá»‡t Ä‘iá»u lá»‡)* | *(ÄÃ£ kÃ½ cam káº¿t)* |
-| <br>**ThS. LÃª ÄÄƒng Quang**<br>Khoa Khoa há»c MÃ¡y tÃ­nh â€” VKU | <br>**TS. Nguyá»…n Thanh Tuáº¥n**<br>Khoa Khoa há»c MÃ¡y tÃ­nh â€” VKU | <br>**Nguyá»…n VÄƒn An**<br>Project Lead (Lá»›p 22IT4) |
-| *NgÃ y kÃ½: 06/09/2026* | *NgÃ y kÃ½: 07/09/2026* | *NgÃ y kÃ½: 05/09/2026* |
-
+| *(Đã ký & Phê duyệt nội dung)* | *(Đã phê duyệt điều lệ)* | *(Đã ký cam kết)* |
+| <br>**ThS. Lê Đăng Quang**<br>Khoa Khoa học Máy tính — VKU | <br>**TS. Nguyễn Thanh Tuấn**<br>Khoa Khoa học Máy tính — VKU | <br>**Nguyễn Thái Sơn**<br>Project Lead (Lớp 23IT) |
+| *Ngày ký: 06/09/2026* | *Ngày ký: 07/09/2026* | *Ngày ký: 05/09/2026* |

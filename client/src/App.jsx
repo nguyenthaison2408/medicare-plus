@@ -434,7 +434,7 @@ export default function App() {
                       <input
                         type="text"
                         required
-                        placeholder="Ví dụ: Nguyễn Văn An"
+                        placeholder="Ví dụ: Nguyễn Thái Sơn"
                         value={patientName}
                         onChange={e => setPatientName(e.target.value)}
                         className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
@@ -734,6 +734,35 @@ export default function App() {
               <p className="text-sm text-slate-600 leading-relaxed mb-6">
                 Đồ án học phần SPM thực hiện theo chuẩn công nghiệp của <strong>TS. Nguyễn Thanh Tuấn</strong>. Toàn bộ tài liệu được số hóa và quản lý tập trung trên GitHub Repository.
               </p>
+
+              {/* Team Members */}
+              <div className="mb-6 p-4 rounded-xl bg-teal-50/70 border border-teal-200">
+                <h3 className="text-xs font-bold text-teal-800 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <Users className="w-4 h-4" /> Đội Ngũ Thực Hiện Dự Án (Nhóm 04 — VKU SPM)
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                  <div className="p-2.5 rounded-lg bg-white border border-teal-100 shadow-sm">
+                    <div className="font-bold text-slate-900 text-xs">Nguyễn Thái Sơn</div>
+                    <div className="text-[11px] text-teal-700 font-medium">Project Lead / Scrum Master</div>
+                    <div className="text-[10px] text-slate-500 font-mono mt-0.5">MSV: 23IT.EB086 (25%)</div>
+                  </div>
+                  <div className="p-2.5 rounded-lg bg-white border border-teal-100 shadow-sm">
+                    <div className="font-bold text-slate-900 text-xs">Vi Hữu Thành</div>
+                    <div className="text-[11px] text-teal-700 font-medium">Technical Lead / Architect</div>
+                    <div className="text-[10px] text-slate-500 font-mono mt-0.5">MSV: 23IT.EB06 (25%)</div>
+                  </div>
+                  <div className="p-2.5 rounded-lg bg-white border border-teal-100 shadow-sm">
+                    <div className="font-bold text-slate-900 text-xs">Đặng Thanh Vũ</div>
+                    <div className="text-[11px] text-teal-700 font-medium">Backend Engineer</div>
+                    <div className="text-[10px] text-slate-500 font-mono mt-0.5">MSV: 23IT.EB120 (25%)</div>
+                  </div>
+                  <div className="p-2.5 rounded-lg bg-white border border-teal-100 shadow-sm">
+                    <div className="font-bold text-slate-900 text-xs">Nguyễn Từ Anh Nguyên</div>
+                    <div className="text-[11px] text-teal-700 font-medium">Frontend & QA Engineer</div>
+                    <div className="text-[10px] text-slate-500 font-mono mt-0.5">MSV: 23IT.EB06 (25%)</div>
+                  </div>
+                </div>
+              </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="p-4 rounded-xl border border-slate-200 hover:border-teal-500 transition-colors bg-slate-50/50">

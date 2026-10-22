@@ -6,6 +6,7 @@ import {
   loadClinicProfile, subscribeClinicAppointments, type ClinicProfile, type ClinicAppointment,
 } from '../services/clinicCloud';
 import { clinicAppointmentToItem, clinicPrescriptions, clinicRecord } from '../services/clinicAdapters';
+import { fetchDoctorReviewsCloud, submitDoctorReviewCloud } from '../services/clinicReviews';
 import type { PatientBookingInfo } from '../utils/bookingValidation';
 import {
   APPOINTMENTS,
@@ -472,6 +473,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
       setTimeout(() => { if (mounted) setCloudSyncError(error instanceof Error ? error.message : 'Chưa kết nối dữ liệu.'); }, 0);
     }
     void refresh();
+    if (CLOUD_MODE) {
+      void fetchDoctorReviewsCloud().then((cloudRevs) => {
+        if (mounted && cloudRevs.length > 0) {
+          setDoctorReviews(cloudRevs);
+        }
+      });
+    }
     return () => { mounted = false; generation++; unsubscribeAuth(); unsubscribeChanges(); };
   }, []);
 
@@ -734,23 +742,34 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     rating: number;
     comment: string;
   }) => {
-    const words = PATIENT_PROFILE.name.trim().split(' ');
+    const authorName = (CLOUD_MODE && cloudProfile?.full_name) ? cloudProfile.full_name : PATIENT_PROFILE.name;
+    const words = authorName.trim().split(' ');
     const initials =
       words.length >= 2
         ? `${words[words.length - 2][0]}${words[words.length - 1][0]}`.toUpperCase()
-        : 'NV';
+        : 'BN';
     setDoctorReviews((prev) => [
       {
         id: `rev-${prev.length + 1}`,
         doctorId: review.doctorId,
         initials,
-        authorName: PATIENT_PROFILE.name,
+        authorName,
         metaText: `Vừa xong (${formatRelativeDate(0)}) • Đã xác thực khám`,
         comment: review.comment.trim(),
         rating: review.rating,
       },
       ...prev,
     ]);
+
+    if (CLOUD_MODE) {
+      void submitDoctorReviewCloud({
+        doctorId: review.doctorId,
+        patientId: cloudProfile?.id,
+        patientName: authorName,
+        rating: review.rating,
+        comment: review.comment,
+      });
+    }
   };
 
   const addDoctor = (input: NewDoctorInput): DoctorItem => {

@@ -58,9 +58,9 @@ Trong bối cảnh yêu cầu nghiệp vụ y tế thường xuyên có những 
 ### 2.2. Cơ cấu tổ chức & Phân định trách nhiệm 4 vai trò kỹ thuật
 Nhóm đã cơ cấu tổ chức theo đúng chuẩn công nghiệp 4 vai trò kỹ thuật, thiết lập ma trận trách nhiệm RACI và ghi nhận tỷ lệ đóng góp thực tế:
 1. **Nguyễn Thái Sơn (Project Manager / Scrum Master - 23IT.EB086):** Đóng góp **25%**. Quản lý tiến độ trên GitHub Projects, tổ chức 100% các phiên họp Daily Scrum và Retro, điều phối rủi ro và làm việc trực tiếp với khách hàng.
-2. **Vi Hữu Thành (Technical Lead / System Architect - 23IT.EB06):** Đóng góp **25%**. Thiết kế sơ đồ CSDL PostgreSQL, thiết lập đường ống CI/CD GitHub Actions, phê duyệt (Review & Approve) 48/52 Pull Requests quan trọng.
+2. **Vi Hữu Thành (Technical Lead / System Architect - 23IT.EB096):** Đóng góp **25%**. Thiết kế sơ đồ CSDL PostgreSQL, thiết lập đường ống CI/CD GitHub Actions, phê duyệt (Review & Approve) 48/52 Pull Requests quan trọng.
 3. **Đặng Thanh Vũ (Backend Engineer - 23IT.EB120):** Đóng góp **25%**. Xây dựng 28 RESTful API endpoints, giải quyết triệt để lỗi Concurrency Locking trong giao dịch đặt hẹn, tích hợp thư viện gửi thông báo email tự động.
-4. **Nguyễn Từ Anh Nguyên (Frontend / Mobile & QA Engineer - 23IT.EB06):** Đóng góp **25%**. Phát triển giao diện Web Responsive bằng Next.js và ứng dụng di động Flutter, thiết kế Ma trận kiểm thử gồm 64 test cases, viết 42 Unit Tests tự động, thực hiện kiểm thử tải bằng k6 và tổng hợp Gói bằng chứng kiểm toán.
+4. **Nguyễn Từ Anh Nguyên (Frontend / Mobile & QA Engineer - 23IT.EB064):** Đóng góp **25%**. Phát triển giao diện Web Responsive bằng Next.js và ứng dụng di động Flutter, thiết kế Ma trận kiểm thử gồm 64 test cases, viết 42 Unit Tests tự động, thực hiện kiểm thử tải bằng k6 và tổng hợp Gói bằng chứng kiểm toán.
 
 ---
 

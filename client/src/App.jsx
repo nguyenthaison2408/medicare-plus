@@ -749,7 +749,7 @@ export default function App() {
                   <div className="p-2.5 rounded-lg bg-white border border-teal-100 shadow-sm">
                     <div className="font-bold text-slate-900 text-xs">Vi Hữu Thành</div>
                     <div className="text-[11px] text-teal-700 font-medium">Technical Lead / Architect</div>
-                    <div className="text-[10px] text-slate-500 font-mono mt-0.5">MSV: 23IT.EB06 (25%)</div>
+                    <div className="text-[10px] text-slate-500 font-mono mt-0.5">MSV: 23IT.EB096 (25%)</div>
                   </div>
                   <div className="p-2.5 rounded-lg bg-white border border-teal-100 shadow-sm">
                     <div className="font-bold text-slate-900 text-xs">Đặng Thanh Vũ</div>
@@ -759,7 +759,7 @@ export default function App() {
                   <div className="p-2.5 rounded-lg bg-white border border-teal-100 shadow-sm">
                     <div className="font-bold text-slate-900 text-xs">Nguyễn Từ Anh Nguyên</div>
                     <div className="text-[11px] text-teal-700 font-medium">Frontend & QA Engineer</div>
-                    <div className="text-[10px] text-slate-500 font-mono mt-0.5">MSV: 23IT.EB06 (25%)</div>
+                    <div className="text-[10px] text-slate-500 font-mono mt-0.5">MSV: 23IT.EB064 (25%)</div>
                   </div>
                 </div>
               </div>

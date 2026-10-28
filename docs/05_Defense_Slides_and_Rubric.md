@@ -14,9 +14,9 @@
 * **Sourcing Pathway:** Pathway 1 — Kế thừa / Song hành Đồ án Chuyên ngành (Web & Mobile)
 * **Đội ngũ Nhóm 04 (4 Vai trò chuẩn công nghiệp):**
   * Nguyễn Thái Sơn (23IT.EB086) — Project Lead / PM / Scrum Master (25%)
-  * Vi Hữu Thành (23IT.EB06) — Technical Lead / System Architect (25%)
+  * Vi Hữu Thành (23IT.EB096) — Technical Lead / System Architect (25%)
   * Đặng Thanh Vũ (23IT.EB120) — Backend Engineer (25%)
-  * Nguyễn Từ Anh Nguyên (23IT.EB06) — Frontend / Mobile & QA Engineer (25%)
+  * Nguyễn Từ Anh Nguyên (23IT.EB064) — Frontend / Mobile & QA Engineer (25%)
 * **Thời gian trình bày dự kiến:** 0:00 — 0:45 (45 giây).
 
 ---

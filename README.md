@@ -35,9 +35,9 @@
 | Họ và Tên | Mã Sinh Viên | Vai Trò Chuẩn Công Nghiệp | Trách Nhiệm Chính | Tỷ Lệ Đóng Góp |
 | :--- | :---: | :--- | :--- | :---: |
 | **Nguyễn Thái Sơn** | **23IT.EB086** | **Project Lead / PM / Scrum Master** | Điều phối dự án, quản lý GitHub Projects Board, kiểm soát phạm vi (Scope) và rủi ro | **25%** |
-| **Vi Hữu Thành** | **23IT.EB06** | **Technical Lead / System Architect** | Thiết kế kiến trúc CSDL PostgreSQL, thiết lập CI/CD GitHub Actions, duyệt PR | **25%** |
+| **Vi Hữu Thành** | **23IT.EB096** | **Technical Lead / System Architect** | Thiết kế kiến trúc CSDL PostgreSQL, thiết lập CI/CD GitHub Actions, duyệt PR | **25%** |
 | **Đặng Thanh Vũ** | **23IT.EB120** | **Backend Engineer** | REST API, xử lý Race condition locking, xác thực JWT & RBAC | **25%** |
-| **Nguyễn Từ Anh Nguyên** | **23IT.EB06** | **Frontend / Mobile & QA Engineer** | Xây dựng giao diện Web/Mobile, thiết kế Test Matrix, kiểm thử DoD & UAT | **25%** |
+| **Nguyễn Từ Anh Nguyên** | **23IT.EB064** | **Frontend / Mobile & QA Engineer** | Xây dựng giao diện Web/Mobile, thiết kế Test Matrix, kiểm thử DoD & UAT | **25%** |
 
 ---
 

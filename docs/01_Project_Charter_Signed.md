@@ -136,9 +136,9 @@ Một User Story hoặc Công việc (Work Package) chỉ được kéo sang c�
 | Vai trò chuẩn (Standard Role) | Họ và Tên | Mã sinh viên | Trách nhiệm chính trong dự án | Tỷ lệ đóng góp |
 | :--- | :--- | :---: | :--- | :---: |
 | **Project Lead / PM / Scrum Master** | **Nguyễn Thái Sơn** | **23IT.EB086** | Điều phối tổng thể, quản lý tiến độ GitHub Projects, kiểm soát Scope Creep, điều phối rủi ro và giao tiếp Stakeholder | **25%** |
-| **Technical Lead / System Architect** | **Vi Hữu Thành** | **23IT.EB06** | Thiết kế kiến trúc tổng thể, thiết kế CSDL, thiết lập CI/CD GitHub Actions, kiểm duyệt Pull Request cốt lõi | **25%** |
+| **Technical Lead / System Architect** | **Vi Hữu Thành** | **23IT.EB096** | Thiết kế kiến trúc tổng thể, thiết kế CSDL, thiết lập CI/CD GitHub Actions, kiểm duyệt Pull Request cốt lõi | **25%** |
 | **Backend Engineer** | **Đặng Thanh Vũ** | **23IT.EB120** | Phát triển RESTful API, xử lý business logic đặt lịch, bảo mật JWT/RBAC, tích hợp Email/Notification | **25%** |
-| **Frontend / Mobile & QA Engineer** | **Nguyễn Từ Anh Nguyên** | **23IT.EB06** | Xây dựng Web Portal (React/Next.js) & Mobile App, thiết kế Test Matrix, kiểm thử DoD & Gói bằng chứng | **25%** |
+| **Frontend / Mobile & QA Engineer** | **Nguyễn Từ Anh Nguyên** | **23IT.EB064** | Xây dựng Web Portal (React/Next.js) & Mobile App, thiết kế Test Matrix, kiểm thử DoD & Gói bằng chứng | **25%** |
 
 #### Ma trận RACI (Responsible - Accountable - Consulted - Informed)
 

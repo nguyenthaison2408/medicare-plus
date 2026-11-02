@@ -1,0 +1,667 @@
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  ScrollView,
+  StyleSheet,
+} from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
+import { COLORS, GRADIENTS, LAYOUT, RADIUS, SHADOWS, SPACING, TOUCH, TYPOGRAPHY } from '../theme';
+import { useAppContext } from '../context/AppContext';
+import { sharePrescription } from '../utils/shareUtils';
+import {
+  AppHeader,
+  AppButton,
+  AppInput,
+  Badge,
+  SectionHeader,
+  SegmentedControl,
+  EmptyState,
+  ToastBanner,
+  AnimatedEntry,
+  PressableScale,
+  PulsingDot,
+} from '../components';
+
+// ============================================================================
+// SCREEN 8: NHẬT KÝ & NHẮC UỐNG THUỐC
+// ============================================================================
+export const MedicationLogScreen: React.FC<{
+  onBack?: () => void;
+  onOpenPrescription?: () => void;
+  onOpenCabinet?: () => void;
+}> = ({ onBack, onOpenPrescription, onOpenCabinet }) => {
+  const { takenMap, toggleMedicationTaken } = useAppContext();
+  const [toastVisible, setToastVisible] = useState(false);
+  const totalDoses = Object.keys(takenMap).length || 3;
+  const takenCount = Object.values(takenMap).filter(Boolean).length;
+  const adherencePct = Math.round((takenCount / totalDoses) * 100);
+
+  return (
+    <View style={styles.screen}>
+      <AppHeader
+        title="Nhật Ký & Nhắc Uống Thuốc"
+        subtitle="Nguyễn Văn Vũ (#BN-7824) • Phác đồ Đau nửa đầu vận mạch"
+        badgeText={`${adherencePct}% hôm nay`}
+        onBack={onBack}
+      />
+      <ScrollView contentContainerStyle={styles.scrollPad}>
+        {/* Weekly Adherence Strip (Habit Tracker) */}
+        <AnimatedEntry delay={40} direction="up">
+          <View style={[styles.card, SHADOWS.sm]}>
+            <View style={styles.rowBetween}>
+              <Text style={[styles.cardTitle, { flex: 1 }]} numberOfLines={1}>
+                Tuần 44 • Tháng 10/2024
+              </Text>
+              <Badge label={`${takenCount}/${totalDoses} cữ hôm nay`} variant="teal" />
+            </View>
+            <View style={styles.weekRow}>
+              {[
+                { d: 'T2', n: '28', done: true },
+                { d: 'T3', n: '29', active: true },
+                { d: 'T4', n: '30', done: false },
+                { d: 'T5', n: '31', done: false },
+                { d: 'T6', n: '01', done: false },
+                { d: 'T7', n: '02', done: false },
+                { d: 'CN', n: '03', done: false },
+              ].map((day) => (
+                <View
+                  key={day.d}
+                  style={[
+                    styles.dayPill,
+                    day.active && styles.dayPillActive,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.dayPillText,
+                      day.active && { color: '#FFFFFF' },
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {day.d}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.dayPillNum,
+                      day.active && { color: '#FFFFFF' },
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {day.n}
+                  </Text>
+                  <Ionicons
+                    name={day.done ? 'checkmark-circle' : 'ellipse'}
+                    size={12}
+                    color={
+                      day.active
+                        ? '#86F2E4'
+                        : day.done
+                        ? COLORS.secondary
+                        : '#CBD5E1'
+                    }
+                  />
+                </View>
+              ))}
+            </View>
+          </View>
+        </AnimatedEntry>
+
+        {/* AI Medication Adherence Insight Card */}
+        <AnimatedEntry delay={100} direction="up">
+          <LinearGradient
+            colors={GRADIENTS.primaryTeal}
+            style={[styles.heroCard, SHADOWS.sm]}
+          >
+            <View style={styles.rowBetween}>
+              <Badge label="Trợ lý AI SmartClinic" variant="glass" icon="sparkles" />
+              <Text style={styles.whiteSub} numberOfLines={1}>
+                Toa: TS. BS. Lê Thu Trang
+              </Text>
+            </View>
+            <Text style={styles.whiteBody}>
+              Bạn đã duy trì uống đúng giờ 6 ngày liên tiếp! Cữ tối nay (21:00 -
+              Flunarizine 5mg) giúp dự phòng cơn đau nửa đầu khi ngủ.
+            </Text>
+          </LinearGradient>
+        </AnimatedEntry>
+
+        {/* Today's Pill Schedule */}
+        <SectionHeader
+          title="Lịch uống thuốc hôm nay"
+          actionText="Xem chi tiết toa"
+          onActionPress={onOpenPrescription}
+        />
+        {[
+          {
+            key: 'morning',
+            time: '08:00 • Cữ Sáng (Sau ăn)',
+            drug: 'Ginkgo Biloba 80mg (1 viên)',
+            desc: 'Tăng cường tuần hoàn máu não',
+          },
+          {
+            key: 'afternoon',
+            time: '14:00 • Cữ Chiều (Sau ăn)',
+            drug: 'Ginkgo Biloba 80mg (1 viên)',
+            desc: 'Uống với 200ml nước ấm',
+          },
+          {
+            key: 'evening',
+            time: '21:00 • Cữ Tối (Trước khi ngủ)',
+            drug: 'Flunarizine 5mg (1 viên)',
+            desc: 'Ngăn ngừa đau nửa đầu & co thắt mạch',
+          },
+        ].map((slot, idx) => {
+          const isTaken = takenMap[slot.key];
+          return (
+            <AnimatedEntry key={slot.key} delay={160 + idx * 70} direction="up">
+              <View style={[styles.card, SHADOWS.sm]}>
+                <View style={styles.rowBetween}>
+                  <Text style={[styles.slotTime, { flex: 1 }]} numberOfLines={1}>
+                    {slot.time}
+                  </Text>
+                  <Badge
+                    label={isTaken ? 'Đã uống ✓' : 'Sắp tới (21:00)'}
+                    variant={isTaken ? 'teal' : 'warning'}
+                  />
+                </View>
+                <Text style={styles.cardTitle} numberOfLines={1}>
+                  {slot.drug}
+                </Text>
+                <Text style={styles.subText} numberOfLines={1}>
+                  {slot.desc}
+                </Text>
+                <PressableScale
+                  activeScale={0.96}
+                  onPress={() => toggleMedicationTaken(slot.key)}
+                  style={{ marginTop: 10 }}
+                >
+                  <View
+                    style={[
+                      styles.confirmBtnWrap,
+                      isTaken ? styles.confirmBtnTaken : styles.confirmBtnPending,
+                    ]}
+                  >
+                    <Ionicons
+                      name={isTaken ? 'checkmark-done' : 'checkmark-circle-outline'}
+                      size={16}
+                      color={isTaken ? COLORS.primary : '#FFFFFF'}
+                    />
+                    <Text
+                      style={[
+                        styles.confirmBtnText,
+                        isTaken ? { color: COLORS.primary } : { color: '#FFFFFF' },
+                      ]}
+                    >
+                      {isTaken ? 'Đã ghi nhận uống thuốc' : 'Xác nhận đã uống cữ này'}
+                    </Text>
+                  </View>
+                </PressableScale>
+              </View>
+            </AnimatedEntry>
+          );
+        })}
+
+        <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
+          <AppButton
+            title="Tủ thuốc"
+            variant="tonal"
+            size="md"
+            leftIcon="medkit-outline"
+            fullWidth={false}
+            style={{ flex: 1 }}
+            onPress={onOpenCabinet}
+          />
+          <AppButton
+            title="Cài chuông nhắc"
+            variant="outline"
+            size="md"
+            leftIcon="notifications-outline"
+            fullWidth={false}
+            style={{ flex: 1 }}
+            onPress={() => setToastVisible(true)}
+          />
+        </View>
+      </ScrollView>
+      <ToastBanner
+        visible={toastVisible}
+        title="Đã bật thông báo nhắc thuốc"
+        message="Nhắc uống thuốc lúc 08:00, 14:00 và 21:00 hàng ngày."
+        onDismiss={() => setToastVisible(false)}
+      />
+    </View>
+  );
+};
+
+// ============================================================================
+// SCREEN 13: CHI TIẾT TOA THUỐC ĐIỆN TỬ
+// ============================================================================
+export const PrescriptionDetailScreen: React.FC<{
+  onBack?: () => void;
+  onOpenMedLog?: () => void;
+}> = ({ onBack, onOpenMedLog }) => {
+  const { prescriptions, diagnosisNote } = useAppContext();
+
+  return (
+    <View style={styles.screen}>
+      <AppHeader
+        title="Chi Tiết Toa Thuốc Điện Tử"
+        subtitle="#DT-241029-01 • BV ĐHYD TP.HCM"
+        badgeText="Hợp lệ"
+        onBack={onBack}
+        rightActions={[
+          {
+            icon: 'share-social-outline',
+            onPress: () => sharePrescription(prescriptions, diagnosisNote),
+          },
+        ]}
+      />
+      <ScrollView contentContainerStyle={styles.scrollPad}>
+        {/* Header Summary */}
+        <View style={[styles.card, SHADOWS.sm]}>
+          <View style={styles.rowBetween}>
+            <Badge label="Đang điều trị tích cực" variant="teal" showDot />
+            <Text style={styles.slotTime}>Ngày 2 / 7 (28%)</Text>
+          </View>
+          <Text style={[styles.cardTitle, { marginTop: 8 }]}>
+            TS. BS. Lê Thu Trang
+          </Text>
+          <Text style={styles.subText}>
+            Trưởng khoa Thần kinh • Bệnh nhân: Nguyễn Văn Vũ
+          </Text>
+          <Text style={styles.subText}>
+            CĐ: {diagnosisNote}
+          </Text>
+          <Text style={styles.subText}>
+            Ngày kê: 29/10/2024 • Tái khám: 05/11/2024
+          </Text>
+        </View>
+
+        {/* AI Safety Audit & Dietary Advice */}
+        <View style={[styles.card, SHADOWS.sm]}>
+          <View style={styles.rowBetween}>
+            <Text style={styles.cardTitle}>Kiểm Tra Tương Tác Thuốc</Text>
+            <Badge label="An toàn" variant="teal" icon="shield-checkmark" />
+          </View>
+          <Text style={styles.subText}>
+            Không phát hiện tương khắc giữa {prescriptions.length} loại thuốc. Tương thích hoàn toàn
+            với tiền sử dị ứng Penicillin của bạn.
+          </Text>
+          <View style={styles.noteCallout}>
+            <Ionicons name="nutrition-outline" size={16} color={COLORS.primary} />
+            <Text style={styles.noteCalloutText}>
+              Kiêng cữ từ BS. Trang: Hạn chế hoàn toàn cà phê, trà đậm, bia rượu
+              trong đợt dùng Flunarizine. Uống đủ 2.0L nước ấm/ngày.
+            </Text>
+          </View>
+        </View>
+
+        <SectionHeader
+          title="Danh Mục Thuốc Kê Đơn"
+          subtitle={`${prescriptions.length} loại thuốc trong phác đồ điều trị`}
+        />
+        {prescriptions.map((d) => (
+          <View key={d.id} style={[styles.card, SHADOWS.sm]}>
+            <View style={styles.rowBetween}>
+              <Text style={[styles.cardTitle, { flex: 1 }]} numberOfLines={1}>
+                {d.name}
+              </Text>
+              <Badge label={d.quantity} variant="blue" />
+            </View>
+            <Text style={styles.subText} numberOfLines={1}>
+              {d.indication}
+            </Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
+              <Badge label={d.dosageTag} variant={d.isWarning ? 'danger' : 'teal'} />
+              <Badge label={d.instructionTag} variant="surface" />
+            </View>
+          </View>
+        ))}
+
+        <AppButton
+          title="Chia sẻ / Xuất đơn thuốc"
+          variant="outline"
+          size="lg"
+          leftIcon="share-social-outline"
+          onPress={() => sharePrescription(prescriptions, diagnosisNote)}
+          style={{ marginBottom: 10 }}
+        />
+
+        <AppButton
+          title="Mở lịch nhắc uống thuốc"
+          variant="primary"
+          size="lg"
+          leftIcon="alarm-outline"
+          onPress={onOpenMedLog || onBack}
+        />
+      </ScrollView>
+    </View>
+  );
+};
+
+// ============================================================================
+// SCREEN 27: TỦ THUỐC GIA ĐÌNH & THEO DÕI SỐ LƯỢNG THUỐC
+// ============================================================================
+export const FamilyMedicineCabinetScreen: React.FC<{
+  onBack?: () => void;
+  onRefillNow?: () => void;
+}> = ({ onBack, onRefillNow }) => {
+  const { cabinetMeds, addCabinetMedicine } = useAppContext();
+  const [filterKey, setFilterKey] = useState('all');
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [medName, setMedName] = useState('');
+  const [medOwner, setMedOwner] = useState('Nguyễn Văn Vũ (Bản thân)');
+  const [medStock, setMedStock] = useState('Còn 30 / 30 viên');
+  const [medExp, setMedExp] = useState('HSD: 12/2027');
+  const [medUrgent, setMedUrgent] = useState(false);
+  const [nameError, setNameError] = useState('');
+  const [addedToast, setAddedToast] = useState<string | null>(null);
+
+  const filteredMeds = cabinetMeds.filter((m) => {
+    if (filterKey === 'urgent') return m.urgent;
+    if (filterKey === 'normal') return !m.urgent;
+    return true;
+  });
+
+  const handleSaveMedicine = () => {
+    if (!medName.trim()) {
+      setNameError('Vui lòng nhập tên thuốc và hàm lượng');
+      return;
+    }
+    setNameError('');
+    addCabinetMedicine({
+      name: medName.trim(),
+      owner: medOwner.trim() || 'Nguyễn Văn Vũ (Bản thân)',
+      stock: medStock.trim() || 'Còn 30 / 30 viên',
+      exp: medExp.trim() || 'HSD: 12/2027',
+      urgent: medUrgent,
+    });
+    setAddedToast(`Đã thêm "${medName.trim()}" vào Tủ thuốc gia đình`);
+    setMedName('');
+    setShowAddForm(false);
+  };
+
+  return (
+    <View style={styles.screen}>
+      <AppHeader
+        title="Tủ Thuốc Gia Đình"
+        subtitle="Quản lý số lượng thuốc tại nhà & cảnh báo sắp hết"
+        onBack={onBack}
+      />
+      <ScrollView contentContainerStyle={styles.scrollPad}>
+        {/* Refill Alert Banner */}
+        <AnimatedEntry delay={40} direction="up">
+          <View style={[styles.alertCard, SHADOWS.sm]}>
+            <View style={styles.rowBetween}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <PulsingDot color={COLORS.error} size={7} />
+                <Badge
+                  label="CẢNH BÁO SẮP HẾT THUỐC"
+                  variant="danger"
+                  icon="alert-circle"
+                />
+              </View>
+              <Text style={[styles.slotTime, { color: COLORS.error }]}>
+                Còn dùng được 3 ngày
+              </Text>
+            </View>
+            <Text style={[styles.cardTitle, { marginTop: 8 }]}>
+              Sibelium 5mg (Flunarizine) chỉ còn 4 viên
+            </Text>
+            <Text style={styles.subText}>
+              Bạn nên đặt lịch tái khám hoặc hỏi ý kiến TS. BS. Lê Thu Trang
+              trước khi mua thêm.
+            </Text>
+            <AppButton
+              title="Nhắn tin hỏi Bác sĩ"
+              variant="primary"
+              size="md"
+              leftIcon="chatbubbles-outline"
+              onPress={onRefillNow}
+              style={{ marginTop: 10 }}
+            />
+          </View>
+        </AnimatedEntry>
+
+        <SectionHeader
+          title="Thuốc đang lưu trữ trong gia đình"
+          actionText={showAddForm ? 'Đóng biểu mẫu' : '+ Thêm thuốc'}
+          onActionPress={() => setShowAddForm((prev) => !prev)}
+        />
+
+        {showAddForm && (
+          <View style={[styles.card, SHADOWS.sm]}>
+            <Text style={[styles.cardTitle, { marginBottom: 10 }]}>
+              Thêm thuốc mới vào tủ thuốc nhà
+            </Text>
+            <AppInput
+              label="TÊN THUỐC & HÀM LƯỢNG (*)"
+              placeholder="VD: Paracetamol 500mg"
+              value={medName}
+              onChangeText={(val) => {
+                setMedName(val);
+                if (nameError) setNameError('');
+              }}
+              error={nameError}
+              leftIcon="medkit-outline"
+            />
+            <AppInput
+              label="NGƯỜI SỬ DỤNG"
+              placeholder="VD: Nguyễn Văn Vũ (Bản thân)"
+              value={medOwner}
+              onChangeText={setMedOwner}
+              leftIcon="person-outline"
+            />
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <View style={{ flex: 1 }}>
+                <AppInput
+                  label="SỐ LƯỢNG HIỆN CÓ"
+                  placeholder="Còn 20 / 30 viên"
+                  value={medStock}
+                  onChangeText={setMedStock}
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <AppInput
+                  label="HẠN SỬ DỤNG"
+                  placeholder="HSD: 12/2027"
+                  value={medExp}
+                  onChangeText={setMedExp}
+                />
+              </View>
+            </View>
+            <SegmentedControl
+              variant="chips"
+              selectedKey={medUrgent ? 'urgent' : 'normal'}
+              onSelect={(k) => setMedUrgent(k === 'urgent')}
+              options={[
+                { key: 'normal', label: 'Đủ dùng' },
+                { key: 'urgent', label: 'Sắp hết (Cần mua thêm)' },
+              ]}
+              style={{ marginBottom: 12 }}
+            />
+            <AppButton
+              title="Lưu vào Tủ thuốc gia đình"
+              variant="primary"
+              size="md"
+              leftIcon="checkmark-circle-outline"
+              onPress={handleSaveMedicine}
+            />
+          </View>
+        )}
+
+        <SegmentedControl
+          variant="chips"
+          selectedKey={filterKey}
+          onSelect={setFilterKey}
+          options={[
+            { key: 'all', label: `Tất cả (${cabinetMeds.length})` },
+            {
+              key: 'urgent',
+              label: `Sắp hết (${cabinetMeds.filter((m) => m.urgent).length})`,
+            },
+            {
+              key: 'normal',
+              label: `Đủ dùng (${cabinetMeds.filter((m) => !m.urgent).length})`,
+            },
+          ]}
+          style={{ marginBottom: 12 }}
+        />
+
+        {filteredMeds.length > 0 ? (
+          filteredMeds.map((med, idx) => (
+            <AnimatedEntry key={med.id} delay={40 + idx * 30} direction="up">
+              <View style={[styles.card, SHADOWS.sm]}>
+                <View style={styles.rowBetween}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
+                    {med.urgent && <PulsingDot color={COLORS.error} size={6} />}
+                    <Text style={[styles.cardTitle, { flex: 1 }]} numberOfLines={1}>
+                      {med.name}
+                    </Text>
+                  </View>
+                  <Badge
+                    label={med.stock}
+                    variant={med.urgent ? 'danger' : 'teal'}
+                  />
+                </View>
+                <Text style={styles.subText} numberOfLines={1}>
+                  Người dùng: {med.owner} • {med.exp}
+                </Text>
+              </View>
+            </AnimatedEntry>
+          ))
+        ) : (
+          <EmptyState
+            icon="medkit-outline"
+            title="Không có thuốc trong danh mục này"
+            description="Hiện không có thuốc nào thuộc bộ lọc đã chọn."
+          />
+        )}
+      </ScrollView>
+      <ToastBanner
+        visible={!!addedToast}
+        title="Cập nhật tủ thuốc"
+        message={addedToast || ''}
+        onDismiss={() => setAddedToast(null)}
+      />
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: COLORS.background },
+  scrollPad: { padding: SPACING.lg, paddingBottom: SPACING.xxxl },
+  card: {
+    ...LAYOUT.card,
+  },
+  alertCard: {
+    backgroundColor: COLORS.errorSurface,
+    borderRadius: RADIUS.lg,
+    padding: SPACING.lg,
+    marginBottom: SPACING.lg,
+    borderWidth: 1,
+    borderColor: COLORS.errorContainer,
+  },
+  rowBetween: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  cardTitle: {
+    fontSize: TYPOGRAPHY.body,
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+  },
+  subText: {
+    fontSize: TYPOGRAPHY.caption,
+    lineHeight: TYPOGRAPHY.lineHeight.normal,
+    color: COLORS.textSecondary,
+    marginTop: 3,
+  },
+  slotTime: {
+    fontSize: TYPOGRAPHY.caption,
+    fontWeight: '800',
+    color: COLORS.primary,
+  },
+  weekRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: SPACING.xs,
+    marginTop: SPACING.md,
+  },
+  dayPill: {
+    flex: 1,
+    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.surfaceContainerLow,
+    paddingVertical: SPACING.sm,
+    alignItems: 'center',
+    gap: 3,
+  },
+  dayPillActive: {
+    backgroundColor: COLORS.primary,
+  },
+  dayPillText: {
+    fontSize: TYPOGRAPHY.micro,
+    fontWeight: '700',
+    color: COLORS.textSecondary,
+  },
+  dayPillNum: {
+    fontSize: TYPOGRAPHY.body,
+    fontWeight: '800',
+    color: COLORS.textPrimary,
+  },
+  heroCard: {
+    borderRadius: RADIUS.lg,
+    padding: SPACING.lg,
+    marginBottom: SPACING.lg,
+  },
+  whiteSub: {
+    fontSize: TYPOGRAPHY.caption,
+    color: 'rgba(255,255,255,0.85)',
+  },
+  whiteBody: {
+    fontSize: TYPOGRAPHY.bodySm,
+    lineHeight: TYPOGRAPHY.lineHeight.normal,
+    color: COLORS.textOnPrimary,
+    marginTop: SPACING.sm,
+  },
+  noteCallout: {
+    flexDirection: 'row',
+    backgroundColor: COLORS.surfaceContainerLow,
+    borderRadius: RADIUS.md,
+    padding: SPACING.sm,
+    marginTop: SPACING.sm,
+    gap: SPACING.sm,
+  },
+  noteCalloutText: {
+    flex: 1,
+    fontSize: TYPOGRAPHY.caption,
+    lineHeight: TYPOGRAPHY.lineHeight.normal,
+    color: COLORS.textPrimary,
+  },
+  confirmBtnWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: TOUCH.min,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: 10,
+    borderRadius: RADIUS.md,
+    gap: 6,
+  },
+  confirmBtnPending: {
+    backgroundColor: COLORS.primary,
+  },
+  confirmBtnTaken: {
+    backgroundColor: COLORS.surfaceContainer,
+    borderWidth: 1,
+    borderColor: COLORS.primaryContainer,
+  },
+  confirmBtnText: {
+    fontSize: TYPOGRAPHY.caption,
+    fontWeight: '700',
+  },
+});

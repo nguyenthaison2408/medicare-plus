@@ -6,6 +6,7 @@ import {
   loadClinicProfile, subscribeClinicAppointments, type ClinicProfile, type ClinicAppointment,
 } from '../services/clinicCloud';
 import { clinicAppointmentToItem, clinicPrescriptions, clinicRecord } from '../services/clinicAdapters';
+import { fetchFamilyMembersCloud, addFamilyMemberCloud } from '../services/clinicFamily';
 import type { PatientBookingInfo } from '../utils/bookingValidation';
 import {
   APPOINTMENTS,
@@ -472,6 +473,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
       setTimeout(() => { if (mounted) setCloudSyncError(error instanceof Error ? error.message : 'Chưa kết nối dữ liệu.'); }, 0);
     }
     void refresh();
+    if (CLOUD_MODE) {
+      void fetchFamilyMembersCloud().then((cloudFams) => {
+        if (mounted && cloudFams.length > 0) {
+          setFamilyMembers(cloudFams);
+        }
+      });
+    }
     return () => { mounted = false; generation++; unsubscribeAuth(); unsubscribeChanges(); };
   }, []);
 
@@ -708,6 +716,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
       bhyt: member.bhyt,
     };
     setFamilyMembers((prev) => [newMember, ...prev]);
+
+    if (CLOUD_MODE) {
+      void addFamilyMemberCloud(member);
+    }
   };
 
   const addPrescriptionDrug = (drug: Omit<PrescriptionDrug, 'id'>) => {

@@ -1,6 +1,8 @@
 # CƠ CẤU PHÂN RÃ CÔNG VIỆC (WBS) & TỪ ĐIỂN WBS (WBS DICTIONARY)
 ## DỰ ÁN: NỀN TẢNG QUẢN LÝ PHÒNG KHÁM & ĐẶT LỊCH KHÁM TRỰC TUYẾN (MEDICARE PLUS)
-**Mã dự án:** `VKU-SPM-MEDICARE` | **Phiên bản:** v1.0 | **Ngày ban hành:** 12/09/2026
+**Mã dự án:** `VKU-SPM-MEDICARE` | **Học phần:** Quản Trị Dự Án Phần Mềm — VKU  
+**Đội ngũ thực hiện:** Nhóm 04 (Nguyễn Thái Sơn, Vi Hữu Thành, Đặng Thanh Vũ, Nguyễn Từ Anh Nguyên)  
+**Phiên bản:** v1.0 | **Ngày ban hành:** 12/09/2026
 
 ---
 
@@ -13,7 +15,7 @@
 1.0 DỰ ÁN NỀN TẢNG QUẢN LÝ PHÒNG KHÁM MEDICARE PLUS
 ├── 1.1 Khởi tạo & Quản trị Dự án (Project Management & Governance)
 │   ├── 1.1.1 Xây dựng Điều lệ dự án (Project Charter) & Ma trận RACI
-│   ├── 1.1.2 Thiết lập Hệ sinh thái GitHub (Repo, Org, Projects, Branch Protection)
+│   ├── 1.1.2 Thiết lập Hệ sinh thái GitHub (Repo, Board, Branch Protection)
 │   ├── 1.1.3 Lập kế hoạch quản trị rủi ro & Ma trận truyền thông
 │   └── 1.1.4 Điều phối Sprint, Tổ chức Daily Scrum & Họp Retrospective
 ├── 1.2 Phân tích Nghiệp vụ & Thiết kế Hệ thống (Analysis & Architecture)
@@ -29,8 +31,8 @@
 │   └── 1.3.5 Module Tự động hóa Thông báo & Nhắc hẹn (Email/SMS Notification)
 ├── 1.4 Phát triển Ứng dụng Frontend & Mobile (Patient Portal & Staff Dashboard)
 │   ├── 1.4.1 Cổng thông tin Bệnh nhân (Web Portal: Tìm kiếm, Chọn slot, Đặt hẹn)
-│   ├── 1.4.2 Dashboard Bác sĩ & Tiếp tân (Quản lý Hàng đợi, Xem EMR, Tiếp đón QR)
-│   ├── 1.4.3 Ứng dụng Di động Bệnh nhân (Mobile Android App — Flutter)
+│   ├── 1.4.2 Dashboard Tiếp tân & Tiếp đón Bệnh nhân bằng Mã QR
+│   ├── 1.4.3 Dashboard Bác sĩ Thăm khám & Kê đơn thuốc EMR
 │   └── 1.4.4 Tích hợp API Client, Quản lý State & Xử lý Ngoại lệ mạng
 ├── 1.5 Đảm bảo Chất lượng & Kiểm thử (Quality Assurance & Testing)
 │   ├── 1.5.1 Thiết kế Ma trận Kiểm thử (Test Matrix) & Kế hoạch Test (Test Plan)
@@ -54,8 +56,8 @@ Tất cả các Gói công việc (Work Package - WP) ở mức phân rã thấp
 * **Mã WBS:** `1.1.2` | **Gói cha:** `1.1 Khởi tạo & Quản trị Dự án`
 * **Người phụ trách (Owner):** Nguyễn Thái Sơn (PM) & Vi Hữu Thành (Tech Lead)
 * **Thời lượng ước lượng:** 1 tuần (18 giờ làm việc) | **Story Points:** 5 SP
-* **Mô tả công việc:** Thiết lập GitHub Organization, khởi tạo Repository `medicare-plus-platform`, cấu hình quy tắc Branch Protection cho nhánh `main` (yêu cầu review bắt buộc và CI pass). Khởi tạo GitHub Projects với 5 cột chuẩn (Backlog, Ready, In Progress, In Review, Done), thiết lập nhãn (labels), mẫu Issue Template và Pull Request Template.
-* **Đầu vào (Inputs):** Điều lệ dự án đã ký duyệt, Danh sách 5 thành viên nhóm.
+* **Mô tả công việc:** Khởi tạo Repository `medicare-plus`, cấu hình quy tắc Branch Protection cho nhánh `main` (yêu cầu review bắt buộc và CI pass). Khởi tạo GitHub Projects với 5 cột chuẩn (Backlog, Ready, In Progress, In Review, Done), thiết lập nhãn (labels), mẫu Issue Template và Pull Request Template.
+* **Đầu vào (Inputs):** Điều lệ dự án đã ký duyệt, Danh sách 4 thành viên nhóm.
 * **Đầu ra bàn giao (Deliverables):** Repo công khai trên GitHub, GitHub Projects Board hoạt động, file `.github/pull_request_template.md` và `.github/ISSUE_TEMPLATE/`.
 * **Tiêu chí hoàn thành (DoD):** Không thành viên nào có thể push trực tiếp vào `main`; ít nhất 1 issue mẫu và 1 PR mẫu được tạo thử nghiệm thành công.
 * **Quan hệ phụ thuộc (Dependencies):** Sau gói 1.1.1.
@@ -66,10 +68,10 @@ Tất cả các Gói công việc (Work Package - WP) ở mức phân rã thấp
 * **Mã WBS:** `1.2.2` | **Gói cha:** `1.2 Phân tích Nghiệp vụ & Thiết kế Hệ thống`
 * **Người phụ trách (Owner):** Vi Hữu Thành (Tech Lead) & Đặng Thanh Vũ (Backend)
 * **Thời lượng ước lượng:** 1.5 tuần (26 giờ làm việc) | **Story Points:** 8 SP
-* **Mô tả công việc:** Lập sơ đồ kiến trúc hệ thống (Client-Server, REST API, Database Pooling); mô hình hóa thực thể CSDL (ERD) gồm các bảng: `users`, `roles`, `doctors`, `departments`, `schedules`, `time_slots`, `appointments`, `medical_records`, `prescriptions`, `audit_logs`. Tạo script migration ban đầu trên PostgreSQL.
+* **Mô tả công việc:** Lập sơ đồ kiến trúc hệ thống; mô hình hóa thực thể CSDL (ERD) gồm các bảng: `users`, `roles`, `doctors`, `departments`, `schedules`, `time_slots`, `appointments`, `medical_records`, `prescriptions`. Tạo script migration ban đầu trên PostgreSQL.
 * **Đầu vào (Inputs):** Bản đặc tả yêu cầu SRS từ gói 1.2.1.
-* **Đầu ra bàn giao (Deliverables):** File tài liệu kiến trúc kỹ thuật kèm sơ đồ ERD trực quan (dbdiagram.io), file migration SQL chuẩn hóa.
-* **Tiêu chí hoàn thành (DoD):** Sơ đồ quan hệ đạt chuẩn chuẩn hóa 3NF, script chạy tạo bảng thành công trên local và PostgreSQL Supabase không có lỗi khóa ngoại.
+* **Đầu ra bàn giao (Deliverables):** File tài liệu kiến trúc kỹ thuật kèm sơ đồ ERD trực quan, file migration SQL chuẩn hóa.
+* **Tiêu chí hoàn thành (DoD):** Sơ đồ quan hệ đạt chuẩn 3NF, script chạy tạo bảng thành công trên local và PostgreSQL Supabase không có lỗi khóa ngoại.
 * **Quan hệ phụ thuộc (Dependencies):** Sau gói 1.2.1.
 
 ---
@@ -102,10 +104,10 @@ Tất cả các Gói công việc (Work Package - WP) ở mức phân rã thấp
 * **Mã WBS:** `1.3.3` | **Gói cha:** `1.3 Phát triển Nền tảng Backend & API`
 * **Người phụ trách (Owner):** Đặng Thanh Vũ (Backend) & Vi Hữu Thành (Tech Lead)
 * **Thời lượng ước lượng:** 2 tuần (35 giờ làm việc) | **Story Points:** 13 SP
-* **Mô tả công việc:** Xây dựng logic sinh động các khung giờ khám (15 phút/slot) theo ca làm việc của bác sĩ; thiết kế thuật toán đặt lịch an toàn với cơ chế khóa tạm thời (Pessimistic Locking / PostgreSQL `SELECT FOR UPDATE` hoặc Redis lock trong 5 phút) để giải quyết triệt để rủi ro Race Condition khi nhiều bệnh nhân cùng chọn một slot khám.
+* **Mô tả công việc:** Xây dựng logic sinh động các khung giờ khám (15–30 phút/slot) theo ca làm việc của bác sĩ; thiết kế thuật toán đặt lịch an toàn với cơ chế khóa tạm thời (Pessimistic Locking / PostgreSQL `SELECT FOR UPDATE` hoặc Redis lock trong 5 phút) để giải quyết triệt để rủi ro Race Condition khi nhiều bệnh nhân cùng chọn một slot khám.
 * **Đầu vào (Inputs):** Schema bảng `time_slots` và `appointments`; API Auth từ 1.3.1.
-* **Đầu ra bàn giao (Deliverables):** API `/api/v1/appointments/book`, `/slots/available`, logic giải phóng slot tự động khi hết hạn tạm giữ.
-* **Tiêu chí hoàn thành (DoD):** Vượt qua kịch bản kiểm thử tải đồng thời (Concurrent Request Test) với 10 request đồng thời tranh chấp 1 slot: đảm bảo duy nhất 1 giao dịch thành công (HTTP 201), 9 giao dịch còn lại nhận mã lỗi xung đột (HTTP 409 Conflict).
+* **Đầu ra bàn giao (Deliverables):** API `/api/v1/appointments/book`, `/slots`, logic giải phóng slot tự động khi hết hạn tạm giữ.
+* **Tiêu chí hoàn thành (DoD):** Vượt qua kịch bản kiểm thử tải đồng thời (Concurrent Request Test) với 50 request đồng thời tranh chấp 1 slot: đảm bảo duy nhất 1 giao dịch thành công (HTTP 201), 49 giao dịch còn lại nhận mã lỗi xung đột (HTTP 409 Conflict).
 * **Quan hệ phụ thuộc (Dependencies):** Sau gói 1.3.1 và 1.3.2.
 
 ---
@@ -114,7 +116,7 @@ Tất cả các Gói công việc (Work Package - WP) ở mức phân rã thấp
 * **Mã WBS:** `1.4.1` | **Gói cha:** `1.4 Phát triển Ứng dụng Frontend & Mobile`
 * **Người phụ trách (Owner):** Nguyễn Từ Anh Nguyên (Frontend Engineer)
 * **Thời lượng ước lượng:** 2 tuần (32 giờ làm việc) | **Story Points:** 13 SP
-* **Mô tả công việc:** Xây dựng giao diện Web Responsive bằng Next.js/React và Tailwind CSS cho phép bệnh nhân: Tra cứu danh sách bác sĩ theo chuyên khoa, xem thông tin và đánh giá, chọn ngày khám trên lịch trực quan, chọn khung giờ còn trống và điền thông tin triệu chứng để đặt hẹn; xem trang lịch sử và phiếu khám điện tử có mã QR.
+* **Mô tả công việc:** Xây dựng giao diện Web Responsive bằng React/Next.js và Tailwind CSS cho phép bệnh nhân: Tra cứu danh sách bác sĩ theo chuyên khoa, xem thông tin và đánh giá, chọn ngày khám trên lịch trực quan, chọn khung giờ còn trống và điền thông tin triệu chứng để đặt hẹn; xem trang lịch sử và phiếu khám điện tử có mã QR.
 * **Đầu vào (Inputs):** Bản thiết kế Figma từ gói 1.2.3, Swagger API backend từ gói 1.3.2 và 1.3.3.
 * **Đầu ra bàn giao (Deliverables):** Mã nguồn frontend trên nhánh `feature/patient-portal`, giao diện hiển thị mượt mà trên cả máy tính bàn và điện thoại di động.
 * **Tiêu chí hoàn thành (DoD):** Tương thích 100% trên Chrome, Safari, Edge; điểm Google Lighthouse Performance $\ge 85$; kết nối API đặt lịch thành công với trạng thái cập nhật tức thì.
@@ -122,14 +124,14 @@ Tất cả các Gói công việc (Work Package - WP) ở mức phân rã thấp
 
 ---
 
-#### Gói công việc 1.4.2: Dashboard Bác sĩ & Tiếp tân Phòng khám
+#### Gói công việc 1.4.2: Dashboard Tiếp đón Bệnh nhân bằng Mã QR
 * **Mã WBS:** `1.4.2` | **Gói cha:** `1.4 Phát triển Ứng dụng Frontend & Mobile`
 * **Người phụ trách (Owner):** Nguyễn Từ Anh Nguyên (Frontend) & Đặng Thanh Vũ (Backend)
 * **Thời lượng ước lượng:** 2 tuần (30 giờ làm việc) | **Story Points:** 10 SP
-* **Mô tả công việc:** Phát triển giao diện quản trị cho Lễ tân và Bác sĩ: Màn hình quét/nhập mã QR check-in tiếp đón; bảng hàng đợi khám bệnh trực quan (Chờ khám, Đang khám, Đã khám xong); màn hình bác sĩ nhập kết quả chẩn đoán, ghi chú bệnh án và kê đơn thuốc gửi vào hồ sơ EMR.
-* **Đầu vào (Inputs):** API EMR từ 1.3.4, Thiết kế giao diện Dashboard từ 1.2.3.
-* **Đầu ra bàn giao (Deliverables):** Giao diện quản trị tại route `/admin` và `/doctor`, tích hợp kiểm tra quyền RBAC phía client.
-* **Tiêu chí hoàn thành (DoD):** Tiếp tân thực hiện check-in cho bệnh nhân bằng mã QR thành công trong vòng < 3 giây; bác sĩ lưu bệnh án và xuất phiếu đơn thuốc PDF thành công.
+* **Mô tả công việc:** Phát triển giao diện quản trị cho Lễ tân: Màn hình quét/nhập mã QR check-in tiếp đón; bảng hàng đợi khám bệnh trực quan (Chờ khám, Đang khám, Đã khám xong); cập nhật trạng thái lịch hẹn sang `CHECKED_IN` thời gian thực trong dưới 3 giây.
+* **Đầu vào (Inputs):** API Check-in QR từ 1.3.3, Thiết kế giao diện Dashboard từ 1.2.3.
+* **Đầu ra bàn giao (Deliverables):** Giao diện quản trị tiếp đón tích hợp quét mã QR và tìm kiếm bệnh nhân nhanh.
+* **Tiêu chí hoàn thành (DoD):** Tiếp tân thực hiện check-in cho bệnh nhân bằng mã QR thành công trong vòng < 3 giây.
 * **Quan hệ phụ thuộc (Dependencies):** Sau gói 1.3.4 và 1.4.1.
 
 ---
@@ -138,7 +140,7 @@ Tất cả các Gói công việc (Work Package - WP) ở mức phân rã thấp
 * **Mã WBS:** `1.5.3` | **Gói cha:** `1.5 Đảm bảo Chất lượng & Kiểm thử`
 * **Người phụ trách (Owner):** Nguyễn Từ Anh Nguyên (QA Engineer)
 * **Thời lượng ước lượng:** 1 tuần (18 giờ làm việc) | **Story Points:** 5 SP
-* **Mô tả công việc:** Sử dụng công cụ k6 / Apache JMeter viết kịch bản giả lập 100 người dùng đồng thời (100 CCU) truy cập tra cứu lịch bác sĩ và 20 người dùng gửi request đặt hẹn trong cùng 1 giây để kiểm tra độ trễ (Latency) và tỷ lệ lỗi (Error Rate) của backend API.
+* **Mô tả công việc:** Sử dụng công cụ k6 / Apache JMeter viết kịch bản giả lập 100 người dùng đồng thời (100 CCU) truy cập tra cứu lịch bác sĩ và 50 người dùng gửi request đặt hẹn trong cùng 1 giây để kiểm tra độ trễ (Latency) và tỷ lệ lỗi (Error Rate) của backend API.
 * **Đầu vào (Inputs):** Môi trường API Staging từ gói 1.3.3 và 1.6.1.
 * **Đầu ra bàn giao (Deliverables):** Kịch bản test script `load-test.js`, báo cáo hiệu năng dạng biểu đồ HTML xuất từ k6.
 * **Tiêu chí hoàn thành (DoD):** $95\%$ số request có thời gian phản hồi (p95 latency) $< 400\text{ms}$; tỷ lệ lỗi HTTP 5xx bằng $0.0\%$; không xảy ra hiện tượng duplicate booking trong CSDL.
@@ -152,6 +154,6 @@ Tất cả các Gói công việc (Work Package - WP) ở mức phân rã thấp
 * **Thời lượng ước lượng:** 1.5 tuần (20 giờ làm việc) | **Story Points:** 5 SP
 * **Mô tả công việc:** Triển khai phiên bản Live Production trên Cloud; tổ chức phiên thử nghiệm người dùng (UAT Beta Testing) với nhóm 20 sinh viên và cán bộ y tế VKU; demo nghiệm thu kỹ thuật và chức năng với Giảng viên hướng dẫn đồ án chuyên ngành song hành ThS. Lê Đăng Quang; tổng hợp kết quả phản hồi người dùng và ma trận kiểm thử UAT trực tiếp vào Chương 7 Báo cáo tổng kết kỹ thuật.
 * **Đầu vào (Inputs):** Hệ thống chạy thực tế trên Cloud (1.6.1), Ma trận kịch bản kiểm thử UAT.
-* **Đầu ra bàn giao (Deliverables):** Ma trận kết quả chạy UAT (UAT Test Execution Matrix) và bảng đánh giá độ hài lòng người dùng (tích hợp trong Báo cáo tổng kết).
+* **Đầu ra bàn giao (Deliverables):** Ma trận kết quả chạy UAT (UAT Test Execution Matrix) và bảng đánh giá độ hài lòng người dùng (tích hợp trong Báo cáo tổng kết kỹ thuật).
 * **Tiêu chí hoàn thành (DoD):** $100\%$ các ca kiểm thử chính đạt chuẩn nghiệm thu; Giảng viên chuyên ngành xác nhận hệ thống hoàn thành mục tiêu kỹ thuật.
 * **Quan hệ phụ thuộc (Dependencies):** Sau gói 1.6.1 và 1.4.2.

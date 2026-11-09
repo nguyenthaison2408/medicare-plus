@@ -928,6 +928,7 @@ export const DoctorDashboardScreen: React.FC<DoctorDashboardScreenProps> = ({
   const {
     appointments,
     completeAppointment,
+    checkInAppointment,
     doctors,
     prescriptions,
     addPrescriptionDrug,
@@ -1064,17 +1065,20 @@ export const DoctorDashboardScreen: React.FC<DoctorDashboardScreenProps> = ({
                   leftIcon={pt.mode === 'video' ? 'videocam-outline' : 'megaphone-outline'}
                   fullWidth={false}
                   style={{ flex: 1 }}
-                  onPress={() => {
+                  onPress={async () => {
                     setSelectedPatientApt(pt);
                     if (pt.mode === 'video' && onNavigate) {
                       onNavigate('teleconsult');
                       return;
                     }
+                    if (checkInAppointment) {
+                      await checkInAppointment(pt.id, pt.code);
+                    }
                     setQueueStatuses((prev) => ({
                       ...prev,
                       [pt.id]: 'Đang khám tại P.302',
                     }));
-                    setToastMessage(`Đã phát loa gọi ${pt.patientName || 'bệnh nhân'} vào Phòng 302.`);
+                    setToastMessage(`Đã gọi & tiếp đón ${pt.patientName || 'bệnh nhân'} vào Phòng 302.`);
                   }}
                 />
                 <AppButton

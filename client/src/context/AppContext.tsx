@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useRef } from 'r
 import { Alert } from 'react-native';
 import { CLOUD_MODE, getSupabase } from '../services/supabaseClient';
 import {
-  bookClinicAppointment, cancelClinicAppointment, listClinicAppointments, listClinicDoctors,
+  bookClinicAppointment, cancelClinicAppointment, checkInClinic, listClinicAppointments, listClinicDoctors,
   loadClinicProfile, subscribeClinicAppointments, type ClinicProfile, type ClinicAppointment,
 } from '../services/clinicCloud';
 import { clinicAppointmentToItem, clinicPrescriptions, clinicRecord } from '../services/clinicAdapters';
@@ -115,6 +115,7 @@ interface AppContextValue {
   }) => Promise<LatestBookingTicket>;
   cancelAppointment: (appointmentId: string) => Promise<void>;
   completeAppointment: (appointmentId: string) => void;
+  checkInAppointment: (appointmentId: string, bookingCode?: string) => Promise<boolean>;
 
   // 2. Medication Adherence Log
   takenMap: Record<string, boolean>;
@@ -680,6 +681,35 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     );
   };
 
+  const checkInAppointment = async (appointmentId: string, bookingCode?: string): Promise<boolean> => {
+    try {
+      const targetApt = appointments.find((a) => a.id === appointmentId || a.code === bookingCode);
+      const code = bookingCode || targetApt?.code;
+
+      if (CLOUD_MODE && code) {
+        await checkInClinic(code);
+      }
+
+      setAppointments((prev) =>
+        prev.map((apt) =>
+          apt.id === appointmentId || (code && apt.code === code)
+            ? {
+                ...apt,
+                status: 'upcoming' as const,
+                statusBadge: 'Đang khám tại phòng',
+                queueNumber: 'ĐANG KHÁM (P.302)',
+              }
+            : apt
+        )
+      );
+      return true;
+    } catch (err: any) {
+      console.warn('Lỗi khi tiếp đón bệnh nhân:', err);
+      Alert.alert('Tiếp đón bệnh nhân', err?.message || 'Không thể cập nhật trạng thái tiếp đón vào hệ thống.');
+      return false;
+    }
+  };
+
   const toggleMedicationTaken = (slotKey: string) => {
     setTakenMap((prev) => ({
       ...prev,
@@ -897,6 +927,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         createBooking,
         cancelAppointment,
         completeAppointment,
+        checkInAppointment,
         takenMap,
         toggleMedicationTaken,
         familyMembers,

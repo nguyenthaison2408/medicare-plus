@@ -20,5 +20,8 @@
     "spm"
   ],
   "author": "Nhom 04 - VKU",
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "docx": "^9.15.4"
+  }
 }

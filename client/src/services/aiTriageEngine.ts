@@ -9,6 +9,7 @@ import {
   CLINICAL_SYMPTOM_KNOWLEDGE_BASE,
   MedicalSymptomRule,
 } from './aiMedicalKnowledge';
+import { getFollowUpQuestions } from './aiFollowUpQuestions';
 
 const DOCTOR_SPECIALTY_MAP: Record<SymptomCategory, string[]> = {
   cardiology: ['doc-2', 'doc-1'],
@@ -103,6 +104,7 @@ export const runClinicalTriage = (
       confidenceScore: confidence,
       recommendedDoctorIds: recommendedDocs.map((d) => d.id),
       recommendedDoctors: recommendedDocs,
+      followUpQuestions: getFollowUpQuestions(bestRule.category),
       homeCareAdvice: bestRule.homeCareTips,
       disclaimer:
         'Lưu ý: Kết quả phân tích từ AI chỉ mang tính định hướng chuyên khoa tham khảo, không thay thế chẩn đoán lâm sàng của bác sĩ chuyên môn.',
@@ -124,6 +126,7 @@ export const runClinicalTriage = (
     confidenceScore: 0.7,
     recommendedDoctorIds: defaultDocs.map((d) => d.id),
     recommendedDoctors: defaultDocs,
+    followUpQuestions: getFollowUpQuestions('general'),
     homeCareAdvice: [
       'Uống đủ nước (1.5 - 2 lít/ngày), duy trì ngủ đủ giấc 7-8 tiếng.',
       'Ghi chép nhật ký triệu chứng (thời gian khởi phát, mức độ đau, thời điểm đau tăng).',

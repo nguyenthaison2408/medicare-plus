@@ -192,3 +192,6 @@ Dưới đây là kịch bản demo mạch lạc đi qua trọn vẹn các đi�
    - Toàn bộ lịch hẹn mới đặt hiển thị theo thời gian thực; Admin có thể điều phối hoặc hủy lịch ngay trên bảng điều khiển.
 2. Tắt và mở lại ứng dụng (Reload) để chứng minh toàn bộ dữ liệu vừa thao tác được lưu bền vững 100% nhờ **`AsyncStorage`**.
 
+
+---
+*Integrated into MediCare Plus Monorepo (client/) — Expo SDK 58 Mobile Application.*

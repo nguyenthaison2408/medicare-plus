@@ -32,10 +32,11 @@ jobs:
           npm ci || npm install
           npm test --if-present
 
-      - name: Install Client Dependencies & Build
+      - name: Install Client Dependencies & Build (Mobile & Web)
         run: |
           cd client
           npm ci || npm install
+          npm run typecheck --if-present
           npm run build --if-present
 
       - name: Automated Security Audit

@@ -1,4 +1,26 @@
-import { FollowUpQuestion, SymptomCategory } from '../types/aiAssistant';
+export type SymptomCategory =
+  | 'cardiology'
+  | 'neurology'
+  | 'gastroenterology'
+  | 'pulmonology'
+  | 'orthopedics'
+  | 'ophthalmology'
+  | 'pediatrics'
+  | 'dermatology'
+  | 'ent'
+  | 'general';
+
+export interface FollowUpOption {
+  label: string;
+  value: string;
+  riskModifier?: number;
+}
+
+export interface FollowUpQuestion {
+  id: string;
+  question: string;
+  options: FollowUpOption[];
+}
 
 export const FOLLOW_UP_TEMPLATES: Record<SymptomCategory, FollowUpQuestion[]> = {
   neurology: [

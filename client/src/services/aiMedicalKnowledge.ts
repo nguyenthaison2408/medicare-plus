@@ -1,4 +1,21 @@
-import { SymptomCategory, RedFlagAssessment } from '../types/aiAssistant';
+export type SymptomCategory =
+  | 'cardiology'
+  | 'neurology'
+  | 'gastroenterology'
+  | 'pulmonology'
+  | 'orthopedics'
+  | 'ophthalmology'
+  | 'pediatrics'
+  | 'dermatology'
+  | 'ent'
+  | 'general';
+
+export interface RedFlagAssessment {
+  isEmergency: boolean;
+  triggerPhrase?: string;
+  emergencyProtocol: string;
+  emergencyHotline: string;
+}
 
 export interface MedicalSymptomRule {
   category: SymptomCategory;

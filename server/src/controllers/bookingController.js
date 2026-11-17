@@ -44,6 +44,7 @@ const getSlots = (req, res) => {
 const bookAppointment = (req, res) => {
   const { slotId, patientName, phone, email, symptoms } = req.body;
 
+  // 1. Validation: Kiểm tra sự tồn tại của các trường bắt buộc
   if (!slotId || !patientName || !phone) {
     return res.status(400).json({
       success: false,
@@ -51,7 +52,37 @@ const bookAppointment = (req, res) => {
     });
   }
 
-  // 1. Kiểm tra Concurrency Lock (Mô phỏng Pessimistic Locking SELECT FOR UPDATE)
+  // 2. Validation: Kiểm tra độ dài họ tên bệnh nhân
+  const trimmedName = String(patientName).trim();
+  if (trimmedName.length < 2) {
+    return res.status(400).json({
+      success: false,
+      message: 'Họ tên bệnh nhân không hợp lệ (tối thiểu 2 ký tự).'
+    });
+  }
+
+  // 3. Validation: Định dạng số điện thoại Việt Nam (10 chữ số hợp lệ)
+  const phoneRegex = /(84|0[3|5|7|8|9])+([0-9]{8})\b/;
+  const trimmedPhone = String(phone).trim();
+  if (!phoneRegex.test(trimmedPhone)) {
+    return res.status(400).json({
+      success: false,
+      message: 'Số điện thoại không hợp lệ (yêu cầu 10 chữ số theo định dạng di động Việt Nam).'
+    });
+  }
+
+  // 4. Validation: Định dạng email nếu được cung cấp
+  if (email && String(email).trim().length > 0) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(String(email).trim())) {
+      return res.status(400).json({
+        success: false,
+        message: 'Định dạng địa chỉ email không hợp lệ.'
+      });
+    }
+  }
+
+  // 5. Kiểm tra Concurrency Lock (Mô phỏng Pessimistic Locking SELECT FOR UPDATE)
   if (activeLocks.has(slotId)) {
     return res.status(409).json({
       success: false,

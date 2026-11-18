@@ -2,8 +2,8 @@ import React, { createContext, useContext, useState, useEffect, useRef } from 'r
 import { Alert } from 'react-native';
 import { CLOUD_MODE, getSupabase } from '../services/supabaseClient';
 import {
-  bookClinicAppointment, cancelClinicAppointment, listClinicAppointments, listClinicDoctors,
-  loadClinicProfile, subscribeClinicAppointments, type ClinicProfile, type ClinicAppointment,
+  bookClinicAppointment, cancelClinicAppointment, completeClinicAppointment, listClinicAppointments, listClinicDoctors,
+  loadClinicProfile, subscribeClinicAppointments, type ClinicProfile, type ClinicAppointment, type ClinicMedication,
 } from '../services/clinicCloud';
 import { clinicAppointmentToItem, clinicPrescriptions, clinicRecord } from '../services/clinicAdapters';
 import type { PatientBookingInfo } from '../utils/bookingValidation';
@@ -114,7 +114,12 @@ interface AppContextValue {
     patientInfo: PatientBookingInfo;
   }) => Promise<LatestBookingTicket>;
   cancelAppointment: (appointmentId: string) => Promise<void>;
-  completeAppointment: (appointmentId: string) => void;
+  completeAppointment: (
+    appointmentId: string,
+    diagnosis?: string,
+    medications?: ClinicMedication[],
+    notes?: string
+  ) => Promise<boolean>;
 
   // 2. Medication Adherence Log
   takenMap: Record<string, boolean>;
@@ -665,19 +670,53 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     if (!CLOUD_MODE) bookingService.syncCancelAppointment(appointmentId);
   };
 
-  const completeAppointment = (appointmentId: string) => {
-    if (CLOUD_MODE) { Alert.alert('Hoàn thành khám', 'Vui lòng lưu chẩn đoán và đơn thuốc trong bàn khám bác sĩ.'); return; }
-    setAppointments((prev) =>
-      prev.map((apt) =>
-        apt.id === appointmentId
-          ? {
-              ...apt,
-              status: 'completed',
-              statusBadge: 'Đã hoàn tất khám',
-            }
-          : apt
-      )
-    );
+  const completeAppointment = async (
+    appointmentId: string,
+    diagnosis?: string,
+    medications?: ClinicMedication[],
+    notes?: string
+  ): Promise<boolean> => {
+    try {
+      if (CLOUD_MODE) {
+        await completeClinicAppointment(
+          appointmentId,
+          diagnosis || 'Khám và tư vấn chuyên khoa định kỳ',
+          medications || [],
+          notes || 'Tái khám khi có dấu hiệu bất thường.'
+        );
+      }
+
+      setAppointments((prev) =>
+        prev.map((apt) =>
+          apt.id === appointmentId
+            ? {
+                ...apt,
+                status: 'completed' as const,
+                statusBadge: 'Đã hoàn tất khám',
+              }
+            : apt
+        )
+      );
+
+      // Nếu có đơn thuốc, tự động đẩy vào danh sách đơn thuốc của bệnh nhân
+      if (medications && medications.length > 0) {
+        medications.forEach((med) => {
+          addPrescriptionDrug({
+            name: med.name,
+            indication: diagnosis || 'Đơn thuốc điều trị sau khám',
+            quantity: 'Theo đơn',
+            dosageTag: med.dosage,
+            instructionTag: 'Uống theo chỉ dẫn bác sĩ',
+          });
+        });
+      }
+
+      return true;
+    } catch (err: any) {
+      console.warn('Lỗi khi lưu bệnh án điện tử:', err);
+      Alert.alert('Bệnh án điện tử', err?.message || 'Không thể lưu đơn thuốc lên máy chủ.');
+      return false;
+    }
   };
 
   const toggleMedicationTaken = (slotKey: string) => {

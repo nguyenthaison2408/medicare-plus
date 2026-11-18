@@ -1268,9 +1268,18 @@ export const DoctorDashboardScreen: React.FC<DoctorDashboardScreenProps> = ({
             size="lg"
             leftIcon="checkmark-circle-outline"
             style={{ marginTop: 14 }}
-            onPress={() => {
+            onPress={async () => {
               if (activePatient) {
-                completeAppointment(activePatient.id);
+                const meds = prescriptions.map((p) => ({
+                  name: p.name,
+                  dosage: `${p.quantity} - ${p.dosageTag} (${p.instructionTag})`,
+                }));
+                await completeAppointment(
+                  activePatient.id,
+                  diagnosisNote || 'Khám và tư vấn chuyên khoa',
+                  meds,
+                  'Tái khám sau 7 ngày hoặc khi có dấu hiệu bất thường.'
+                );
               }
               setToastMessage(
                 `Đã phát hành đơn thuốc và đồng bộ tức thì sang Hồ sơ Bệnh án của ${activePatientName}!`

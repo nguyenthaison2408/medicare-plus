@@ -94,6 +94,18 @@ export const AITypingIndicator: React.FC = () => (
   </AnimatedEntry>
 );
 
+export interface FollowUpOptionItem {
+  label: string;
+  value: string;
+  riskModifier?: number;
+}
+
+export interface FollowUpQuestionItem {
+  id: string;
+  question: string;
+  options: FollowUpOptionItem[];
+}
+
 export interface AIClinicalResponseCardProps {
   doctors: DoctorItem[];
   onBookDoctor?: (doc: DoctorItem) => void;
@@ -103,6 +115,10 @@ export interface AIClinicalResponseCardProps {
   specialtyIcon?: keyof typeof Ionicons.glyphMap;
   urgencyLevel?: 'emergency' | 'soon' | 'routine';
   onEmergencyCall?: () => void;
+  followUpQuestions?: FollowUpQuestionItem[];
+  onSelectFollowUp?: (option: FollowUpOptionItem, question: FollowUpQuestionItem) => void;
+  homeCareAdvice?: string[];
+  allergyWarning?: string;
 }
 
 export const AIClinicalResponseCard: React.FC<AIClinicalResponseCardProps> = ({
@@ -114,6 +130,10 @@ export const AIClinicalResponseCard: React.FC<AIClinicalResponseCardProps> = ({
   specialtyIcon = 'pulse',
   urgencyLevel = 'soon',
   onEmergencyCall,
+  followUpQuestions,
+  onSelectFollowUp,
+  homeCareAdvice,
+  allergyWarning,
 }) => {
   const isEmergency = urgencyLevel === 'emergency';
 
@@ -124,6 +144,19 @@ export const AIClinicalResponseCard: React.FC<AIClinicalResponseCardProps> = ({
       </View>
 
       <View style={styles.clinicalContainer}>
+        {/* Allergy Warning if detected */}
+        {allergyWarning && (
+          <View style={[styles.analysisCard, { borderColor: COLORS.warning, backgroundColor: '#FFFBEB' }]}>
+            <View style={styles.analysisHeader}>
+              <Ionicons name="alert-circle-outline" size={16} color={COLORS.warning} />
+              <Text style={[styles.analysisTitle, { color: COLORS.warningText }]}>
+                Cảnh báo an toàn Dược & Tiền sử dị ứng
+              </Text>
+            </View>
+            <Text style={[styles.analysisBody, { color: '#92400E' }]}>{allergyWarning}</Text>
+          </View>
+        )}
+
         {/* Preliminary Analysis Box */}
         <View
           style={[
@@ -164,6 +197,43 @@ export const AIClinicalResponseCard: React.FC<AIClinicalResponseCardProps> = ({
             />
           )}
         </View>
+
+        {/* Clarifying Follow-Up Questions (Intake flow like Ada Health) */}
+        {followUpQuestions && followUpQuestions.length > 0 && (
+          <View style={styles.analysisCard}>
+            <Text style={styles.sectionCap}>CÂU HỎI LÀM RÕ LÂM SÀNG (BÁC SĨ SƠ KHÁM)</Text>
+            {followUpQuestions.map((q) => (
+              <View key={q.id} style={{ marginBottom: 8 }}>
+                <Text style={styles.followUpQuestionTitle}>• {q.question}</Text>
+                <View style={styles.followUpChipsRow}>
+                  {q.options.map((opt) => (
+                    <TouchableOpacity
+                      key={opt.value}
+                      style={styles.followUpChipBtn}
+                      activeOpacity={0.7}
+                      onPress={() => onSelectFollowUp?.(opt, q)}
+                    >
+                      <Text style={styles.followUpChipText}>{opt.label}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* Home Care Advice */}
+        {homeCareAdvice && homeCareAdvice.length > 0 && (
+          <View style={styles.analysisCard}>
+            <Text style={styles.sectionCap}>CHĂM SÓC & THEO DÕI TẠI NHÀ</Text>
+            {homeCareAdvice.map((tip, idx) => (
+              <View key={idx} style={styles.homeCareRow}>
+                <Ionicons name="checkmark-circle-outline" size={14} color={COLORS.primary} />
+                <Text style={styles.homeCareText}>{tip}</Text>
+              </View>
+            ))}
+          </View>
+        )}
 
         {/* Recommended Specialty */}
         <View style={styles.analysisCard}>
@@ -660,6 +730,42 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  followUpQuestionTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+    marginBottom: 6,
+  },
+  followUpChipsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  followUpChipBtn: {
+    backgroundColor: COLORS.surfaceContainerLow,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    borderRadius: RADIUS.full,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  followUpChipText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: COLORS.primary,
+  },
+  homeCareRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 6,
+    marginBottom: 4,
+  },
+  homeCareText: {
+    flex: 1,
+    fontSize: 11.5,
+    color: COLORS.textSecondary,
+    lineHeight: 16,
   },
 });
 

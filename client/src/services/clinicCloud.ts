@@ -1,4 +1,5 @@
 import type { DaySlotItem, DoctorItem, TimeSlotItem } from '../data/mockData';
+import type { PatientBookingInfo } from '../utils/bookingValidation';
 import { getSupabase } from './supabaseClient';
 
 export type ClinicRole = 'patient' | 'doctor' | 'reception' | 'admin';
@@ -22,6 +23,8 @@ export interface ClinicAppointment {
   patient_id: string;
   patient_name: string;
   patient_phone: string;
+  patient_email: string;
+  symptoms: string;
   starts_at: string;
   status: 'CONFIRMED' | 'CHECKED_IN' | 'COMPLETED' | 'CANCELLED';
   payment_method: string;
@@ -46,6 +49,10 @@ const errorMessages: Record<string, string> = {
   ONLINE_PAYMENT_NOT_CONFIGURED: 'Vui lòng chọn thanh toán tại cơ sở y tế.',
   INVALID_MEDICAL_RECORD: 'Vui lòng nhập chẩn đoán hợp lệ.',
   INVALID_MEDICATION: 'Mỗi thuốc cần có tên và hướng dẫn liều dùng.',
+  INVALID_PATIENT_NAME: 'Họ và tên bệnh nhân không hợp lệ.',
+  INVALID_PATIENT_PHONE: 'Số điện thoại bệnh nhân không đúng định dạng.',
+  INVALID_PATIENT_EMAIL: 'Email bệnh nhân không đúng định dạng.',
+  INVALID_SYMPTOMS: 'Vui lòng mô tả triệu chứng từ 5 đến 1000 ký tự.',
 };
 
 function checkError(error: { message: string; code?: string } | null): void {
@@ -109,9 +116,20 @@ export async function listClinicSlots(doctorId: string, day: DaySlotItem): Promi
   return data || [];
 }
 
-export async function bookClinicAppointment(doctor: DoctorItem, day: DaySlotItem, slot: TimeSlotItem): Promise<ClinicAppointment> {
+export async function bookClinicAppointment(
+  doctor: DoctorItem,
+  day: DaySlotItem,
+  slot: TimeSlotItem,
+  patientInfo: PatientBookingInfo
+): Promise<ClinicAppointment> {
   const { data, error } = await getSupabase().rpc('clinic_book_appointment', {
-    p_doctor_id: doctor.id, p_starts_at: toClinicStart(day, slot), p_payment_method: 'at_clinic',
+    p_doctor_id: doctor.id,
+    p_starts_at: toClinicStart(day, slot),
+    p_payment_method: 'at_clinic',
+    p_patient_name: patientInfo.fullName,
+    p_patient_phone: patientInfo.phone,
+    p_patient_email: patientInfo.email,
+    p_symptoms: patientInfo.symptoms,
   });
   checkError(error);
   return data as ClinicAppointment;

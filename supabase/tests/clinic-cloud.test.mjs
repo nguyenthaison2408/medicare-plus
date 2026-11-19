@@ -61,13 +61,31 @@ try {
   const {rows:[clock]} = await db.query("select ((now() at time zone 'Asia/Ho_Chi_Minh')::date+1)::text as tomorrow, (now() at time zone 'Asia/Ho_Chi_Minh')::date::text as today");
   const startsAt = `${clock.tomorrow}T08:00:00+07:00`;
   let booking;
+  await check('hosted RPC rejects invalid patient fields independently', async () => {
+    const valid={p_doctor_id:'doc-2',p_starts_at:startsAt,p_payment_method:'at_clinic',p_patient_name:'Nguyễn Văn An',
+      p_patient_phone:'0901234567',p_patient_email:patientA.email,p_symptoms:'Đau đầu kéo dài'};
+    for(const [field,value] of [['p_patient_name','Patient 123'],['p_patient_name',''],['p_patient_phone','123'],
+      ['p_patient_email','invalid-email'],['p_patient_email',''],['p_symptoms','Đau'],['p_symptoms','']]) {
+      assert.equal((await patientA.client.rpc('clinic_book_appointment',{...valid,[field]:value})).error?.code,'22023',field);
+    }
+  });
+  await check('hosted bookings preserve Vietnamese names and patient details', async () => {
+    const result=ok(await patientA.client.rpc('clinic_book_appointment',{p_doctor_id:'doc-2',p_starts_at:startsAt,
+      p_payment_method:'at_clinic',p_patient_name:'Nguyễn Văn An',p_patient_phone:'090.123.4567',
+      p_patient_email:patientA.email,p_symptoms:'Đau đầu kéo dài'}));
+    assert.equal(result.patient_name,'Nguyễn Văn An');assert.equal(result.patient_phone,'0901234567');
+    ok(await patientA.client.rpc('clinic_cancel_appointment',{p_appointment_id:result.id}));
+  });
   await check('50 concurrent hosted booking requests create exactly one appointment and 49 conflicts', async () => {
     const results = await Promise.all(Array.from({length:50}, () => patientA.client.rpc('clinic_book_appointment', {
-      p_doctor_id:'doc-1',p_starts_at:startsAt,p_payment_method:'at_clinic'})));
+      p_doctor_id:'doc-1',p_starts_at:startsAt,p_payment_method:'at_clinic',
+      p_patient_name:'Demo Patient A',p_patient_phone:'0901234567',p_patient_email:patientA.email,
+      p_symptoms:'Đau đầu kéo dài hai ngày'})));
     const successes = results.filter(result => !result.error);
     const conflicts = results.filter(result => result.error?.code === '23505');
     concurrency = {requests:50,successes:successes.length,conflicts:conflicts.length};
     assert.equal(successes.length,1); assert.equal(conflicts.length,49); booking=successes[0].data;
+    assert.equal(booking.patient_email,patientA.email); assert.equal(booking.symptoms,'Đau đầu kéo dài hai ngày');
   });
   await check('availability marks the occupied hosted slot', async () => {
     const slots=ok(await patientA.client.rpc('clinic_slot_availability',{p_doctor_id:'doc-1',p_date:clock.tomorrow}));
@@ -87,10 +105,14 @@ try {
     assert.equal(ok(await fresh.from('clinic_appointments').select('id').eq('id',booking.id))[0].id,booking.id);
   });
   let realtimeEvent;
+  let postgresSubscriptionReady = false;
   await patientA.client.realtime.setAuth((await patientA.client.auth.getSession()).data.session.access_token);
   const channel=patientA.client.channel(`clinic-test-${run}`).on('postgres_changes', {
     event:'UPDATE',schema:'public',table:'clinic_appointments',filter:`patient_id=eq.${patientA.id}`
-  }, payload=>{realtimeEvent=payload;}).on('system',{}, payload=>console.log(JSON.stringify({realtimeSystem:payload})));
+  }, payload=>{realtimeEvent=payload;}).on('system',{}, payload=>{
+    if(payload.extension==='postgres_changes' && payload.status==='ok') postgresSubscriptionReady=true;
+    console.log(JSON.stringify({realtimeSystem:payload}));
+  });
   await check('the hosted Realtime subscription connects', async () => {
     await new Promise((resolve,reject)=>{
       const timeout=setTimeout(()=>reject(new Error('Realtime subscription timeout')),15000);
@@ -98,6 +120,11 @@ try {
         else if(status==='CHANNEL_ERROR'||status==='TIMED_OUT'){clearTimeout(timeout);reject(new Error(status));}});
     });
   });
+  // The channel join can complete before the database subscription is active.
+  // Wait for the server's PostgreSQL acknowledgement before changing the fixture.
+  const subscriptionDeadline=Date.now()+15000;
+  while(!postgresSubscriptionReady && Date.now()<subscriptionDeadline) await new Promise(resolve=>setTimeout(resolve,100));
+  assert.equal(postgresSubscriptionReady,true,'PostgreSQL Realtime subscription did not become ready');
   await check('the owner can cancel the booking', async () => {
     assert.equal(ok(await patientA.client.rpc('clinic_cancel_appointment',{p_appointment_id:booking.id})).status,'CANCELLED');
   });
@@ -109,6 +136,7 @@ try {
   await patientA.client.removeChannel(channel);
   await check('cancelling releases the slot for another patient', async () => {
     booking=ok(await patientB.client.rpc('clinic_book_appointment',{p_doctor_id:'doc-1',p_starts_at:startsAt,p_payment_method:'at_clinic'}));
+    assert.equal(booking.patient_email,'');
   });
   await check('reception cannot check in tomorrow appointments today', async () => {
     assert.equal((await reception.client.rpc('clinic_check_in',{p_booking_code:booking.booking_code})).error?.message,'CHECK_IN_DATE_MISMATCH');

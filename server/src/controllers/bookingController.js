@@ -61,6 +61,13 @@ const bookAppointment = (req, res) => {
       message: 'Họ tên bệnh nhân không hợp lệ (tối thiểu 2 ký tự).'
     });
   }
+  const patientNameRegex = /^[\p{L}\s.'-]+$/u;
+  if (!patientNameRegex.test(trimmedName)) {
+    return res.status(400).json({
+      success: false,
+      message: 'Họ tên bệnh nhân chỉ được chứa chữ cái, khoảng trắng, dấu nháy hoặc gạch nối.'
+    });
+  }
 
   // 3. Validation: Định dạng số điện thoại Việt Nam (10 chữ số hợp lệ)
   const phoneRegex = /^0[35789][0-9]{8}$/;
@@ -78,7 +85,7 @@ const bookAppointment = (req, res) => {
   }
   if (email && email.trim().length > 0) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(String(email).trim())) {
+    if (email.trim().length > 254 || !emailRegex.test(email.trim())) {
       return res.status(400).json({
         success: false,
         message: 'Định dạng địa chỉ email không hợp lệ.'
@@ -86,7 +93,21 @@ const bookAppointment = (req, res) => {
     }
   }
 
-  // 5. Kiểm tra Concurrency Lock (Mô phỏng Pessimistic Locking SELECT FOR UPDATE)
+  // 5. Validation: Triệu chứng/lý do khám nếu được cung cấp
+  if (symptoms !== undefined && typeof symptoms !== 'string') {
+    return res.status(400).json({ success: false, message: 'Triệu chứng phải là chuỗi ký tự.' });
+  }
+  const trimmedSymptoms = typeof symptoms === 'string'
+    ? symptoms.trim()
+    : 'Khám tổng quát định kỳ';
+  if (trimmedSymptoms.length < 5 || trimmedSymptoms.length > 1000) {
+    return res.status(400).json({
+      success: false,
+      message: 'Triệu chứng hoặc lý do khám phải có từ 5 đến 1000 ký tự.'
+    });
+  }
+
+  // 6. Kiểm tra Concurrency Lock (Mô phỏng Pessimistic Locking SELECT FOR UPDATE)
   if (activeLocks.has(slotId)) {
     return res.status(409).json({
       success: false,
@@ -133,7 +154,7 @@ const bookAppointment = (req, res) => {
       department: doctor ? doctor.departmentName : 'Đa khoa',
       date: slot.date,
       time: slot.time,
-      symptoms: symptoms || 'Khám tổng quát định kỳ',
+      symptoms: trimmedSymptoms,
       status: 'CONFIRMED',
       createdAt: new Date().toISOString(),
       prescription: null

@@ -6,6 +6,7 @@ import {
   loadClinicProfile, subscribeClinicAppointments, type ClinicProfile, type ClinicAppointment,
 } from '../services/clinicCloud';
 import { clinicAppointmentToItem, clinicPrescriptions, clinicRecord } from '../services/clinicAdapters';
+import type { PatientBookingInfo } from '../utils/bookingValidation';
 import {
   APPOINTMENTS,
   AppointmentItem,
@@ -50,6 +51,10 @@ export interface LatestBookingTicket {
   queueNumber: string;
   consultMode: string;
   paymentMethod: string;
+  patientName?: string;
+  patientPhone?: string;
+  patientEmail?: string;
+  symptoms?: string;
 }
 
 export interface NewDoctorInput {
@@ -99,14 +104,16 @@ interface AppContextValue {
   appointments: AppointmentItem[];
   latestBooking: LatestBookingTicket;
   selectBookingTicket: (appointment: ClinicAppointment) => void;
+  selectAppointmentTicket: (appointment: AppointmentItem) => void;
   createBooking: (params: {
     doctor: DoctorItem;
     day?: DaySlotItem;
     slot?: TimeSlotItem;
     consultMode?: string;
     paymentMethod: string;
+    patientInfo: PatientBookingInfo;
   }) => Promise<LatestBookingTicket>;
-  cancelAppointment: (appointmentId: string) => void;
+  cancelAppointment: (appointmentId: string) => Promise<void>;
   completeAppointment: (appointmentId: string) => void;
 
   // 2. Medication Adherence Log
@@ -276,6 +283,7 @@ const DEFAULT_TICKET: LatestBookingTicket = {
   queueNumber: 'STT #14',
   consultMode: 'clinic',
   paymentMethod: 'at_clinic_bhyt',
+  patientName: PATIENT_PROFILE.name,
 };
 
 const AppContext = createContext<AppContextValue | undefined>(undefined);
@@ -345,6 +353,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
             fullDate: date.toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }),
             timeRange: date.toLocaleTimeString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', hour: '2-digit', minute: '2-digit' }), room: item.room || item.doctor.hospital,
             queueNumber: item.queueNumber || 'Đã xác nhận', consultMode: 'clinic', paymentMethod: activeAppointment.payment_method,
+            patientName: activeAppointment.patient_name,
+            patientPhone: activeAppointment.patient_phone,
+            patientEmail: activeAppointment.patient_email,
+            symptoms: activeAppointment.symptoms,
           });
         } else { setLatestBooking({ ...DEFAULT_TICKET, code: '' }); }
         setPrescriptions(clinicPrescriptions(cloudAppointments));
@@ -464,23 +476,34 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     slot,
     consultMode = 'clinic',
     paymentMethod,
+    patientInfo,
   }: {
     doctor: DoctorItem;
     day?: DaySlotItem;
     slot?: TimeSlotItem;
     consultMode?: string;
     paymentMethod: string;
+    patientInfo: PatientBookingInfo;
   }): Promise<LatestBookingTicket> => {
     const chosenDay = day || BOOKING_DAYS[1];
     const chosenSlot = slot || TIME_SLOTS[3];
     if (CLOUD_MODE) {
       if (consultMode !== 'clinic') throw new Error('Tư vấn từ xa chưa được hỗ trợ trong phiên bản trực tuyến.');
       if (paymentMethod !== 'at_clinic' && paymentMethod !== 'at_clinic_bhyt') throw new Error('Vui lòng chọn thanh toán tại cơ sở y tế.');
-      const appointment = await bookClinicAppointment(doctor, chosenDay, chosenSlot);
+      const appointment = await bookClinicAppointment(
+        doctor,
+        chosenDay,
+        chosenSlot,
+        patientInfo
+      );
       const ticket: LatestBookingTicket = {
         code: appointment.booking_code, doctor, dayLabel: chosenDay.dayLabel, fullDate: chosenDay.fullDate,
         timeRange: chosenSlot.time, room: doctor.hospital,
         queueNumber: 'Đã xác nhận', consultMode: 'clinic', paymentMethod: appointment.payment_method,
+        patientName: appointment.patient_name,
+        patientPhone: appointment.patient_phone,
+        patientEmail: appointment.patient_email,
+        symptoms: appointment.symptoms,
       };
       selectedTicketCode.current = ticket.code;
       setLatestBooking(ticket);
@@ -502,6 +525,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
       queueNumber: isVideo ? `ONLINE #${sttNum}` : `STT #${sttNum}`,
       consultMode,
       paymentMethod,
+      patientName: patientInfo.fullName,
+      patientPhone: patientInfo.phone,
+      patientEmail: patientInfo.email,
+      symptoms: patientInfo.symptoms,
     };
 
     const newApt: AppointmentItem = {
@@ -516,6 +543,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         : `Phòng 302, ${doctor.hospital}`,
       status: 'upcoming',
       mode: isVideo ? 'video' : 'clinic',
+      patientName: patientInfo.fullName,
+      patientPhone: patientInfo.phone,
+      patientEmail: patientInfo.email,
+      symptoms: patientInfo.symptoms,
       statusBadge:
         paymentMethod === 'at_clinic_bhyt'
           ? 'Giữ chỗ BHYT'
@@ -724,6 +755,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
       timeRange: new Date(appointment.starts_at).toLocaleTimeString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', hour: '2-digit', minute: '2-digit' }),
       room: item.room || item.doctor.hospital, queueNumber: item.queueNumber || 'Đã xác nhận',
       consultMode: 'clinic', paymentMethod: appointment.payment_method,
+      patientName: appointment.patient_name,
+      patientPhone: appointment.patient_phone,
+      patientEmail: appointment.patient_email,
+      symptoms: appointment.symptoms,
+    });
+  };
+
+  const selectAppointmentTicket = (appointment: AppointmentItem) => {
+    setLatestBooking({
+      code: appointment.code,
+      doctor: appointment.doctor,
+      dayLabel: 'Ngày khám',
+      fullDate: appointment.dateLabel,
+      timeRange: appointment.timeRange,
+      room: appointment.room || appointment.doctor.hospital,
+      queueNumber: appointment.queueNumber || 'Đã xác nhận',
+      consultMode: appointment.mode === 'video' ? 'video' : 'clinic',
+      paymentMethod:
+        latestBooking.code === appointment.code
+          ? latestBooking.paymentMethod
+          : 'at_clinic_bhyt',
+      patientName: appointment.patientName,
+      patientPhone: appointment.patientPhone,
+      patientEmail: appointment.patientEmail,
+      symptoms: appointment.symptoms,
     });
   };
 
@@ -751,6 +807,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         appointments,
         latestBooking,
         selectBookingTicket,
+        selectAppointmentTicket,
         createBooking,
         cancelAppointment,
         completeAppointment,

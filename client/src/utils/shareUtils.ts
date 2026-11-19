@@ -10,7 +10,9 @@ export async function shareAppointmentTicket(
 ): Promise<void> {
   const { doctor } = ticket;
   const isBHYT = ticket.paymentMethod === 'at_clinic_bhyt';
-  const paymentStatus = isBHYT
+  const paymentStatus = ticket.paymentMethod === 'at_clinic'
+    ? 'Thanh toán tại cơ sở y tế — chưa thu tiền'
+    : isBHYT
     ? 'Giữ chỗ BHYT (Thanh toán & đối chiếu tại viện)'
     : `Đã thanh toán Online (${ticket.doctor.fee})`;
 
@@ -25,6 +27,10 @@ export async function shareAppointmentTicket(
     `• Địa chỉ: ${doctor.address}`,
     `• Thời gian: ${ticket.timeRange} — ${ticket.dayLabel}, ${ticket.fullDate}`,
     `• Phòng khám: ${ticket.room}`,
+    `• Bệnh nhân: ${ticket.patientName || 'Chưa cập nhật'}`,
+    `• Số điện thoại: ${ticket.patientPhone || 'Chưa cập nhật'}`,
+    `• Email: ${ticket.patientEmail || 'Chưa cập nhật'}`,
+    `• Triệu chứng: ${ticket.symptoms || 'Chưa cập nhật'}`,
     `• Thanh toán: ${paymentStatus}`,
     `━━━━━━━━━━━━━━━━━━━━`,
     `📌 Lưu ý: Vui lòng có mặt trước 15 phút và mang theo CCCD gắn chip / VssID để check-in QR tại Kiosk.`,

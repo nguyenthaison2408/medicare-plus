@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { ClinicBookingConfirmationScreen } from './ClinicPatientScreens';
 import {
   View,
   Text,
@@ -18,6 +17,7 @@ import {
 } from '../data/mockData';
 import {
   AppHeader,
+  AppInput,
   DoctorProfileHeaderCard,
   SectionHeader,
   Badge,
@@ -37,6 +37,14 @@ import { shareDoctorProfile } from '../utils/shareUtils';
 import { useAppContext } from '../context/AppContext';
 import { CLOUD_MODE } from '../services/supabaseClient';
 import { listClinicSlots, toClinicStart } from '../services/clinicCloud';
+import {
+  hasPatientBookingErrors,
+  normalizePatientBookingInfo,
+  validatePatientBookingInfo,
+  type PatientBookingErrors,
+  type PatientBookingField,
+  type PatientBookingInfo,
+} from '../utils/bookingValidation';
 
 export interface DoctorDetailScreenProps {
   doctor: DoctorItem;
@@ -444,7 +452,10 @@ export interface BookingPaymentScreenProps {
     meta: string;
   };
   onBack: () => void;
-  onPaymentSuccess: (method: PaymentMethodType) => void | Promise<void>;
+  onPaymentSuccess: (
+    method: PaymentMethodType,
+    patientInfo: PatientBookingInfo
+  ) => void | Promise<void>;
 }
 
 export const BookingPaymentScreen: React.FC<BookingPaymentScreenProps> = ({
@@ -456,13 +467,28 @@ export const BookingPaymentScreen: React.FC<BookingPaymentScreenProps> = ({
   onBack,
   onPaymentSuccess,
 }) => {
+  const { patientProfile } = useAppContext();
   const [selectedMethod, setSelectedMethod] =
     useState<PaymentMethodType>('at_clinic_bhyt');
   const [submitting, setSubmitting] = useState(false);
+  const [patientInfo, setPatientInfo] = useState<PatientBookingInfo>({
+    fullName: patient?.name || patientProfile.name,
+    phone: '',
+    email: '',
+    symptoms: '',
+  });
+  const [patientErrors, setPatientErrors] = useState<PatientBookingErrors>({});
 
   const currentDay = day || BOOKING_DAYS[1];
   const currentSlot = slot || TIME_SLOTS[3];
   const isAtClinic = selectedMethod === 'at_clinic_bhyt';
+
+  const updatePatientField = (field: PatientBookingField, value: string) => {
+    setPatientInfo((current) => ({ ...current, [field]: value }));
+    if (patientErrors[field]) {
+      setPatientErrors((current) => ({ ...current, [field]: undefined }));
+    }
+  };
 
   const paymentOptions = [
     {
@@ -499,7 +525,99 @@ export const BookingPaymentScreen: React.FC<BookingPaymentScreenProps> = ({
     },
   ].filter(option => !CLOUD_MODE || option.id === 'at_clinic_bhyt');
 
-  if (CLOUD_MODE) return <ClinicBookingConfirmationScreen doctor={doctor} day={day} slot={slot} onBack={onBack} onConfirm={() => onPaymentSuccess('at_clinic')} />;
+  const submitBooking = async (method: PaymentMethodType) => {
+    if (submitting || (CLOUD_MODE && (!day || !slot))) return;
+    const errors = validatePatientBookingInfo(patientInfo);
+    setPatientErrors(errors);
+    if (hasPatientBookingErrors(errors)) return;
+    const normalized = normalizePatientBookingInfo(patientInfo);
+    setPatientInfo(normalized);
+    setSubmitting(true);
+    try { await onPaymentSuccess(method, normalized); }
+    finally { setSubmitting(false); }
+  };
+
+  const patientForm = (<AnimatedEntry delay={70} direction="up">
+          <View style={[styles.card, SHADOWS.sm, { marginBottom: 16 }]}>
+            <SectionHeader
+              title="Thông tin bệnh nhân"
+              leftIcon="person-outline"
+            />
+            <Text style={styles.patientFormHint}>
+              Các trường có dấu * là bắt buộc. Thông tin này được dùng để liên hệ và hỗ trợ bác sĩ chuẩn bị cho buổi khám.
+            </Text>
+            <AppInput
+              label="Họ và tên *"
+              leftIcon="person-outline"
+              value={patientInfo.fullName}
+              onChangeText={(value) => updatePatientField('fullName', value)}
+              placeholder="Nguyễn Văn An"
+              autoCapitalize="words"
+              autoComplete="name"
+              maxLength={160}
+              error={patientErrors.fullName}
+            />
+            <AppInput
+              label="Số điện thoại *"
+              leftIcon="call-outline"
+              value={patientInfo.phone}
+              onChangeText={(value) => updatePatientField('phone', value)}
+              placeholder="0912345678"
+              keyboardType="phone-pad"
+              autoComplete="tel"
+              maxLength={14}
+              error={patientErrors.phone}
+            />
+            <AppInput
+              label="Email *"
+              leftIcon="mail-outline"
+              value={patientInfo.email}
+              onChangeText={(value) => updatePatientField('email', value)}
+              placeholder="benhnhan@example.com"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+              autoComplete="email"
+              maxLength={254}
+              error={patientErrors.email}
+            />
+            <AppInput
+              label="Triệu chứng hoặc lý do khám *"
+              leftIcon="document-text-outline"
+              value={patientInfo.symptoms}
+              onChangeText={(value) => updatePatientField('symptoms', value)}
+              placeholder="Mô tả triệu chứng, thời gian xuất hiện và mức độ hiện tại..."
+              multiline
+              numberOfLines={4}
+              maxLength={1000}
+              error={patientErrors.symptoms}
+            />
+            <Text style={styles.characterCount}>
+              {patientInfo.symptoms.length}/1000 ký tự
+            </Text>
+          </View>
+        </AnimatedEntry>);
+
+  if (CLOUD_MODE) return (
+    <View style={styles.screen}>
+      <AppHeader title="Xác nhận lịch khám" onBack={onBack} />
+      <ScrollView contentContainerStyle={styles.scrollPad} keyboardShouldPersistTaps="handled">
+        <View style={[styles.card, SHADOWS.sm, { marginVertical: 14 }]}>
+          <Text style={styles.paymentDocName}>{doctor.name}</Text>
+          <Text style={styles.paymentDocSub}>{doctor.hospital}</Text>
+          <Text style={styles.paymentInfoVal}>Ngày khám: {day?.fullDate || 'Chưa chọn'}</Text>
+          <Text style={styles.paymentInfoVal}>Giờ khám: {slot?.time || 'Chưa chọn'}</Text>
+          <Text style={styles.paymentInfoVal}>Bệnh nhân: {patientInfo.fullName || 'Chưa nhập thông tin'}</Text>
+        </View>
+        {patientForm}
+        <Text style={styles.patientFormHint}>Thanh toán tại cơ sở y tế. Ứng dụng chưa thu tiền; viện phí và quyền lợi BHYT được đối soát tại quầy.</Text>
+      </ScrollView>
+      <StickyBottomBar topLabel="Thanh toán tại cơ sở y tế" topLabelIcon="business-outline"
+        priceLabel="Trạng thái:" priceValue="Chưa thu tiền" buttonTitle="Xác nhận đặt lịch"
+        disabled={submitting || !day || !slot} loading={submitting}
+        onButtonPress={() => submitBooking('at_clinic')} />
+    </View>
+  );
 
   return (
     <View style={styles.screen}>
@@ -552,7 +670,7 @@ export const BookingPaymentScreen: React.FC<BookingPaymentScreenProps> = ({
               <View style={styles.paymentInfoCol}>
                 <Text style={styles.paymentInfoCap}>BỆNH NHÂN</Text>
                 <Text style={styles.paymentInfoVal} numberOfLines={1}>
-                  {patient?.name || PATIENT_PROFILE.name}
+                  {patientInfo.fullName || 'Chưa nhập thông tin'}
                 </Text>
                 <Text style={styles.paymentInfoSub} numberOfLines={1}>
                   {patient?.meta ||
@@ -563,7 +681,9 @@ export const BookingPaymentScreen: React.FC<BookingPaymentScreenProps> = ({
           </View>
         </AnimatedEntry>
 
-        {/* 2. Fee Calculation Breakdown */}
+        {patientForm}
+
+        {/* 3. Fee Calculation Breakdown */}
         <AnimatedEntry delay={90} direction="up">
           <View style={[styles.card, SHADOWS.sm, { marginBottom: 16 }]}>
             <SectionHeader
@@ -604,7 +724,7 @@ export const BookingPaymentScreen: React.FC<BookingPaymentScreenProps> = ({
           </View>
         </AnimatedEntry>
 
-        {/* 3. Multi-Option Payment Selector */}
+        {/* 4. Multi-Option Payment Selector */}
         <AnimatedEntry delay={140} direction="up">
           <SectionHeader title="Chọn phương thức thanh toán" />
 
@@ -673,7 +793,7 @@ export const BookingPaymentScreen: React.FC<BookingPaymentScreenProps> = ({
           </View>
         </AnimatedEntry>
 
-        {/* 4. Dynamic Interactive Instructions Box */}
+        {/* 5. Dynamic Interactive Instructions Box */}
         <AnimatedEntry delay={190} direction="up">
           {isAtClinic ? (
             <View style={[styles.clinicInstructionBox, SHADOWS.sm]}>
@@ -725,7 +845,7 @@ export const BookingPaymentScreen: React.FC<BookingPaymentScreenProps> = ({
         </AnimatedEntry>
       </ScrollView>
 
-      {/* 5. Sticky Bottom Action Bar */}
+      {/* 6. Sticky Bottom Action Bar */}
       <StickyBottomBar
         topLabel={isAtClinic ? 'Thanh toán tại viện với BHYT' : `Cổng thanh toán: ${selectedMethod.toUpperCase()}`}
         topLabelIcon={isAtClinic ? 'business-outline' : 'card-outline'}
@@ -734,12 +854,7 @@ export const BookingPaymentScreen: React.FC<BookingPaymentScreenProps> = ({
         buttonTitle={isAtClinic ? 'Xác nhận đặt lịch' : 'Thanh toán ngay'}
         disabled={submitting}
         loading={submitting}
-        onButtonPress={async () => {
-          if (submitting) return;
-          setSubmitting(true);
-          try { await onPaymentSuccess(selectedMethod); }
-          finally { setSubmitting(false); }
-        }}
+        onButtonPress={() => submitBooking(selectedMethod)}
       />
     </View>
   );
@@ -756,6 +871,18 @@ const styles = StyleSheet.create({
   },
   card: {
     ...LAYOUT.card,
+  },
+  patientFormHint: {
+    color: COLORS.textSecondary,
+    fontSize: TYPOGRAPHY.body,
+    lineHeight: TYPOGRAPHY.lineHeight.relaxed,
+    marginBottom: SPACING.md,
+  },
+  characterCount: {
+    color: COLORS.textMuted,
+    fontSize: TYPOGRAPHY.caption,
+    textAlign: 'right',
+    marginTop: -SPACING.sm,
   },
   locationRow: {
     flexDirection: 'row',

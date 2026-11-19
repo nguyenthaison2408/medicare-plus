@@ -18,6 +18,10 @@ export function clinicAppointmentToItem(appointment: ClinicAppointment): Appoint
     room: doctor.hospital,
     status: appointment.status === 'COMPLETED' ? 'completed' : appointment.status === 'CANCELLED' ? 'cancelled' : 'upcoming',
     mode: 'clinic',
+    patientName: appointment.patient_name,
+    patientPhone: appointment.patient_phone,
+    patientEmail: appointment.patient_email,
+    symptoms: appointment.symptoms,
     statusBadge: appointment.status === 'CHECKED_IN' ? 'Đã có mặt'
       : appointment.status === 'COMPLETED' ? 'Đã hoàn tất khám'
       : appointment.status === 'CANCELLED' ? 'Đã hủy'

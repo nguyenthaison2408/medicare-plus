@@ -36,6 +36,7 @@ try {
   await test('migrations execute on PostgreSQL', async () => {
     await db.exec(fs.readFileSync(new URL('../migrations/202611190001_clinic_core.sql',import.meta.url),'utf8'));
     await db.exec(fs.readFileSync(new URL('../migrations/202611190002_demo_catalog_alignment.sql',import.meta.url),'utf8'));
+    await db.exec(fs.readFileSync(new URL('../migrations/202611190003_booking_patient_details.sql',import.meta.url),'utf8'));
   });
   for(const [name,id] of Object.entries(ids)) {
     await db.query('insert into auth.users(id,raw_user_meta_data) values($1,$2)',[
@@ -65,8 +66,26 @@ try {
   });
   const future = (await db.query("select (((now() at time zone 'Asia/Ho_Chi_Minh')::date+1)+time '09:00') at time zone 'Asia/Ho_Chi_Minh' as value")).rows[0].value;
   await test('a patient can create a booking through the RPC', async () => {
-    appointment = (await db.query('select public.clinic_book_appointment($1,$2) as result',['doc-1',future])).rows[0].result;
+    appointment = (await db.query('select public.clinic_book_appointment($1,$2,$3,$4,$5,$6,$7) as result',[
+      'doc-1',future,'at_clinic','Nguyen Van A','0988776655','patient-a@example.com','Đau đầu kéo dài hai ngày',
+    ])).rows[0].result;
     assert.equal(appointment.patient_id,ids.a); assert.equal(appointment.payment_status,'UNPAID');
+    assert.equal(appointment.patient_name,'Nguyen Van A'); assert.equal(appointment.patient_email,'patient-a@example.com');
+    assert.equal(appointment.symptoms,'Đau đầu kéo dài hai ngày');
+  });
+  await test('invalid booking contact details are rejected by PostgreSQL', async () => {
+    const valid=['doc-2',future,'at_clinic','Nguyễn Văn An','0988776655','patient@example.com','Đau đầu kéo dài'];
+    for(const [index,value] of [[3,'A'],[3,'Patient 123'],[3,''],[4,'123'],[4,''],[5,'invalid-email'],[5,''],[5,'a'.repeat(255)+'@example.com'],[6,'Đau'],[6,''],[6,null],[6,'x'.repeat(1001)]]) {
+      const args=[...valid];args[index]=value;
+      await expectCode(()=>db.query('select public.clinic_book_appointment($1,$2,$3,$4,$5,$6,$7)',args),'22023');
+    }
+  });
+  await test('Vietnamese patient names and explicit contact details persist', async () => {
+    const result=(await db.query('select public.clinic_book_appointment($1,$2,$3,$4,$5,$6,$7) as result',[
+      'doc-2',future,'at_clinic','Nguyễn Văn An','090.123.4567',' Patient+tag@Example.com ','Đau đầu kéo dài',
+    ])).rows[0].result;
+    assert.equal(result.patient_name,'Nguyễn Văn An');assert.equal(result.patient_phone,'0901234567');
+    assert.equal(result.patient_email,'patient+tag@example.com');
   });
   await test('patients cannot insert appointments directly', async () => expectCode(()=>db.query('insert into public.clinic_appointments default values'),'42501'));
   await asUser(ids.b);
@@ -82,9 +101,13 @@ try {
   await test('cancelling releases the slot for a different patient', async () => {
     replacement = (await db.query('select public.clinic_book_appointment($1,$2) as result',['doc-1',future])).rows[0].result;
     assert.equal(replacement.patient_id,ids.b);
+    assert.equal(replacement.patient_email,'');
   });
   await asUser(ids.otherDoctor);
-  await test('a doctor cannot read another doctor appointments', async () => assert.equal((await db.query('select * from public.clinic_appointments')).rows.length,0));
+  await test('a doctor sees assigned bookings but not another doctor booking', async () => {
+    assert.equal((await db.query('select id from public.clinic_appointments where id=$1',[replacement.id])).rows.length,0);
+    assert.equal((await db.query("select id from public.clinic_appointments where doctor_id='doc-2'")).rows.length,1);
+  });
   await asUser(ids.reception);
   await test('reception cannot check in tomorrow appointments today', async () => expectCode(()=>db.query('select public.clinic_check_in($1)',[replacement.booking_code]),'22023'));
   await asUser(ids.b);

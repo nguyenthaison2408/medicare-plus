@@ -81,10 +81,9 @@ export const BookingSuccessScreen: React.FC<{
             </AnimatedSuccessBadge>
             <Text style={styles.heroTitle}>Đặt lịch khám thành công!</Text>
             <Text style={styles.heroSub}>
-              {CLOUD_MODE ? 'Lịch hẹn đã được lưu. Mang mã QR này đến quầy tiếp đón vào đúng ngày khám.' : <>Phiếu hẹn của bạn đã được xác nhận. Tin nhắn SMS và thông báo nhắc
-              nhở đã được gửi tới số{' '}
+              {CLOUD_MODE ? 'Lịch hẹn đã được lưu. Mang mã QR này đến quầy tiếp đón vào đúng ngày khám.' : <>Phiếu hẹn của bạn đã được xác nhận. Thông tin liên hệ:{' '}
               <Text style={{ fontWeight: '800', color: COLORS.primary }}>
-                0912 345 678
+                {latestBooking.patientPhone || 'Chưa cập nhật'}
               </Text>
               .</>}
             </Text>
@@ -197,7 +196,41 @@ export const BookingSuccessScreen: React.FC<{
           </View>
         </AnimatedEntry>
 
-        {/* Section 3: High-speed QR Fast Check-in Module */}
+        {/* Section 3: Patient details */}
+        <AnimatedEntry delay={140} direction="up">
+          <View style={[styles.card, SHADOWS.sm]}>
+            <SectionHeader
+              title="Thông tin bệnh nhân"
+              leftIcon="person-outline"
+            />
+            <View style={styles.patientDetailRow}>
+              <Text style={styles.patientDetailLabel}>Họ và tên</Text>
+              <Text style={styles.patientDetailValue}>
+                {latestBooking.patientName || 'Chưa cập nhật'}
+              </Text>
+            </View>
+            <View style={styles.patientDetailRow}>
+              <Text style={styles.patientDetailLabel}>Số điện thoại</Text>
+              <Text style={styles.patientDetailValue} selectable>
+                {latestBooking.patientPhone || 'Chưa cập nhật'}
+              </Text>
+            </View>
+            <View style={styles.patientDetailRow}>
+              <Text style={styles.patientDetailLabel}>Email</Text>
+              <Text style={styles.patientDetailValue} selectable>
+                {latestBooking.patientEmail || 'Chưa cập nhật'}
+              </Text>
+            </View>
+            <View style={[styles.patientDetailRow, { alignItems: 'flex-start' }]}>
+              <Text style={styles.patientDetailLabel}>Triệu chứng</Text>
+              <Text style={styles.patientDetailValue}>
+                {latestBooking.symptoms || 'Chưa cập nhật'}
+              </Text>
+            </View>
+          </View>
+        </AnimatedEntry>
+
+        {/* Section 4: High-speed QR Fast Check-in Module */}
         <AnimatedEntry delay={170} direction="up">
           <View style={[styles.cardCenter, SHADOWS.sm]}>
             <Badge
@@ -1390,6 +1423,28 @@ const styles = StyleSheet.create({
   scrollPad: { padding: SPACING.md, paddingBottom: 32 },
   card: {
     ...LAYOUT.card,
+  },
+  patientDetailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.md,
+    paddingVertical: SPACING.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.divider,
+  },
+  patientDetailLabel: {
+    width: 96,
+    flexShrink: 0,
+    fontSize: TYPOGRAPHY.size.xs,
+    fontWeight: '700',
+    color: COLORS.textSecondary,
+  },
+  patientDetailValue: {
+    flex: 1,
+    fontSize: TYPOGRAPHY.size.sm,
+    lineHeight: TYPOGRAPHY.lineHeight.normal,
+    color: COLORS.textPrimary,
+    fontWeight: '600',
   },
   cardCenter: {
     ...LAYOUT.card,

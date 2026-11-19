@@ -15,6 +15,7 @@ export interface HorizontalDateSelectorProps {
   days: DaySlotItem[];
   selectedDayId: string;
   onSelectDay: (id: string) => void;
+  showAvailabilityCounts?: boolean;
   style?: ViewStyle;
 }
 
@@ -22,6 +23,7 @@ export const HorizontalDateSelector: React.FC<HorizontalDateSelectorProps> = ({
   days,
   selectedDayId,
   onSelectDay,
+  showAvailabilityCounts = true,
   style,
 }) => {
   return (
@@ -54,7 +56,7 @@ export const HorizontalDateSelector: React.FC<HorizontalDateSelectorProps> = ({
             activeScale={0.94}
             onPress={() => onSelectDay(day.id)}
             accessibilityRole="button"
-            accessibilityLabel={`${day.dayLabel}, ngày ${day.dateNumber}, Còn ${day.slotsAvailable} chỗ`}
+            accessibilityLabel={`${day.dayLabel}, ngày ${day.dateNumber}${showAvailabilityCounts ? `, Còn ${day.slotsAvailable} chỗ` : ''}`}
             accessibilityState={{ selected: isSelected }}
           >
             <View
@@ -84,14 +86,14 @@ export const HorizontalDateSelector: React.FC<HorizontalDateSelectorProps> = ({
               >
                 {day.dateNumber}
               </Text>
-              <Text
+              {showAvailabilityCounts && <Text
                 style={[
                   styles.slotsStatus,
                   isSelected && styles.slotsStatusSelected,
                 ]}
               >
                 Còn {day.slotsAvailable} chỗ
-              </Text>
+              </Text>}
             </View>
           </PressableScale>
         );

@@ -1,4 +1,11 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import { Alert } from 'react-native';
+import { CLOUD_MODE, getSupabase } from '../services/supabaseClient';
+import {
+  bookClinicAppointment, cancelClinicAppointment, listClinicAppointments,
+  loadClinicProfile, subscribeClinicAppointments, type ClinicProfile, type ClinicAppointment,
+} from '../services/clinicCloud';
+import { clinicAppointmentToItem, clinicPrescriptions, clinicRecord } from '../services/clinicAdapters';
 import {
   APPOINTMENTS,
   AppointmentItem,
@@ -91,13 +98,14 @@ interface AppContextValue {
   // 1. Appointments & Booking
   appointments: AppointmentItem[];
   latestBooking: LatestBookingTicket;
+  selectBookingTicket: (appointment: ClinicAppointment) => void;
   createBooking: (params: {
     doctor: DoctorItem;
     day?: DaySlotItem;
     slot?: TimeSlotItem;
     consultMode?: string;
     paymentMethod: string;
-  }) => LatestBookingTicket;
+  }) => Promise<LatestBookingTicket>;
   cancelAppointment: (appointmentId: string) => void;
   completeAppointment: (appointmentId: string) => void;
 
@@ -140,6 +148,7 @@ interface AppContextValue {
   togglePiiMask: () => void;
   patientProfile: typeof PATIENT_PROFILE;
   isHydrated: boolean;
+  cloudSyncError: string;
   resetAppData: () => Promise<void>;
 }
 
@@ -275,21 +284,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const [appointments, setAppointments] =
-    useState<AppointmentItem[]>(INITIAL_APPOINTMENTS);
+    useState<AppointmentItem[]>(CLOUD_MODE ? [] : INITIAL_APPOINTMENTS);
   const [latestBooking, setLatestBooking] =
-    useState<LatestBookingTicket>(DEFAULT_TICKET);
+    useState<LatestBookingTicket>(CLOUD_MODE ? { ...DEFAULT_TICKET, code: '' } : DEFAULT_TICKET);
+  const selectedTicketCode = useRef<string | null>(null);
   const [takenMap, setTakenMap] = useState<Record<string, boolean>>({
     morning: true,
     afternoon: true,
     evening: false,
   });
   const [familyMembers, setFamilyMembers] = useState<FamilyMemberItem[]>(
-    INITIAL_FAMILY_MEMBERS
+    CLOUD_MODE ? [] : INITIAL_FAMILY_MEMBERS
   );
   const [prescriptions, setPrescriptions] =
-    useState<PrescriptionDrug[]>(PRESCRIPTION_DRUGS);
+    useState<PrescriptionDrug[]>(CLOUD_MODE ? [] : PRESCRIPTION_DRUGS);
   const [diagnosisNote, setDiagnosisNote] = useState<string>(
-    'Đau đầu căng thẳng (Tension headache) / Rối loạn vận mạch não nhẹ'
+    CLOUD_MODE ? '' : 'Đau đầu căng thẳng (Tension headache) / Rối loạn vận mạch não nhẹ'
   );
   const [doctors, setDoctors] = useState<DoctorItem[]>(DOCTORS);
   const [hospitals, setHospitals] = useState<HospitalItem[]>(HOSPITALS);
@@ -299,11 +309,77 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     INITIAL_DOCTOR_REVIEWS
   );
   const [isPiiMasked, setIsPiiMasked] = useState<boolean>(true);
-  const [isHydrated, setIsHydrated] = useState<boolean>(false);
-  const hydratedRef = useRef<boolean>(false);
+  const [isHydrated, setIsHydrated] = useState<boolean>(CLOUD_MODE);
+  const hydratedRef = useRef<boolean>(CLOUD_MODE);
+  const [cloudProfile, setCloudProfile] = useState<ClinicProfile | null>(null);
+  const [cloudSyncError, setCloudSyncError] = useState('');
+
+  useEffect(() => {
+    if (!CLOUD_MODE) return;
+    let mounted = true;
+    let generation = 0;
+    let userId: string | undefined;
+    const refresh = async () => {
+      const request = ++generation;
+      try {
+        const supabase = getSupabase();
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!mounted || request !== generation) return;
+        if (!session) {
+          setAppointments([]); setPrescriptions([]); setCloudProfile(null); setDiagnosisNote(''); setCloudSyncError('');
+          setLatestBooking({ ...DEFAULT_TICKET, code: '' });
+          return;
+        }
+        const [profile, cloudAppointments] = await Promise.all([loadClinicProfile(), listClinicAppointments()]);
+        if (!mounted || request !== generation) return;
+        setCloudProfile(profile);
+        setAppointments(cloudAppointments.map(clinicAppointmentToItem));
+        const activeAppointments = cloudAppointments.filter(appointment => appointment.status === 'CONFIRMED' || appointment.status === 'CHECKED_IN');
+        const activeAppointment = activeAppointments.find(appointment => appointment.booking_code === selectedTicketCode.current) || activeAppointments[0];
+        if (activeAppointment) {
+          const item = clinicAppointmentToItem(activeAppointment);
+          const date = new Date(activeAppointment.starts_at);
+          setLatestBooking({
+            code: item.code, doctor: item.doctor,
+            dayLabel: date.toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', weekday: 'long' }),
+            fullDate: date.toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }),
+            timeRange: date.toLocaleTimeString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', hour: '2-digit', minute: '2-digit' }), room: item.room || item.doctor.hospital,
+            queueNumber: item.queueNumber || 'Đã xác nhận', consultMode: 'clinic', paymentMethod: activeAppointment.payment_method,
+          });
+        } else { setLatestBooking({ ...DEFAULT_TICKET, code: '' }); }
+        setPrescriptions(clinicPrescriptions(cloudAppointments));
+        setDiagnosisNote(cloudAppointments.map(clinicRecord).find(Boolean)?.diagnosis || 'Chưa có chẩn đoán được bác sĩ lưu.');
+        setCloudSyncError('');
+      } catch (error) {
+        if (mounted && request === generation) setCloudSyncError(error instanceof Error ? error.message : 'Không tải được dữ liệu trực tuyến.');
+      }
+    };
+    let unsubscribeChanges = () => {};
+    let unsubscribeAuth = () => {};
+    try {
+      const { data: { subscription } } = getSupabase().auth.onAuthStateChange((_event, session) => {
+        generation++;
+        if (userId !== session?.user.id) {
+          userId = session?.user.id;
+          selectedTicketCode.current = null;
+          setAppointments([]); setPrescriptions([]); setCloudProfile(null); setDiagnosisNote('');
+          setLatestBooking({ ...DEFAULT_TICKET, code: '' });
+        }
+        // Avoid Supabase calls inside its auth event callback.
+        setTimeout(() => { if (mounted) void refresh(); }, 0);
+      });
+      unsubscribeAuth = () => subscription.unsubscribe();
+      unsubscribeChanges = subscribeClinicAppointments(() => { void refresh(); });
+    } catch (error) {
+      setTimeout(() => { if (mounted) setCloudSyncError(error instanceof Error ? error.message : 'Chưa kết nối dữ liệu.'); }, 0);
+    }
+    void refresh();
+    return () => { mounted = false; generation++; unsubscribeAuth(); unsubscribeChanges(); };
+  }, []);
 
   // 1. Khôi phục dữ liệu đã lưu trong AsyncStorage khi mở ứng dụng
   useEffect(() => {
+    if (CLOUD_MODE) return;
     let mounted = true;
     storageService.loadPersistedState().then((saved) => {
       if (!mounted) return;
@@ -352,6 +428,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
 
   // 2. Tự động lưu mọi thay đổi xuống AsyncStorage
   useEffect(() => {
+    if (CLOUD_MODE) return;
     if (!hydratedRef.current) return;
     storageService.savePersistedState({
       appointments,
@@ -381,7 +458,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     hospitals,
   ]);
 
-  const createBooking = ({
+  const createBooking = async ({
     doctor,
     day,
     slot,
@@ -393,9 +470,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     slot?: TimeSlotItem;
     consultMode?: string;
     paymentMethod: string;
-  }): LatestBookingTicket => {
+  }): Promise<LatestBookingTicket> => {
     const chosenDay = day || BOOKING_DAYS[1];
     const chosenSlot = slot || TIME_SLOTS[3];
+    if (CLOUD_MODE) {
+      if (consultMode !== 'clinic') throw new Error('Tư vấn từ xa chưa được hỗ trợ trong phiên bản trực tuyến.');
+      if (paymentMethod !== 'at_clinic' && paymentMethod !== 'at_clinic_bhyt') throw new Error('Vui lòng chọn thanh toán tại cơ sở y tế.');
+      const appointment = await bookClinicAppointment(doctor, chosenDay, chosenSlot);
+      const ticket: LatestBookingTicket = {
+        code: appointment.booking_code, doctor, dayLabel: chosenDay.dayLabel, fullDate: chosenDay.fullDate,
+        timeRange: chosenSlot.time, room: doctor.hospital,
+        queueNumber: 'Đã xác nhận', consultMode: 'clinic', paymentMethod: appointment.payment_method,
+      };
+      selectedTicketCode.current = ticket.code;
+      setLatestBooking(ticket);
+      setAppointments(prev => [clinicAppointmentToItem(appointment), ...prev.filter(item => item.id !== appointment.id)]);
+      return ticket;
+    }
     const randNum = Math.floor(1000 + Math.random() * 8999);
     const sttNum = Math.floor(15 + Math.random() * 20);
     const code = `#SC-2411-${randNum}`;
@@ -437,7 +528,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     return newTicket;
   };
 
-  const cancelAppointment = (appointmentId: string) => {
+  const cancelAppointment = async (appointmentId: string) => {
+    if (CLOUD_MODE) {
+      try { await cancelClinicAppointment(appointmentId); }
+      catch (error) { Alert.alert('Chưa hủy được lịch', error instanceof Error ? error.message : 'Vui lòng thử lại.'); return; }
+    }
     setAppointments((prev) =>
       prev.map((apt) =>
         apt.id === appointmentId
@@ -450,10 +545,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
           : apt
       )
     );
-    bookingService.syncCancelAppointment(appointmentId);
+    if (!CLOUD_MODE) bookingService.syncCancelAppointment(appointmentId);
   };
 
   const completeAppointment = (appointmentId: string) => {
+    if (CLOUD_MODE) { Alert.alert('Hoàn thành khám', 'Vui lòng lưu chẩn đoán và đơn thuốc trong bàn khám bác sĩ.'); return; }
     setAppointments((prev) =>
       prev.map((apt) =>
         apt.id === appointmentId
@@ -619,7 +715,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     setIsPiiMasked((prev) => !prev);
   };
 
+  const selectBookingTicket = (appointment: ClinicAppointment) => {
+    const item = clinicAppointmentToItem(appointment);
+    selectedTicketCode.current = item.code;
+    setLatestBooking({
+      code: item.code, doctor: item.doctor, dayLabel: 'Ngày khám',
+      fullDate: new Date(appointment.starts_at).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }),
+      timeRange: new Date(appointment.starts_at).toLocaleTimeString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', hour: '2-digit', minute: '2-digit' }),
+      room: item.room || item.doctor.hospital, queueNumber: item.queueNumber || 'Đã xác nhận',
+      consultMode: 'clinic', paymentMethod: appointment.payment_method,
+    });
+  };
+
   const resetAppData = async () => {
+    if (CLOUD_MODE) { Alert.alert('Dữ liệu trực tuyến', 'Chức năng khôi phục dữ liệu mẫu chỉ áp dụng trong chế độ minh họa.'); return; }
     await storageService.resetAllData();
     setAppointments(INITIAL_APPOINTMENTS);
     setLatestBooking(DEFAULT_TICKET);
@@ -641,6 +750,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
       value={{
         appointments,
         latestBooking,
+        selectBookingTicket,
         createBooking,
         cancelAppointment,
         completeAppointment,
@@ -663,8 +773,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         addDoctorReview,
         isPiiMasked,
         togglePiiMask,
-        patientProfile: PATIENT_PROFILE,
+        patientProfile: CLOUD_MODE ? {
+          ...PATIENT_PROFILE, name: cloudProfile?.full_name || 'Bệnh nhân',
+          patientCode: cloudProfile?.id || '', age: 0, gender: 'Chưa cập nhật', bloodType: 'Chưa cập nhật',
+          tier: 'Hồ sơ trực tuyến', emergencyContact: '', bhytCode: '', bhytHospital: '', bhytExpiry: '', vitals: [],
+        } : PATIENT_PROFILE,
         isHydrated,
+        cloudSyncError,
         resetAppData,
       }}
     >

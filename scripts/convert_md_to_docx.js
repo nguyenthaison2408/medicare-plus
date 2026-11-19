@@ -788,7 +788,7 @@ function createFinalReportCoverPage() {
         new TextRun({ text: '1. Nguyễn Thái Sơn   ', font: FONT_PRIMARY, bold: true, size: 24 }),
         new TextRun({ text: '— MSV: ', font: FONT_PRIMARY, size: 24 }),
         new TextRun({ text: '23IT.EB086', font: FONT_PRIMARY, bold: true, size: 24 }),
-        new TextRun({ text: ' (Project Lead / Scrum Master — Đóng góp 25%)', font: FONT_PRIMARY, size: 23, color: COLOR_MUTED })
+        new TextRun({ text: ' (Project Lead / Scrum Master — Đóng góp 40%)', font: FONT_PRIMARY, size: 23, color: COLOR_MUTED })
       ]
     }),
     new Paragraph({
@@ -798,7 +798,7 @@ function createFinalReportCoverPage() {
         new TextRun({ text: '2. Vi Hữu Thành       ', font: FONT_PRIMARY, bold: true, size: 24 }),
         new TextRun({ text: '— MSV: ', font: FONT_PRIMARY, size: 24 }),
         new TextRun({ text: '23IT.EB096', font: FONT_PRIMARY, bold: true, size: 24 }),
-        new TextRun({ text: ' (Technical Lead / System Architect — Đóng góp 25%)', font: FONT_PRIMARY, size: 23, color: COLOR_MUTED })
+        new TextRun({ text: ' (Technical Lead / System Architect — Đóng góp 20%)', font: FONT_PRIMARY, size: 23, color: COLOR_MUTED })
       ]
     }),
     new Paragraph({
@@ -808,7 +808,7 @@ function createFinalReportCoverPage() {
         new TextRun({ text: '3. Đặng Thanh Vũ     ', font: FONT_PRIMARY, bold: true, size: 24 }),
         new TextRun({ text: '— MSV: ', font: FONT_PRIMARY, size: 24 }),
         new TextRun({ text: '23IT.EB120', font: FONT_PRIMARY, bold: true, size: 24 }),
-        new TextRun({ text: ' (Backend Engineer — Đóng góp 25%)', font: FONT_PRIMARY, size: 23, color: COLOR_MUTED })
+        new TextRun({ text: ' (Backend Engineer — Đóng góp 20%)', font: FONT_PRIMARY, size: 23, color: COLOR_MUTED })
       ]
     }),
     new Paragraph({
@@ -818,7 +818,7 @@ function createFinalReportCoverPage() {
         new TextRun({ text: '4. Nguyễn Từ Anh Nguyên ', font: FONT_PRIMARY, bold: true, size: 24 }),
         new TextRun({ text: '— MSV: ', font: FONT_PRIMARY, size: 24 }),
         new TextRun({ text: '23IT.EB064', font: FONT_PRIMARY, bold: true, size: 24 }),
-        new TextRun({ text: ' (Frontend / QA Engineer — Đóng góp 25%)', font: FONT_PRIMARY, size: 23, color: COLOR_MUTED })
+        new TextRun({ text: ' (Frontend / QA Engineer — Đóng góp 20%)', font: FONT_PRIMARY, size: 23, color: COLOR_MUTED })
       ]
     }),
 
@@ -1047,7 +1047,11 @@ async function run() {
   console.log(`All Word documents generated successfully!`);
 }
 
+if (require.main === module) {
 run().catch(err => {
   console.error('Error during conversion:', err);
   process.exit(1);
 });
+
+}
+module.exports = { convertFile };

@@ -1,0 +1,5 @@
+export function summarize(data,title,limitation){
+  const rows=Object.entries(data.metrics).map(([name,metric])=>`<tr><td>${name}</td><td>${Object.entries(metric.values).filter(([key])=>name!=='http_req_failed'||key==='rate').map(([key,value])=>`${key}: ${name==='http_req_failed'?(Number(value)*100).toFixed(3)+'%':Number(value).toFixed(3)}`).join('<br>')}</td><td>${Object.entries(metric.thresholds||{}).map(([rule,result])=>`${rule}: ${result.ok?'PASS':'FAIL'}`).join('<br>')}</td></tr>`).join('');
+  return {[`${__ENV.OUTPUT_BASE}.json`]:JSON.stringify({title,limitation,recordedAt:new Date().toISOString(),...data},null,2),
+    [`${__ENV.OUTPUT_BASE}.html`]:`<!doctype html><meta charset="utf-8"><title>${title}</title><style>body{font:16px system-ui;max-width:1100px;margin:30px auto;padding:20px}table{border-collapse:collapse;width:100%}td,th{border:1px solid #ccc;padding:10px;text-align:left}th{background:#edf4ff}</style><h1>${title}</h1><p>${limitation}</p><p>${new Date().toISOString()}</p><table><tr><th>Metric</th><th>Measured values</th><th>Threshold</th></tr>${rows}</table>`};
+}

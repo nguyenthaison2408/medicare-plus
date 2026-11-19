@@ -1,122 +1,47 @@
-# 🏥 MediCare Plus — Nền Tảng Quản Lý Phòng Khám & Đặt Lịch Khám Trực Tuyến
+# MediCare Plus / SmartClinic
 
-[![CI/CD Pipeline](https://github.com/nguyenthaison2408/medicare-plus/actions/workflows/ci.yml/badge.svg)](https://github.com/nguyenthaison2408/medicare-plus/actions)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Branch Protection](https://img.shields.io/badge/Branch%20Protection-Enabled-success)](https://github.com/nguyenthaison2408/medicare-plus)
-[![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-yellow.svg)](https://conventionalcommits.org)
+Đồ án Quản trị dự án phần mềm — VKU. Giảng viên: TS. Nguyễn Thanh Tuấn. Pathway 1: kế thừa ứng dụng đa nền tảng SmartClinic. Hạn báo cáo nhóm xác nhận: **23/11/2026**.
 
-**Đồ án Môn học:** Quản Trị Dự Án Phần Mềm (Software Project Management - SPM)  
-**Đơn vị đào tạo:** Khoa Khoa học Máy tính — Trường Đại học Công nghệ Thông tin & Truyền thông Việt - Hàn (VKU)  
-**Giảng viên phụ trách:** TS. Nguyễn Thanh Tuấn  
-**Pathway:** Pathway 1 — Kế thừa / Song hành Đồ án Chuyên ngành (Web Engineering & Cross-Platform Mobile)  
-**Mô hình phát triển:** Agile / Scrum (5 Sprints, GitHub Projects & GitHub Actions)
+## Trạng thái được kiểm tra
 
----
+- Client: Expo SDK 58, React Native 0.88, TypeScript; giao diện web và di động.
+- API Express hiện có sử dụng bộ nhớ trong một tiến trình để chạy demo.
+- Đã tạo Supabase project medicare-plus (Free, Singapore), áp dụng hai migration và kiểm thử Auth, PostgreSQL/RLS, Realtime cùng luồng đặt lịch/tiếp đón/bệnh án trên dịch vụ thật.
+- Chế độ minh họa giữ dữ liệu cục bộ. Chế độ Supabase chỉ xác nhận giao dịch khi cơ sở dữ liệu xử lý thành công.
+- Email thông báo và Redis đã được PM đồng ý hoãn. Thanh toán online, video call, BHYT/eKYC và các tiện ích chưa tích hợp được tách khỏi luồng cloud đã kiểm chứng.
+- Kết quả hiện có: 26 API + 27 SQL + 26 cloud checks; k6 tra cứu 100 VU/30 giây đạt p95 137,53 ms, lỗi HTTP 0%; k6 tranh chấp slot có 1 thành công và 49 xung đột dự kiến. Chưa thay thế UAT/kiểm tra camera.
 
-## 🎯 1. Giới Thiệu Dự Án (Project Overview)
-**MediCare Plus** là giải pháp chuyển đổi số toàn diện cho quy trình tiếp đón và khám bệnh tại các phòng khám:
-* 🩺 **Cổng Đặt Lịch Bệnh Nhân (Patient Web Portal):** Tìm kiếm bác sĩ theo chuyên khoa, đặt hẹn theo khung giờ trống 15 phút, giải quyết triệt để lỗi xung đột lịch (Double-booking) bằng cơ chế khóa dòng CSDL (Pessimistic Row-level Locking).
-* 📱 **Tiếp Đón Nhanh Bằng Mã QR (Reception QR Check-in):** Check-in tiếp đón bệnh nhân tại quầy trong dưới 3 giây bằng mã QR điện tử.
-* 📋 **Dashboard Bác Sĩ & Bệnh Án Điện Tử (Doctor Console & EMR):** Quản lý hàng đợi khám bệnh thời gian thực, lưu trữ tiền sử bệnh án, chẩn đoán ICD-10 và kê đơn thuốc điện tử.
-* 🔔 **Hệ Thống Tự Động Hóa Thông Báo (Notification Engine):** Gửi email xác nhận đặt hẹn và thông báo nhắc lịch tự động.
+## Nhóm
 
----
+| Thành viên | MSV | Vai trò | Phân bổ đã thống nhất |
+|---|---|---|---|
+| Nguyễn Thái Sơn | 23IT.EB086 | PM / Scrum Master | 40% |
+| Vi Hữu Thành | 23IT.EB096 | Tech Lead / Architect | 20% |
+| Đặng Thanh Vũ | 23IT.EB120 | Backend | 20% |
+| Nguyễn Từ Anh Nguyên | 23IT.EB064 | Frontend / QA | 20% |
 
-## 🚀 2. Hệ Sinh Thái Bằng Chứng Thực Tế (Authentic Deliverables)
-* 🌐 **Production Patient Portal:** [https://medicare-plus.vercel.app](https://medicare-plus.vercel.app)
-* 👨‍⚕️ **Production Admin / Doctor Dashboard:** [https://medicare-admin.vercel.app](https://medicare-admin.vercel.app)
-* 📡 **Production API Documentation:** [https://api.medicare-plus.tech/docs](https://api.medicare-plus.tech/docs)
-* 📊 **GitHub Projects Board:** [https://github.com/orgs/vku-spm-medicare/projects/1](https://github.com/orgs/vku-spm-medicare/projects/1)
-* 📁 **Thư mục Google Drive Hồ sơ Đồ án:** [Drive Folder](https://drive.google.com/drive/folders/1A2b3C4d5E6f_VKU_MEDICARE_EVIDENCE_PKG?usp=sharing)
+## Chạy và kiểm tra
 
----
+Yêu cầu Node.js 22.13+ trong dòng 22, hoặc 24.3+ trong dòng 24. Cài các dependency bằng npm ci ở thư mục gốc, server và client.
 
-## 👥 3. Cơ Cấu Tổ Chức & 4 Vai Trò Kỹ Thuật Chuẩn
-| Họ và Tên | Mã Sinh Viên | Vai Trò Chuẩn Công Nghiệp | Trách Nhiệm Chính | Tỷ Lệ Đóng Góp |
-| :--- | :---: | :--- | :--- | :---: |
-| **Nguyễn Thái Sơn** | **23IT.EB086** | **Project Lead / PM / Scrum Master** | Điều phối dự án, quản lý GitHub Projects Board, kiểm soát phạm vi (Scope) và rủi ro | **25%** |
-| **Vi Hữu Thành** | **23IT.EB096** | **Technical Lead / System Architect** | Thiết kế kiến trúc CSDL PostgreSQL, thiết lập CI/CD GitHub Actions, duyệt PR | **25%** |
-| **Đặng Thanh Vũ** | **23IT.EB120** | **Backend Engineer** | REST API, xử lý Race condition locking, xác thực JWT & RBAC | **25%** |
-| **Nguyễn Từ Anh Nguyên** | **23IT.EB064** | **Frontend / Mobile & QA Engineer** | Xây dựng giao diện Web/Mobile, thiết kế Test Matrix, kiểm thử DoD & UAT | **25%** |
+- npm run dev:server — API demo tại http://localhost:5000/api/v1.
+- npm run dev:client — Expo Web, địa chỉ do Expo hiển thị.
+- npm test — kiểm thử PostgreSQL nhúng/RLS và API demo.
+- npm --prefix client run lint — kiểm tra lint.
+- npm --prefix client run typecheck — kiểm tra TypeScript.
+- npm run build — xuất web vào client/dist.
+- npm run preview:web — mở bản web đã build tại http://127.0.0.1:4173 (cần Internet để truy cập Supabase).
+- npm run test:cloud — kiểm thử project thật bằng tài khoản giả và dọn fixture; cần cấu hình riêng của chủ project.
 
----
+Phần Supabase: xem [hướng dẫn cấu hình](supabase/README.md) và client/.env.example. Publishable key có thể dùng trong client; mật khẩu CSDL và service-role key không được đặt ở đó.
 
-## 🛠️ 4. Kiến Trúc Kỹ Thuật (Tech Stack)
-* **Frontend:** React 18, Vite, Tailwind CSS, Lucide Icons, QR Code Generator.
-* **Backend:** Node.js / Express REST API, CORS, Helmet, JWT Authentication, JSON Schema Validation.
-* **Database & Concurrency:** PostgreSQL / In-Memory State Engine với Transaction Lock chống Double-booking.
-* **Testing & Quality:** Jest, Supertest, ESLint, Prettier, k6 Load Testing.
-* **DevOps & CI/CD:** GitHub Actions, Docker, Vercel, Render.
+## Quản lý dự án và bằng chứng
 
----
+- [Repository](https://github.com/nguyenthaison2408/medicare-plus)
+- [Scrum Board](https://github.com/users/nguyenthaison2408/projects/1/views/1)
+- [Bảng đối chiếu 19 thẻ, lịch và hạn báo cáo](docs/09_Implementation_Audit.md)
+- [Kịch bản demo và tổng duyệt](docs/11_Demo_Runbook_20261123.md)
+- [Báo cáo kỹ thuật cập nhật — bản thảo](docs/12_Technical_Report_Current_Draft.md)
+- [Bảng rủi ro Excel hiện tại](docs/10_Risk_Register_Current.xlsx)
 
-## 📁 5. Cấu Trúc Mã Nguồn (Repository Structure)
-```text
-medicare-plus/
-├── .github/
-│   ├── workflows/ci.yml           # Đường ống tự động hóa kiểm thử & build CI/CD
-│   ├── pull_request_template.md   # Mẫu mô tả Pull Request & DoD
-│   └── ISSUE_TEMPLATE/            # Mẫu User Story & Bug Report
-├── docs/                          # Bộ 7 Hồ sơ Quản trị Dự án Phần mềm chuẩn VKU
-│   ├── 00_Project_Overview_and_Links.md
-│   ├── 01_Project_Charter_Signed.md
-│   ├── 02_WBS_and_WBS_Dictionary.md
-│   ├── 03_Dynamic_Risk_Register.md
-│   ├── 04_Final_Technical_Report.md
-│   └── 05_Defense_Slides_and_Rubric.md
-├── server/                        # Backend REST API Service
-│   ├── src/
-│   │   ├── controllers/           # Auth, Booking, Doctors, EMR controllers
-│   │   ├── routes/                # Express API routes
-│   │   ├── middleware/            # Auth JWT, Role check, Concurrency lock
-│   │   ├── models/                # Mock/PostgreSQL data access layer
-│   │   └── app.js                 # Express application entry
-│   ├── tests/                     # Unit & Integration API tests
-│   └── package.json
-├── client/                        # Frontend Web Application
-│   ├── src/
-│   │   ├── components/            # Patient Portal, Booking Flow, QR Checkin, Doctor EMR
-│   │   ├── services/              # API client connectors
-│   │   ├── App.jsx
-│   │   └── main.jsx
-│   ├── index.html
-│   ├── vite.config.js
-│   └── package.json
-├── package.json                   # Root package quản lý toàn bộ monorepo
-└── README.md
-```
-
----
-
-## 💻 6. Hướng Dẫn Cài Đặt & Chạy Thử (Quick Start)
-
-### Yêu cầu hệ thống:
-* Node.js $\ge$ 18.0.0
-* npm $\ge$ 9.0.0
-
-### Các bước cài đặt:
-```bash
-# 1. Clone kho mã nguồn
-git clone https://github.com/nguyenthaison2408/medicare-plus.git
-cd medicare-plus
-
-# 2. Cài đặt các gói phụ thuộc
-npm run install:all
-
-# 3. Khởi động đồng thời cả Backend API và Frontend Web
-npm run dev
-```
-
-* **Frontend Web:** Mở trình duyệt tại `http://localhost:5173`
-* **Backend REST API:** Đang lắng nghe tại `http://localhost:5000/api/v1`
-* **API Health Check:** `http://localhost:5000/api/v1/health`
-
----
-
-## 📜 7. Quy Chuẩn Commit (Conventional Commits)
-Mọi đóng góp vào repository đều tuân thủ quy tắc Conventional Commits:
-* `feat:` Tính năng mới (ví dụ: `feat: add qr code check-in flow for reception`)
-* `fix:` Sửa lỗi (ví dụ: `fix: prevent race condition on concurrent booking`)
-* `docs:` Cập nhật tài liệu (ví dụ: `docs: update project charter with PO sign-off`)
-* `test:` Bổ sung kiểm thử (ví dụ: `test: add unit tests for booking locking engine`)
-* `refactor:` Tái cấu trúc mã nguồn không thay đổi hành vi
+Các hồ sơ cũ trong docs đang được đối chiếu. Số commit, test, coverage, UAT, chữ ký và URL production chỉ được ghi là đã kiểm chứng khi có bằng chứng tương ứng. Kiểm thử PostgreSQL nhúng không thay thế kiểm thử Auth, Realtime hoặc tải nhiều kết nối trên Supabase thật.

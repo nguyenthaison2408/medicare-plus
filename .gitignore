@@ -38,3 +38,10 @@ Thumbs.db
 # Testing & Coverage
 coverage/
 .nyc_output/
+
+# All local secret/config variants
+.env*
+!.env.example
+
+# Generated local review bundles
+artifacts/

@@ -12,6 +12,8 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { CLOUD_MODE } from '../services/supabaseClient';
+import { signInClinic, signUpClinic } from '../services/clinicCloud';
 import { COLORS, GRADIENTS, RADIUS, SHADOWS, TOUCH, TYPOGRAPHY } from '../theme';
 import {
   AppButton,
@@ -153,8 +155,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
   onGoRegister,
   onBack,
 }) => {
-  const [email, setEmail] = useState('vu.nguyen@smartclinic.vn');
-  const [password, setPassword] = useState('12345678');
+  const [email, setEmail] = useState(CLOUD_MODE ? '' : 'vu.nguyen@smartclinic.vn');
+  const [password, setPassword] = useState(CLOUD_MODE ? '' : '12345678');
+  const [loading, setLoading] = useState(false);
   const [remember, setRemember] = useState(true);
   const [selectedRolePreset, setSelectedRolePreset] =
     useState<UserRole>('patient');
@@ -197,7 +200,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
     }
   };
 
-  const handleLoginPress = () => {
+  const handleLoginPress = async () => {
+    if (loading) return;
     if (!email.trim()) {
       setEmailError('Vui lòng nhập email hoặc số điện thoại');
       return;
@@ -208,8 +212,17 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
     }
     setEmailError('');
     setPasswordError('');
-    const role = detectRoleFromEmail(email);
-    onLoginSuccess(role, email);
+    if (!CLOUD_MODE) {
+      onLoginSuccess(detectRoleFromEmail(email), email);
+      return;
+    }
+    setLoading(true);
+    try {
+      const profile = await signInClinic(email, password);
+      onLoginSuccess(profile.role === 'reception' ? 'admin' : profile.role, email);
+    } catch (error) {
+      setPasswordError(error instanceof Error ? error.message : 'Không thể đăng nhập.');
+    } finally { setLoading(false); }
   };
 
   return (
@@ -240,7 +253,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
         </AnimatedEntry>
 
         {/* Quick Role Account Switcher for Demo */}
-        <AnimatedEntry delay={90} direction="up">
+        {!CLOUD_MODE && <AnimatedEntry delay={90} direction="up">
           <View style={styles.roleQuickBox}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
               <Text style={styles.roleQuickTitle}>
@@ -337,7 +350,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
               </PressableScale>
             </View>
           </View>
-        </AnimatedEntry>
+        </AnimatedEntry>}
 
         {/* Form */}
         <AnimatedEntry delay={150} direction="up">
@@ -414,6 +427,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
 
           <AppButton
             title="Đăng nhập"
+            loading={loading}
+            disabled={loading}
             variant="gradient"
             size="lg"
             rightIcon="arrow-forward"
@@ -428,6 +443,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
 
           <AppButton
             title="Đăng nhập bằng Google"
+            disabled={CLOUD_MODE || loading}
             variant="google"
             size="lg"
             onPress={handleLoginPress}
@@ -451,7 +467,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
               color={COLORS.secondary}
             />
             <Text style={styles.securityText}>
-              Thông tin được mã hóa bảo mật chuẩn y tế
+              Quản lý lịch khám trong tài khoản của bạn
             </Text>
           </View>
         </AnimatedEntry>
@@ -469,17 +485,19 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
   onRegisterSuccess,
   onGoLogin,
 }) => {
-  const [fullName, setFullName] = useState('Nguyễn Văn Vũ');
-  const [email, setEmail] = useState('vu.nguyen@smartclinic.vn');
-  const [phone, setPhone] = useState('0912345678');
-  const [dob, setDob] = useState('15/08/1992');
+  const [fullName, setFullName] = useState(CLOUD_MODE ? '' : 'Nguyễn Văn Vũ');
+  const [email, setEmail] = useState(CLOUD_MODE ? '' : 'vu.nguyen@smartclinic.vn');
+  const [phone, setPhone] = useState(CLOUD_MODE ? '' : '0912345678');
+  const [dob, setDob] = useState(CLOUD_MODE ? '' : '15/08/1992');
   const [gender, setGender] = useState('nam');
-  const [password, setPassword] = useState('Smart123456');
-  const [confirmPassword, setConfirmPassword] = useState('Smart123456');
+  const [password, setPassword] = useState(CLOUD_MODE ? '' : 'Smart123456');
+  const [confirmPassword, setConfirmPassword] = useState(CLOUD_MODE ? '' : 'Smart123456');
+  const [loading, setLoading] = useState(false);
   const [agreed, setAgreed] = useState(true);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const handleRegisterSubmit = () => {
+  const handleRegisterSubmit = async () => {
+    if (loading) return;
     const newErrors: Record<string, string> = {};
     if (!fullName.trim() || fullName.trim().length < 2) {
       newErrors.fullName = 'Vui lòng nhập họ và tên đầy đủ';
@@ -489,7 +507,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
       newErrors.email = 'Email không đúng định dạng';
     }
     const cleanPhone = phone.replace(/\s+/g, '');
-    if (!/^(0[3|5|7|8|9])[0-9]{8}$/.test(cleanPhone)) {
+    if (!/^0[35789][0-9]{8}$/.test(cleanPhone)) {
       newErrors.phone = 'Số điện thoại cần đủ 10 số hợp lệ tại Việt Nam';
     }
     if (!password || password.length < 8) {
@@ -504,7 +522,15 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
     }
     setErrors(newErrors);
     if (Object.keys(newErrors).length === 0 && agreed) {
-      onRegisterSuccess();
+      if (!CLOUD_MODE) { onRegisterSuccess(); return; }
+      setLoading(true);
+      try {
+        const signedIn = await signUpClinic({ email, password, fullName, phone: cleanPhone });
+        if (signedIn) onRegisterSuccess();
+        else { Alert.alert('Xác nhận tài khoản', 'Vui lòng mở email xác nhận, sau đó quay lại đăng nhập.'); onGoLogin(); }
+      } catch (error) {
+        setErrors({ email: error instanceof Error ? error.message : 'Không thể tạo tài khoản.' });
+      } finally { setLoading(false); }
     }
   };
 
@@ -524,7 +550,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
       >
         <AnimatedEntry delay={40} direction="up">
           <Badge
-            label="Bảo mật chuẩn Y tế"
+            label="Tài khoản cá nhân"
             variant="teal"
             icon="shield-checkmark"
           />
@@ -694,6 +720,8 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
 
           <AppButton
             title="Đăng ký"
+            loading={loading}
+            disabled={loading}
             variant="primary"
             size="lg"
             leftIcon="person-add-outline"
@@ -708,6 +736,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
 
           <AppButton
             title="Đăng ký bằng Google"
+            disabled={CLOUD_MODE || loading}
             variant="google"
             size="lg"
             onPress={onRegisterSuccess}

@@ -1,4 +1,6 @@
 import React, { useState, useRef } from 'react';
+import { CLOUD_MODE } from '../services/supabaseClient';
+import { ClinicPatientRecordsScreen, ClinicPatientAppointmentsScreen, ClinicPatientProfileScreen } from './ClinicPatientScreens';
 import {
   View,
   Text,
@@ -118,7 +120,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   onOpenProfile,
   onNavigate,
 }) => {
-  const { appointments, doctors, hospitals } = useAppContext();
+  const { appointments, doctors, hospitals, patientProfile } = useAppContext();
   const [search, setSearch] = useState('');
   const [selectedSpecialty, setSelectedSpecialty] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -209,8 +211,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
       {/* SafeArea padding for top header */}
       <View style={{ paddingTop: insets.top }}>
         <HomeGreetingHeader
-          userName="Vũ"
-          avatarUrl={PATIENT_PROFILE.avatar}
+          userName={patientProfile.name.trim().split(' ').pop() || 'bạn'}
+          avatarUrl={patientProfile.avatar}
           onChatPress={onAskAI}
           onNotificationPress={() => setNotificationsVisible(true)}
           onAvatarPress={onOpenProfile}
@@ -607,11 +609,13 @@ export const EHRScreen: React.FC<EHRScreenProps> = ({
   onAskAI,
   onNavigate,
 }) => {
-  const { prescriptions } = useAppContext();
+  const { prescriptions, patientProfile } = useAppContext();
   const [filterKey, setFilterKey] = useState('all');
   const [toastInfo, setToastInfo] = useState<{ title: string; msg: string } | null>(
     null
   );
+
+  if (CLOUD_MODE) return <ClinicPatientRecordsScreen />;
 
   return (
     <View style={styles.screen}>
@@ -633,11 +637,12 @@ export const EHRScreen: React.FC<EHRScreenProps> = ({
       >
         <AnimatedEntry delay={10} direction="up">
           <PatientMasterIdentityCard
+            profile={patientProfile}
             onQrPress={() => onNavigate('bookingSuccess')}
             onBhytPress={() =>
               Alert.alert(
                 'Thông tin thẻ BHYT (80%)',
-                `Mã thẻ: ${PATIENT_PROFILE.bhytCode}\nNơi ĐKKCB ban đầu: ${PATIENT_PROFILE.bhytHospital}\nHạn sử dụng: ${PATIENT_PROFILE.bhytExpiry}`
+                `Mã thẻ: ${patientProfile.bhytCode || 'Chưa cập nhật'}\nNơi ĐKKCB ban đầu: ${patientProfile.bhytHospital || 'Chưa cập nhật'}\nHạn sử dụng: ${patientProfile.bhytExpiry || 'Chưa xác minh'}`
               )
             }
             style={{ marginBottom: 16 }}
@@ -793,6 +798,8 @@ export const AppointmentsScreen: React.FC<AppointmentsScreenProps> = ({
   );
   const completedList = appointments.filter((a) => a.status === 'completed');
   const cancelledList = appointments.filter((a) => a.status === 'cancelled');
+
+  if (CLOUD_MODE) return <ClinicPatientAppointmentsScreen onNavigate={onNavigate} onBookNew={onBookNew} />;
 
   return (
     <View style={styles.screen}>
@@ -1290,7 +1297,7 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
   onNavigate,
   onSwitchTab,
 }) => {
-  const { appointments, familyMembers, takenMap, resetAppData } = useAppContext();
+  const { appointments, familyMembers, takenMap, resetAppData, patientProfile } = useAppContext();
   const [pillReminder, setPillReminder] = useState(true);
   const [aptAlert, setAptAlert] = useState(true);
   const [labAlert, setLabAlert] = useState(true);
@@ -1298,6 +1305,8 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
   const [dndMode, setDndMode] = useState(true);
   const [biometric, setBiometric] = useState(true);
   const [resetToast, setResetToast] = useState(false);
+
+  if (CLOUD_MODE) return <ClinicPatientProfileScreen onLogout={onLogout} />;
 
   const upcomingCount = appointments.filter(
     (a) => a.status === 'upcoming'
@@ -1323,10 +1332,11 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
         showsVerticalScrollIndicator={false}
       >
         <ProfileHeaderCard
+          profile={patientProfile}
           onEditPress={() =>
             Alert.alert(
               'Hồ sơ cá nhân đã xác thực',
-              `Hồ sơ ${PATIENT_PROFILE.name} (${PATIENT_PROFILE.patientCode}) đã đồng bộ định danh eKYC. Để quản lý hồ sơ người thân, vui lòng chọn mục Hồ sơ Gia đình.`
+              `Hồ sơ ${patientProfile.name}\nMã tài khoản: ${patientProfile.patientCode}\nThông tin định danh và BHYT cần được đối chiếu tại cơ sở y tế.`
             )
           }
           onQrPress={() => onNavigate('bookingSuccess')}
@@ -1334,10 +1344,11 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
         />
 
         <VssIDInsuranceCard
+          profile={patientProfile}
           onDetailPress={() =>
             Alert.alert(
               'Chi tiết thẻ BHYT điện tử',
-              `Mã thẻ: ${PATIENT_PROFILE.bhytCode}\nMức hưởng: 80% chi phí KCB BHYT\nNơi ĐKKCB ban đầu: ${PATIENT_PROFILE.bhytHospital}\nHạn thẻ: ${PATIENT_PROFILE.bhytExpiry}`
+              `Mã thẻ: ${patientProfile.bhytCode || 'Chưa cập nhật'}\nNơi ĐKKCB ban đầu: ${patientProfile.bhytHospital || 'Chưa cập nhật'}\nHạn thẻ: ${patientProfile.bhytExpiry || 'Chưa xác minh'}`
             )
           }
           style={{ marginBottom: 18 }}

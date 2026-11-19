@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { ClinicBookingConfirmationScreen } from './ClinicPatientScreens';
 import {
   View,
   Text,
@@ -34,6 +35,8 @@ import {
 import { findHospitalForDoctor } from '../utils/mapNavigation';
 import { shareDoctorProfile } from '../utils/shareUtils';
 import { useAppContext } from '../context/AppContext';
+import { CLOUD_MODE } from '../services/supabaseClient';
+import { listClinicSlots, toClinicStart } from '../services/clinicCloud';
 
 export interface DoctorDetailScreenProps {
   doctor: DoctorItem;
@@ -297,6 +300,30 @@ export const BookingSlotScreen: React.FC<BookingSlotScreenProps> = ({
   const currentDay =
     BOOKING_DAYS.find((d) => d.id === selectedDayId) || BOOKING_DAYS[1];
 
+  const [remoteSlots, setRemoteSlots] = useState<TimeSlotItem[]>([]);
+  const [loadedSlotKey, setLoadedSlotKey] = useState('');
+  const [slotError, setSlotError] = useState('');
+  const slotKey = `${doctor.id}:${currentDay.fullDate}`;
+  const slotsReady = !CLOUD_MODE || loadedSlotKey === slotKey;
+  const visibleSlots: TimeSlotItem[] = CLOUD_MODE
+    ? slotsReady ? remoteSlots : TIME_SLOTS.map(slot => ({ ...slot, status: 'booked' }))
+    : TIME_SLOTS;
+  const selectedSlotAvailable = visibleSlots.some(slot => slot.id === selectedSlot.id && slot.status !== 'booked');
+
+  useEffect(() => {
+    if (!CLOUD_MODE) return;
+    let mounted = true;
+    void listClinicSlots(doctor.id, currentDay).then(rows => {
+      if (!mounted) return;
+      setRemoteSlots(TIME_SLOTS.map(slot => ({
+        ...slot, status: rows.some(row => new Date(row.starts_at).getTime() === new Date(toClinicStart(currentDay, slot)).getTime() && !row.is_booked) ? 'available' : 'booked',
+      })));
+      setLoadedSlotKey(`${doctor.id}:${currentDay.fullDate}`);
+      setSlotError('');
+    }).catch(error => { if (mounted) setSlotError(error instanceof Error ? error.message : 'Không tải được lịch trống.'); });
+    return () => { mounted = false; };
+  }, [doctor.id, currentDay]);
+
   return (
     <View style={styles.screen}>
       <AppHeader
@@ -321,7 +348,7 @@ export const BookingSlotScreen: React.FC<BookingSlotScreenProps> = ({
         <SegmentedControl
           variant="box"
           selectedKey={consultMode}
-          onSelect={setConsultMode}
+          onSelect={(mode) => { if (!CLOUD_MODE || mode === 'clinic') setConsultMode(mode); }}
           options={[
             {
               key: 'clinic',
@@ -344,18 +371,20 @@ export const BookingSlotScreen: React.FC<BookingSlotScreenProps> = ({
           badgeIcon="calendar-outline"
         />
         <HorizontalDateSelector
-          days={BOOKING_DAYS}
+          days={CLOUD_MODE ? BOOKING_DAYS.filter(day => day.id !== 'd1').map(day => ({ ...day, isFull: false })) : BOOKING_DAYS}
           selectedDayId={selectedDayId}
-          onSelectDay={setSelectedDayId}
+          onSelectDay={(dayId) => { setSelectedDayId(dayId); setSlotError(''); }}
+          showAvailabilityCounts={!CLOUD_MODE}
           style={{ marginBottom: 16 }}
         />
 
         <TimeSlotGrid
-          slots={TIME_SLOTS}
+          slots={visibleSlots}
           selectedSlotId={selectedSlot.id}
           onSelectSlot={setSelectedSlot}
           style={{ marginBottom: 16 }}
         />
+        {slotError ? <Text accessibilityRole="alert" style={{ color: COLORS.error }}>{slotError}</Text> : null}
 
         {/* Insurance & Essential Note Box */}
         <View style={styles.insuranceNoteBox}>
@@ -385,6 +414,8 @@ export const BookingSlotScreen: React.FC<BookingSlotScreenProps> = ({
         priceLabel="Tạm tính:"
         priceValue={doctor.fee}
         buttonTitle="Tiếp tục"
+        disabled={CLOUD_MODE && (!slotsReady || !selectedSlotAvailable)}
+        loading={CLOUD_MODE && !slotsReady && !slotError}
         onButtonPress={() =>
           onConfirmBooking({
             doctor,
@@ -401,7 +432,7 @@ export const BookingSlotScreen: React.FC<BookingSlotScreenProps> = ({
 // ============================================================================
 // SCREEN: XÁC NHẬN & THANH TOÁN ĐA PHƯƠNG THỨC (PAYMENT STEP)
 // ============================================================================
-export type PaymentMethodType = 'at_clinic_bhyt' | 'vietqr' | 'vnpay' | 'momo';
+export type PaymentMethodType = 'at_clinic' | 'at_clinic_bhyt' | 'vietqr' | 'vnpay' | 'momo';
 
 export interface BookingPaymentScreenProps {
   doctor: DoctorItem;
@@ -413,7 +444,7 @@ export interface BookingPaymentScreenProps {
     meta: string;
   };
   onBack: () => void;
-  onPaymentSuccess: (method: PaymentMethodType) => void;
+  onPaymentSuccess: (method: PaymentMethodType) => void | Promise<void>;
 }
 
 export const BookingPaymentScreen: React.FC<BookingPaymentScreenProps> = ({
@@ -427,6 +458,7 @@ export const BookingPaymentScreen: React.FC<BookingPaymentScreenProps> = ({
 }) => {
   const [selectedMethod, setSelectedMethod] =
     useState<PaymentMethodType>('at_clinic_bhyt');
+  const [submitting, setSubmitting] = useState(false);
 
   const currentDay = day || BOOKING_DAYS[1];
   const currentSlot = slot || TIME_SLOTS[3];
@@ -465,7 +497,9 @@ export const BookingPaymentScreen: React.FC<BookingPaymentScreenProps> = ({
       badgeVariant: 'warning' as const,
       icon: 'wallet-outline' as const,
     },
-  ];
+  ].filter(option => !CLOUD_MODE || option.id === 'at_clinic_bhyt');
+
+  if (CLOUD_MODE) return <ClinicBookingConfirmationScreen doctor={doctor} day={day} slot={slot} onBack={onBack} onConfirm={() => onPaymentSuccess('at_clinic')} />;
 
   return (
     <View style={styles.screen}>
@@ -698,7 +732,14 @@ export const BookingPaymentScreen: React.FC<BookingPaymentScreenProps> = ({
         priceLabel="Cần thanh toán:"
         priceValue={isAtClinic ? '0 đ' : doctor.fee}
         buttonTitle={isAtClinic ? 'Xác nhận đặt lịch' : 'Thanh toán ngay'}
-        onButtonPress={() => onPaymentSuccess(selectedMethod)}
+        disabled={submitting}
+        loading={submitting}
+        onButtonPress={async () => {
+          if (submitting) return;
+          setSubmitting(true);
+          try { await onPaymentSuccess(selectedMethod); }
+          finally { setSubmitting(false); }
+        }}
       />
     </View>
   );

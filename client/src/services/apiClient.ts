@@ -17,7 +17,7 @@ import {
 // ============================================================================
 export const API_CONFIG = {
   BASE_URL:
-    process.env.EXPO_PUBLIC_API_URL || 'http://localhost:4000/api/v1',
+    process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000/api/v1',
   TIMEOUT_MS: 3500,
   ENABLE_REMOTE_API: false, // Bật thành true khi chạy kèm Backend Server thật
 };

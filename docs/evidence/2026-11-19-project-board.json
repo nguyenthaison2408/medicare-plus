@@ -1,0 +1,198 @@
+﻿{
+    "observedAtUtc":  "2026-11-19T06:20:38.8832692Z",
+    "projectUrl":  "https://github.com/users/nguyenthaison2408/projects/1",
+    "source":  "Authenticated Opera UI Automation + anonymous public GitHub REST",
+    "storyPointsTotal":  136,
+    "rows":  [
+                 {
+                     "number":  19,
+                     "title":  "[Sprint 3] [TechLead-CI] feat: enhance CI typecheck pipeline \u0026 booking controller validation",
+                     "issueState":  "closed",
+                     "Sprint":  "Sprint 6 - Hoàn thiện báo cáo",
+                     "Status":  "Done",
+                     "Priority":  "",
+                     "Story Points":  "",
+                     "Milestone":  "Sprint 3: Concurrency Locking \u0026 Patient Web"
+                 },
+                 {
+                     "number":  18,
+                     "title":  "[DEMO] Tổng Duyệt Kịch Bản Thuyết Trình 16 Phút \u0026 Live Demo Bảo Vệ Trước Hội Đồng Chuyên Môn",
+                     "issueState":  "open",
+                     "Sprint":  "Sprint 6 - Hoàn thiện báo cáo",
+                     "Status":  "Ready",
+                     "Priority":  "P0 - Bắt buộc trước báo cáo",
+                     "Story Points":  "3",
+                     "Milestone":  "Sprint 5: Load Test k6, UAT \u0026 Project Packaging"
+                 },
+                 {
+                     "number":  17,
+                     "title":  "[AUDIT] Đóng Gói \u0026 Thẩm Định Gói Bằng Chứng Quản Trị Dự Án 7 Hạng Mục \u0026 Thư Mục Google Drive VKU",
+                     "issueState":  "open",
+                     "Sprint":  "Sprint 6 - Hoàn thiện báo cáo",
+                     "Status":  "In Progress",
+                     "Priority":  "P0 - Bắt buộc trước báo cáo",
+                     "Story Points":  "5",
+                     "Milestone":  "Sprint 5: Load Test k6, UAT \u0026 Project Packaging"
+                 },
+                 {
+                     "number":  16,
+                     "title":  "[RELEASE] Đóng Gói Phiên Bản Chính Thức MediCare Plus v1.0.0 (Production Release \u0026 Cloud Live)",
+                     "issueState":  "open",
+                     "Sprint":  "Sprint 6 - Hoàn thiện báo cáo",
+                     "Status":  "In Progress",
+                     "Priority":  "P0 - Bắt buộc trước báo cáo",
+                     "Story Points":  "3",
+                     "Milestone":  "Sprint 5: Load Test k6, UAT \u0026 Project Packaging"
+                 },
+                 {
+                     "number":  15,
+                     "title":  "[SP5-03] Hoàn Thiện Báo Cáo Tổng Kết Kỹ Thuật 7 Chương \u0026 Bộ Slide Bảo Vệ 16 Phút",
+                     "issueState":  "open",
+                     "Sprint":  "Sprint 6 - Hoàn thiện báo cáo",
+                     "Status":  "In Progress",
+                     "Priority":  "P0 - Bắt buộc trước báo cáo",
+                     "Story Points":  "5",
+                     "Milestone":  "Sprint 5: Load Test k6, UAT \u0026 Project Packaging"
+                 },
+                 {
+                     "number":  14,
+                     "title":  "[SP5-02] Triển Khai Live Cloud HTTPS \u0026 Thử Nghiệm UAT Với 20 Sinh Viên VKU",
+                     "issueState":  "open",
+                     "Sprint":  "Sprint 6 - Hoàn thiện báo cáo",
+                     "Status":  "In Progress",
+                     "Priority":  "P0 - Bắt buộc trước báo cáo",
+                     "Story Points":  "8",
+                     "Milestone":  "Sprint 5: Load Test k6, UAT \u0026 Project Packaging"
+                 },
+                 {
+                     "number":  13,
+                     "title":  "[SP5-01] Kiểm Thử Hiệu Năng \u0026 Tải Đồng Thời Bằng k6 (100 CCU Concurrency)",
+                     "issueState":  "open",
+                     "Sprint":  "Sprint 6 - Hoàn thiện báo cáo",
+                     "Status":  "In Progress",
+                     "Priority":  "P0 - Bắt buộc trước báo cáo",
+                     "Story Points":  "5",
+                     "Milestone":  "Sprint 5: Load Test k6, UAT \u0026 Project Packaging"
+                 },
+                 {
+                     "number":  12,
+                     "title":  "[SP4-03] Tự Động Hóa Gửi Thông Báo Xác Nhận Đặt Hẹn Qua Email",
+                     "issueState":  "open",
+                     "Sprint":  "",
+                     "Status":  "Backlog",
+                     "Priority":  "P2 - Giai đoạn sau",
+                     "Story Points":  "5",
+                     "Milestone":  "Sprint 4: QR Check-in \u0026 Doctor EMR Console"
+                 },
+                 {
+                     "number":  11,
+                     "title":  "[SP4-02] Xây dựng Dashboard Bác sĩ \u0026 Quản trị Bệnh Án Điện Tử (EMR)",
+                     "issueState":  "open",
+                     "Sprint":  "Sprint 6 - Hoàn thiện báo cáo",
+                     "Status":  "In Progress",
+                     "Priority":  "P0 - Bắt buộc trước báo cáo",
+                     "Story Points":  "8",
+                     "Milestone":  "Sprint 4: QR Check-in \u0026 Doctor EMR Console"
+                 },
+                 {
+                     "number":  10,
+                     "title":  "[SP4-01] [BIẾN CỐ CR-01] Xử lý Thay Đổi Phạm Vi: Module Tiếp Đón Bằng Mã QR Tại Quầy",
+                     "issueState":  "open",
+                     "Sprint":  "Sprint 6 - Hoàn thiện báo cáo",
+                     "Status":  "In Progress",
+                     "Priority":  "P0 - Bắt buộc trước báo cáo",
+                     "Story Points":  "13",
+                     "Milestone":  "Sprint 4: QR Check-in \u0026 Doctor EMR Console"
+                 },
+                 {
+                     "number":  9,
+                     "title":  "[SP3-02] Hoàn thiện Cổng thông tin Bệnh nhân \u0026 Sinh Phiếu Khám Điện Tử",
+                     "issueState":  "open",
+                     "Sprint":  "Sprint 6 - Hoàn thiện báo cáo",
+                     "Status":  "In Review",
+                     "Priority":  "P0 - Bắt buộc trước báo cáo",
+                     "Story Points":  "8",
+                     "Milestone":  "Sprint 3: Concurrency Locking \u0026 Patient Web"
+                 },
+                 {
+                     "number":  8,
+                     "title":  "[SP3-01] [R-01] Chống trùng lịch bằng PostgreSQL Row Lock và Unique Constraint",
+                     "issueState":  "open",
+                     "Sprint":  "Sprint 6 - Hoàn thiện báo cáo",
+                     "Status":  "In Progress",
+                     "Priority":  "P0 - Bắt buộc trước báo cáo",
+                     "Story Points":  "13",
+                     "Milestone":  "Sprint 3: Concurrency Locking \u0026 Patient Web"
+                 },
+                 {
+                     "number":  7,
+                     "title":  "[SP2-03] Giao diện chọn bác sĩ và lịch khám responsive (Expo/React Native Web)",
+                     "issueState":  "open",
+                     "Sprint":  "Sprint 6 - Hoàn thiện báo cáo",
+                     "Status":  "In Review",
+                     "Priority":  "P0 - Bắt buộc trước báo cáo",
+                     "Story Points":  "13",
+                     "Milestone":  "Sprint 2: Core Booking Engine MVP"
+                 },
+                 {
+                     "number":  6,
+                     "title":  "[SP2-02] Xây dựng Module Lõi Đặt Lịch Khám (Appointment Engine MVP)",
+                     "issueState":  "open",
+                     "Sprint":  "Sprint 6 - Hoàn thiện báo cáo",
+                     "Status":  "In Review",
+                     "Priority":  "P0 - Bắt buộc trước báo cáo",
+                     "Story Points":  "13",
+                     "Milestone":  "Sprint 2: Core Booking Engine MVP"
+                 },
+                 {
+                     "number":  5,
+                     "title":  "[SP2-01] Xây dựng API Danh mục Bác sĩ, Chuyên khoa \u0026 Ca làm việc",
+                     "issueState":  "closed",
+                     "Sprint":  "Sprint 2",
+                     "Status":  "Done",
+                     "Priority":  "",
+                     "Story Points":  "8",
+                     "Milestone":  "Sprint 2: Core Booking Engine MVP"
+                 },
+                 {
+                     "number":  4,
+                     "title":  "[SP1-04] Lập Kế hoạch Điều lệ Dự án (Project Charter) \u0026 Ma trận RACI",
+                     "issueState":  "open",
+                     "Sprint":  "Sprint 6 - Hoàn thiện báo cáo",
+                     "Status":  "In Review",
+                     "Priority":  "P0 - Bắt buộc trước báo cáo",
+                     "Story Points":  "5",
+                     "Milestone":  "Sprint 1: Baseline Architecture \u0026 Auth API"
+                 },
+                 {
+                     "number":  3,
+                     "title":  "[SP1-03] Xây dựng Module Xác thực Người dùng \u0026 Phân quyền RBAC (JWT)",
+                     "issueState":  "open",
+                     "Sprint":  "Sprint 6 - Hoàn thiện báo cáo",
+                     "Status":  "In Progress",
+                     "Priority":  "P0 - Bắt buộc trước báo cáo",
+                     "Story Points":  "8",
+                     "Milestone":  "Sprint 1: Baseline Architecture \u0026 Auth API"
+                 },
+                 {
+                     "number":  2,
+                     "title":  "[SP1-02] Thiết kế Sơ đồ CSDL Quan hệ PostgreSQL \u0026 Script Migrations",
+                     "issueState":  "open",
+                     "Sprint":  "Sprint 6 - Hoàn thiện báo cáo",
+                     "Status":  "In Review",
+                     "Priority":  "P0 - Bắt buộc trước báo cáo",
+                     "Story Points":  "8",
+                     "Milestone":  "Sprint 1: Baseline Architecture \u0026 Auth API"
+                 },
+                 {
+                     "number":  1,
+                     "title":  "[SP1-01] Thiết lập Kiến trúc Hệ thống \u0026 Đường ống CI/CD GitHub Actions",
+                     "issueState":  "open",
+                     "Sprint":  "Sprint 6 - Hoàn thiện báo cáo",
+                     "Status":  "In Review",
+                     "Priority":  "P0 - Bắt buộc trước báo cáo",
+                     "Story Points":  "5",
+                     "Milestone":  "Sprint 1: Baseline Architecture \u0026 Auth API"
+                 }
+             ]
+}

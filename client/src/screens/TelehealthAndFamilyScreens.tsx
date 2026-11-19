@@ -11,6 +11,8 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import QRCode from 'react-native-qrcode-svg';
+import { CLOUD_MODE } from '../services/supabaseClient';
 import { COLORS, GRADIENTS, LAYOUT, RADIUS, SHADOWS, SPACING, TYPOGRAPHY } from '../theme';
 import {
   DOCTORS,
@@ -49,7 +51,7 @@ export const BookingSuccessScreen: React.FC<{
   const activePayment = paymentMethod || latestBooking.paymentMethod || 'at_clinic_bhyt';
   const isBHYT = activePayment === 'at_clinic_bhyt';
 
-  const paymentLabel =
+  const paymentLabel = CLOUD_MODE ? 'Thanh toán tại cơ sở y tế' :
     activePayment === 'vietqr'
       ? 'Chuyển khoản VietQR 24/7'
       : activePayment === 'vnpay'
@@ -79,12 +81,12 @@ export const BookingSuccessScreen: React.FC<{
             </AnimatedSuccessBadge>
             <Text style={styles.heroTitle}>Đặt lịch khám thành công!</Text>
             <Text style={styles.heroSub}>
-              Phiếu hẹn của bạn đã được xác nhận. Tin nhắn SMS và thông báo nhắc
+              {CLOUD_MODE ? 'Lịch hẹn đã được lưu. Mang mã QR này đến quầy tiếp đón vào đúng ngày khám.' : <>Phiếu hẹn của bạn đã được xác nhận. Tin nhắn SMS và thông báo nhắc
               nhở đã được gửi tới số{' '}
               <Text style={{ fontWeight: '800', color: COLORS.primary }}>
                 0912 345 678
               </Text>
-              .
+              .</>}
             </Text>
           </View>
         </AnimatedEntry>
@@ -98,7 +100,7 @@ export const BookingSuccessScreen: React.FC<{
                 <Text style={styles.ticketCode}>{latestBooking.code}</Text>
               </View>
               <Badge
-                label={isBHYT ? 'Giữ chỗ BHYT • Trả sau' : 'Đã thanh toán Online ✓'}
+                label={CLOUD_MODE ? 'Đã giữ chỗ • Chưa thu tiền' : isBHYT ? 'Giữ chỗ BHYT • Trả sau' : 'Đã thanh toán Online ✓'}
                 variant={isBHYT ? 'warning' : 'teal'}
                 showDot
               />
@@ -189,7 +191,7 @@ export const BookingSuccessScreen: React.FC<{
                   color: isBHYT ? COLORS.primary : COLORS.secondary,
                 }}
               >
-                {isBHYT ? 'Trả tại viện' : doctor.fee}
+                {CLOUD_MODE ? 'Chưa thu' : isBHYT ? 'Trả tại viện' : doctor.fee}
               </Text>
             </View>
           </View>
@@ -204,14 +206,13 @@ export const BookingSuccessScreen: React.FC<{
               icon="qr-code-outline"
             />
             <View style={styles.qrMockBox}>
-              <Ionicons name="qr-code" size={116} color={COLORS.textPrimary} />
+              {latestBooking.code ? <QRCode value={latestBooking.code} size={148} color={COLORS.textPrimary} backgroundColor="#FFFFFF" /> : <Text>Chưa có phiếu hẹn.</Text>}
             </View>
             <Text style={styles.heroSub}>
-              Quét mã tại Kiosk tự động hoặc Quầy tiếp đón số 2 để nhận số vào
-              phòng khám mà không cần xếp hàng.
+              {CLOUD_MODE ? 'Quét mã tại quầy tiếp đón để đối chiếu lịch hẹn.' : 'Quét mã tại Kiosk tự động hoặc Quầy tiếp đón số 2 để nhận số vào phòng khám mà không cần xếp hàng.'}
             </Text>
             <Badge
-              label="Hợp lệ check-in trước 15 phút (từ 09:15)"
+              label={CLOUD_MODE ? 'Tiếp đón vào đúng ngày hẹn' : 'Hợp lệ check-in trước 15 phút (từ 09:15)'}
               variant="teal"
               style={{ marginTop: 8 }}
             />
@@ -268,7 +269,7 @@ export const BookingSuccessScreen: React.FC<{
           />
           {[
             'Mang theo CCCD gắn chip hoặc ứng dụng VssID / thẻ BHYT bản chính để đối chiếu.',
-            'Có mặt trước giờ hẹn 15 phút (09:15) để đo chỉ số sinh hiệu (huyết áp, nhịp tim, SpO2).',
+              'Có mặt trước giờ hẹn 15 phút để làm thủ tục tiếp đón.',
             'Mang theo sổ khám bệnh, các kết quả chụp MRI / CT và đơn thuốc cũ trong 3 tháng gần nhất (nếu có).',
           ].map((note, idx) => (
             <View key={idx} style={styles.checkItemRow}>

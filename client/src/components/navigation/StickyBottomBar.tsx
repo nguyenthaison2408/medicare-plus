@@ -11,6 +11,8 @@ export interface StickyBottomBarProps {
   priceValue: string;
   buttonTitle: string;
   onButtonPress?: () => void;
+  disabled?: boolean;
+  loading?: boolean;
 }
 
 export const StickyBottomBar: React.FC<StickyBottomBarProps> = ({
@@ -20,6 +22,8 @@ export const StickyBottomBar: React.FC<StickyBottomBarProps> = ({
   priceValue,
   buttonTitle,
   onButtonPress,
+  disabled = false,
+  loading = false,
 }) => {
   return (
     <View style={[styles.container, SHADOWS.lg]}>
@@ -58,6 +62,8 @@ export const StickyBottomBar: React.FC<StickyBottomBarProps> = ({
         fullWidth={false}
         style={styles.ctaBtn}
         onPress={onButtonPress}
+        disabled={disabled}
+        loading={loading}
       />
     </View>
   );

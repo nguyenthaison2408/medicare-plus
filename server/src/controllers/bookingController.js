@@ -1,4 +1,5 @@
 const { departments, doctors, initialSlots, appointments } = require('../data/mockData');
+const { randomUUID } = require('crypto');
 
 let slots = [...initialSlots];
 // In-memory Mutex Lock table for simulating Row-level Concurrency Lock
@@ -45,7 +46,7 @@ const bookAppointment = (req, res) => {
   const { slotId, patientName, phone, email, symptoms } = req.body;
 
   // 1. Validation: Kiểm tra sự tồn tại của các trường bắt buộc
-  if (!slotId || !patientName || !phone) {
+  if (typeof slotId !== 'string' || !slotId || typeof patientName !== 'string' || typeof phone !== 'string' || !patientName || !phone) {
     return res.status(400).json({
       success: false,
       message: 'Vui lòng cung cấp đầy đủ slotId, tên bệnh nhân và số điện thoại.'
@@ -54,7 +55,7 @@ const bookAppointment = (req, res) => {
 
   // 2. Validation: Kiểm tra độ dài họ tên bệnh nhân
   const trimmedName = String(patientName).trim();
-  if (trimmedName.length < 2) {
+  if (trimmedName.length < 2 || trimmedName.length > 160) {
     return res.status(400).json({
       success: false,
       message: 'Họ tên bệnh nhân không hợp lệ (tối thiểu 2 ký tự).'
@@ -62,7 +63,7 @@ const bookAppointment = (req, res) => {
   }
 
   // 3. Validation: Định dạng số điện thoại Việt Nam (10 chữ số hợp lệ)
-  const phoneRegex = /(84|0[3|5|7|8|9])+([0-9]{8})\b/;
+  const phoneRegex = /^0[35789][0-9]{8}$/;
   const trimmedPhone = String(phone).trim();
   if (!phoneRegex.test(trimmedPhone)) {
     return res.status(400).json({
@@ -72,7 +73,10 @@ const bookAppointment = (req, res) => {
   }
 
   // 4. Validation: Định dạng email nếu được cung cấp
-  if (email && String(email).trim().length > 0) {
+  if (email !== undefined && typeof email !== 'string') {
+    return res.status(400).json({ success: false, message: 'Email phải là chuỗi ký tự.' });
+  }
+  if (email && email.trim().length > 0) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(String(email).trim())) {
       return res.status(400).json({
@@ -91,7 +95,7 @@ const bookAppointment = (req, res) => {
     });
   }
 
-  // Khóa slot trong 3 giây
+  // Demo single-process only. Real PostgreSQL locking lives in the Supabase RPC migration.
   activeLocks.set(slotId, Date.now());
 
   try {
@@ -115,15 +119,15 @@ const bookAppointment = (req, res) => {
     slots[slotIndex].isBooked = true;
 
     const doctor = doctors.find(d => d.id === slot.doctorId);
-    const newAppointmentId = `APT-${Math.floor(1000 + Math.random() * 9000)}`;
+    const newAppointmentId = `APT-${randomUUID()}`;
     const qrCode = `MEDICARE-${newAppointmentId}-QR`;
 
     const newAppointment = {
       id: newAppointmentId,
       qrCode,
-      patientName,
-      phone,
-      email: email || `${phone}@patient.medicare.vn`,
+      patientName: trimmedName,
+      phone: trimmedPhone,
+      email: email ? email.trim() : `${trimmedPhone}@patient.medicare.vn`,
       doctorId: slot.doctorId,
       doctorName: doctor ? doctor.name : 'Bác sĩ chuyên khoa',
       department: doctor ? doctor.departmentName : 'Đa khoa',

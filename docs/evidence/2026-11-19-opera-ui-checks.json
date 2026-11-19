@@ -1,0 +1,38 @@
+{
+  "observedAtUtc": "2026-11-19T06:16:06.719Z",
+  "browser": "Opera GX",
+  "applicationUrl": "http://127.0.0.1:4173",
+  "database": "hosted Supabase",
+  "source": "UI Automation observations plus direct PostgreSQL confirmation",
+  "checks": [
+    "Real patient password login",
+    "Correct patient displayed before booking",
+    "Booking persisted and QR code rendered",
+    "Reception login and same-day check-in by booking code",
+    "Assigned doctor saves a synthetic medical record",
+    "Patient logs in again and reads the saved diagnosis/medication",
+    "Cancel confirmation and persisted CANCELLED status"
+  ],
+  "rows": [
+    {
+      "booking_code": "MC-D3D6EC185ABB4C8E9F968C513AE66BF0",
+      "status": "COMPLETED",
+      "payment_method": "at_clinic",
+      "payment_status": "UNPAID",
+      "diagnosis": "Bệnh án minh họa kiểm tra quy trình đồ án; không dùng để điều trị."
+    },
+    {
+      "booking_code": "MC-1A062B92CFB749548DDAFAB19B2B8197",
+      "status": "CANCELLED",
+      "payment_method": "at_clinic",
+      "payment_status": "UNPAID",
+      "diagnosis": null
+    }
+  ],
+  "limitations": [
+    "No physical camera scan tested.",
+    "Synthetic demo case, not end-user UAT.",
+    "Two synthetic demo appointments intentionally retained: one completed and one cancelled.",
+    "Sequential role logins in one browser, not simultaneous independent browser sessions."
+  ]
+}

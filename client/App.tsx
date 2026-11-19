@@ -1,15 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   StatusBar,
   StyleSheet,
   BackHandler,
   useWindowDimensions,
+  Text,
 } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, LAYOUT } from './src/theme';
 import { DOCTORS, DoctorItem } from './src/data/mockData';
 import { AppProvider, useAppContext } from './src/context/AppContext';
+import { CLOUD_MODE } from './src/services/supabaseClient';
+import { signOutClinic } from './src/services/clinicCloud';
+import { ClinicStaffScreen } from './src/screens/ClinicStaffScreen';
 import { BottomTabBar, MainTabKey } from './src/components';
 import {
   SplashScreen,
@@ -50,7 +54,8 @@ import {
 } from './src/screens/PharmacyAndMedicationScreens';
 
 function AppContent() {
-  const { createBooking } = useAppContext();
+  const { createBooking, cloudSyncError } = useAppContext();
+  const bookingInFlight = useRef(false);
   const [route, setRoute] = useState<string>('login');
   const [routeHistory, setRouteHistory] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<MainTabKey>('home');
@@ -66,10 +71,17 @@ function AppContent() {
       meta: string;
     };
   }>({});
+  const [actionMessage, setActionMessage] = useState('');
   const { width } = useWindowDimensions();
   const isTablet = width > 700;
 
   const navigateTo = (nextRoute: string) => {
+    if (CLOUD_MODE && !['home', 'records', 'appointments', 'profile', 'main', 'login', 'register',
+      'doctorDetail', 'bookingSlot', 'bookingPayment', 'bookingSuccess'].includes(nextRoute)) {
+      setActionMessage('Tính năng này chưa có trong bản thử nghiệm hiện tại.');
+      return;
+    }
+    setActionMessage('');
     if (['home', 'records', 'appointments', 'ai', 'profile'].includes(nextRoute)) {
       setRoute('main');
       setActiveTab(nextRoute as MainTabKey);
@@ -132,6 +144,14 @@ function AppContent() {
     }
   };
 
+  const handleLogout = async () => {
+    try {
+      if (CLOUD_MODE) await signOutClinic();
+      setRouteHistory([]);
+      setRoute('login');
+    } catch (error) { setActionMessage(error instanceof Error ? error.message : 'Chưa đăng xuất được. Vui lòng thử lại.'); }
+  };
+
   const renderCurrentScreen = () => {
     switch (route) {
       case 'splash':
@@ -156,22 +176,18 @@ function AppContent() {
           />
         );
       case 'adminPortal':
+        if (CLOUD_MODE) return <ClinicStaffScreen onLogout={() => { void handleLogout(); }} />;
         return (
           <AdminDashboardScreen
-            onLogout={() => {
-              setRouteHistory([]);
-              setRoute('login');
-            }}
+            onLogout={() => { void handleLogout(); }}
             onNavigate={navigateTo}
           />
         );
       case 'doctorPortal':
+        if (CLOUD_MODE) return <ClinicStaffScreen onLogout={() => { void handleLogout(); }} />;
         return (
           <DoctorDashboardScreen
-            onLogout={() => {
-              setRouteHistory([]);
-              setRoute('login');
-            }}
+            onLogout={() => { void handleLogout(); }}
             onNavigate={navigateTo}
           />
         );
@@ -211,16 +227,19 @@ function AppContent() {
             consultMode={bookingInfo.consultMode}
             patient={bookingInfo.patient}
             onBack={() => goBack('bookingSlot')}
-            onPaymentSuccess={(method) => {
-              setBookingInfo((prev) => ({ ...prev, paymentMethod: method }));
-              createBooking({
-                doctor: bookingInfo.doctor || selectedDoctor,
-                day: bookingInfo.day,
-                slot: bookingInfo.slot,
-                consultMode: bookingInfo.consultMode,
-                paymentMethod: method,
-              });
-              navigateTo('bookingSuccess');
+            onPaymentSuccess={async (method) => {
+              if (bookingInFlight.current) return;
+              bookingInFlight.current = true;
+              try {
+                await createBooking({
+                  doctor: bookingInfo.doctor || selectedDoctor,
+                  day: bookingInfo.day, slot: bookingInfo.slot,
+                  consultMode: bookingInfo.consultMode, paymentMethod: method,
+                });
+                setBookingInfo((prev) => ({ ...prev, paymentMethod: method }));
+                navigateTo('bookingSuccess');
+              } catch (error) { setActionMessage(error instanceof Error ? error.message : 'Chưa đặt được lịch. Vui lòng thử lại.'); }
+              finally { bookingInFlight.current = false; }
             }}
           />
         );
@@ -335,7 +354,7 @@ function AppContent() {
                 <HomeScreen
                   onSelectDoctor={handleOpenDoctor}
                   onBookDoctor={handleOpenBooking}
-                  onAskAI={() => setActiveTab('ai')}
+                  onAskAI={() => navigateTo('ai')}
                   onOpenProfile={() => setActiveTab('profile')}
                   onNavigate={navigateTo}
                 />
@@ -347,7 +366,7 @@ function AppContent() {
                 ]}
               >
                 <EHRScreen
-                  onAskAI={() => setActiveTab('ai')}
+                  onAskAI={() => navigateTo('ai')}
                   onNavigate={navigateTo}
                 />
               </View>
@@ -378,18 +397,15 @@ function AppContent() {
                 ]}
               >
                 <ProfileSettingsScreen
-                  onLogout={() => {
-                    setRouteHistory([]);
-                    setRoute('login');
-                  }}
+                  onLogout={() => { void handleLogout(); }}
                   onNavigate={navigateTo}
-                  onSwitchTab={setActiveTab}
+                  onSwitchTab={(tab) => navigateTo(tab)}
                 />
               </View>
             </View>
             <BottomTabBar
               activeTab={activeTab}
-              onSelectTab={(tab) => setActiveTab(tab)}
+              onSelectTab={(tab) => navigateTo(tab)}
             />
           </View>
         );
@@ -400,6 +416,9 @@ function AppContent() {
     <SafeAreaView style={styles.safeRoot}>
       <StatusBar barStyle="dark-content" />
       <View style={[styles.appViewport, isTablet && styles.tabletViewport]}>
+        {CLOUD_MODE && route !== 'login' && route !== 'register' ? <Text style={{ padding: 8, color: COLORS.textSecondary }}>Bản thử nghiệm • Danh mục bác sĩ minh họa</Text> : null}
+        {actionMessage ? <View style={{ padding: 12 }}><Text accessibilityRole="alert" style={{ color: COLORS.error }}>{actionMessage}</Text><Text accessibilityRole="button" onPress={() => setActionMessage('')} style={{ color: COLORS.primary, paddingTop: 8 }}>Đóng thông báo</Text></View> : null}
+        {CLOUD_MODE && cloudSyncError ? <Text accessibilityRole="alert" style={{ padding: 12, color: COLORS.error }}>{cloudSyncError}</Text> : null}
         {renderCurrentScreen()}
       </View>
     </SafeAreaView>

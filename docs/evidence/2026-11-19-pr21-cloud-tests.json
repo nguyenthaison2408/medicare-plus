@@ -1,0 +1,132 @@
+{
+  "startedAt": "2026-11-19T10:51:22.220Z",
+  "finishedAt": "2026-11-19T10:51:36.205Z",
+  "projectUrl": "https://eulckfyojbbovwpslrep.supabase.co",
+  "environment": "hosted Supabase Auth/Data API/PostgreSQL/Realtime",
+  "checks": [
+    {
+      "name": "anonymous users can read the hosted doctor catalog",
+      "passed": true
+    },
+    {
+      "name": "anonymous booking is denied",
+      "passed": true
+    },
+    {
+      "name": "five synthetic Auth accounts log in with real passwords; role metadata grants no privileges",
+      "passed": true
+    },
+    {
+      "name": "an incorrect password is rejected",
+      "passed": true
+    },
+    {
+      "name": "patients may only read their own hosted profile",
+      "passed": true
+    },
+    {
+      "name": "patients cannot grant themselves an admin role",
+      "passed": true
+    },
+    {
+      "name": "hosted RPC rejects invalid patient fields independently",
+      "passed": true
+    },
+    {
+      "name": "hosted bookings preserve Vietnamese names and patient details",
+      "passed": true
+    },
+    {
+      "name": "50 concurrent hosted booking requests create exactly one appointment and 49 conflicts",
+      "passed": true
+    },
+    {
+      "name": "availability marks the occupied hosted slot",
+      "passed": true
+    },
+    {
+      "name": "another patient cannot read the booking",
+      "passed": true
+    },
+    {
+      "name": "another patient cannot cancel the booking",
+      "passed": true
+    },
+    {
+      "name": "an unrelated doctor cannot read the booking",
+      "passed": true
+    },
+    {
+      "name": "a fresh independent login retrieves the persisted appointment",
+      "passed": true
+    },
+    {
+      "name": "the hosted Realtime subscription connects",
+      "passed": true
+    },
+    {
+      "name": "the owner can cancel the booking",
+      "passed": true
+    },
+    {
+      "name": "Realtime delivers the authorized appointment update",
+      "passed": true
+    },
+    {
+      "name": "cancelling releases the slot for another patient",
+      "passed": true
+    },
+    {
+      "name": "reception cannot check in tomorrow appointments today",
+      "passed": true
+    },
+    {
+      "name": "patients cannot perform staff check-in",
+      "passed": true
+    },
+    {
+      "name": "reception can check in the same-day time fixture by its real booking code",
+      "passed": true
+    },
+    {
+      "name": "reception cannot write a medical record",
+      "passed": true
+    },
+    {
+      "name": "an unrelated doctor cannot write a medical record",
+      "passed": true
+    },
+    {
+      "name": "the assigned doctor saves the medical record and completes the appointment",
+      "passed": true
+    },
+    {
+      "name": "the appointment owner reads the persisted medical record",
+      "passed": true
+    },
+    {
+      "name": "another patient cannot read the medical record",
+      "passed": true
+    },
+    {
+      "name": "reception cannot read the private medical record",
+      "passed": true
+    },
+    {
+      "name": "completed appointments cannot be cancelled",
+      "passed": true
+    }
+  ],
+  "concurrency": {
+    "requests": 50,
+    "successes": 1,
+    "conflicts": 49
+  },
+  "cleanupSucceeded": true,
+  "limitations": [
+    "Synthetic accounts; not a 20-person UAT.",
+    "50-request contention check; not a sustained k6 100-VU benchmark.",
+    "Same-day check-in used a controlled SQL time fixture.",
+    "No camera, browser UI or device acceptance covered by this script."
+  ]
+}

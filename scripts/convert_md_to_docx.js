@@ -12,6 +12,9 @@ const {
   Packer,
   Paragraph,
   TextRun,
+  ExternalHyperlink,
+  ImageRun,
+  TableOfContents,
   Table,
   TableRow,
   TableCell,
@@ -96,6 +99,20 @@ function parseInlineRuns(text, options = {}) {
   // Replace checkmarks
   cleaned = cleaned.replace(/\[x\]/gi, '☑ ').replace(/\[ \]/g, '☐ ');
 
+  // Turn bare source URLs into real Word hyperlinks as well.
+  const makePlainRuns = (value) => {
+    const result = []; let position = 0;
+    const urlPattern = /https?:\/\/[^\s<>()\[\]|]+/g; let found;
+    const plain = (text) => new TextRun({text, font: FONT_PRIMARY, size: defaultSize, color: defaultColor, bold: defaultBold, italics: defaultItalics});
+    while ((found = urlPattern.exec(value)) !== null) {
+      const url = found[0].replace(/[.,;:!?]+$/, '');
+      if (found.index > position) result.push(plain(value.slice(position, found.index)));
+      result.push(new ExternalHyperlink({link: url, children: [new TextRun({text: url, font: FONT_PRIMARY, size: defaultSize, color: COLOR_NAVY, underline: {}, bold: defaultBold, italics: defaultItalics})]}));
+      position = found.index + url.length;
+    }
+    if (position < value.length) result.push(plain(value.slice(position)));
+    return result;
+  };
   // Tokenize string for bold, italic, code, links
   // Regex matches:
   // 1: ***bolditalic***
@@ -114,14 +131,7 @@ function parseInlineRuns(text, options = {}) {
     // Add text preceding match
     if (match.index > lastIndex) {
       const prevText = cleaned.substring(lastIndex, match.index);
-      runs.push(new TextRun({
-        text: prevText,
-        font: FONT_PRIMARY,
-        size: defaultSize,
-        color: defaultColor,
-        bold: defaultBold,
-        italics: defaultItalics
-      }));
+      runs.push(...makePlainRuns(prevText));
     }
 
     if (match[1]) {
@@ -164,13 +174,10 @@ function parseInlineRuns(text, options = {}) {
         shading: { fill: 'F1F5F9' }
       }));
     } else if (match[9]) {
-      // [text](url)
-      runs.push(new TextRun({
-        text: match[10],
-        font: FONT_PRIMARY,
-        size: defaultSize,
-        color: COLOR_NAVY,
-        underline: {}
+      // Preserve hyperlink targets in Word.
+      runs.push(new ExternalHyperlink({
+        link: match[11].replace(/^<|>$/g, ''),
+        children: [new TextRun({text: match[10], font: FONT_PRIMARY, size: defaultSize, color: COLOR_NAVY, underline: {}})]
       }));
     } else if (match[12]) {
       // ~~strike~~
@@ -189,14 +196,7 @@ function parseInlineRuns(text, options = {}) {
   // Add trailing text
   if (lastIndex < cleaned.length) {
     const remaining = cleaned.substring(lastIndex);
-    runs.push(new TextRun({
-      text: remaining,
-      font: FONT_PRIMARY,
-      size: defaultSize,
-      color: defaultColor,
-      bold: defaultBold,
-      italics: defaultItalics
-    }));
+    runs.push(...makePlainRuns(remaining));
   }
 
   return runs.length > 0 ? runs : [new TextRun({
@@ -237,6 +237,9 @@ function parseMarkdownBlocks(content) {
       blocks.push({ type: 'code', lang, lines: codeLines });
       continue;
     }
+
+    const imageMatch = line.match(/^!\[([^\]]*)\]\(([^)]+)\)$/);
+    if (imageMatch) { blocks.push({type: 'image', caption: imageMatch[1], source: imageMatch[2]}); i++; continue; }
 
     // Horizontal Rule
     if (line === '---' || line === '***' || line === '___') {
@@ -347,11 +350,21 @@ function parseMarkdownBlocks(content) {
 /**
  * Build docx elements from parsed Markdown blocks
  */
-function buildDocxElements(blocks, isLandscape = false) {
+function buildDocxElements(blocks, isLandscape = false, isFinalReport = false) {
   const elements = [];
 
   for (const block of blocks) {
     switch (block.type) {
+      case 'image': {
+        const root = path.resolve(__dirname, '..');
+        const file = path.resolve(root, block.source);
+        if (!file.startsWith(path.join(root, 'scripts', 'report-data', 'figures') + path.sep) || path.extname(file).toLowerCase() !== '.png') throw new Error('Only local report PNG figures are supported.');
+        const bytes = fs.readFileSync(file);
+        const width = bytes.readUInt32BE(16), height = bytes.readUInt32BE(20);
+        elements.push(new Paragraph({alignment: AlignmentType.CENTER, keepNext: true, spacing: {before: 120, after: 80}, children: [new ImageRun({type: 'png', data: bytes, transformation: {width: 550, height: Math.round(550 * height / width)}})]}));
+        elements.push(new Paragraph({alignment: AlignmentType.CENTER, spacing: {after: 160}, children: parseInlineRuns(block.caption, {size: 22, italics: true, color: COLOR_MUTED})}));
+        break;
+      }
       case 'heading': {
         const text = block.text;
         let headingLevel = HeadingLevel.HEADING_1;
@@ -382,6 +395,8 @@ function buildDocxElements(blocks, isLandscape = false) {
 
         elements.push(new Paragraph({
           heading: headingLevel,
+          keepNext: true,
+          pageBreakBefore: isFinalReport && (/^CHƯƠNG\s+[2-7]\b/i.test(text) || /^PHỤ LỤC\b/i.test(text)),
           spacing: { before: spaceBefore, after: spaceAfter, line: 300, lineRule: 'auto' },
           children: parseInlineRuns(text, { size, color, bold: true })
         }));
@@ -585,7 +600,7 @@ function buildDocxElements(blocks, isLandscape = false) {
             }));
           }
 
-          tableRows.push(new TableRow({ children: cells }));
+          tableRows.push(new TableRow({ children: cells, cantSplit: true }));
         });
 
         elements.push(new Table({
@@ -702,7 +717,7 @@ function createFinalReportCoverPage() {
       spacing: { before: 0, after: 300 },
       children: [
         new TextRun({
-          text: 'FINAL TECHNICAL AUDIT REPORT — 15 WEEKS EXECUTION',
+          text: 'CẬP NHẬT 19/11/2026 — BÁO CÁO NGÀY 23/11/2026',
           font: FONT_PRIMARY,
           size: 22,
           italics: true,
@@ -828,7 +843,7 @@ function createFinalReportCoverPage() {
       spacing: { before: 800, after: 40 },
       children: [
         new TextRun({
-          text: 'ĐÀ NẴNG, THÁNG 12 NĂM 2026',
+          text: 'ĐÀ NẴNG, THÁNG 11 NĂM 2026',
           font: FONT_PRIMARY,
           size: 24,
           bold: true,
@@ -914,16 +929,13 @@ function createDocumentHeaderFooter(docTitle) {
 /**
  * Main conversion function for a single Markdown file
  */
-async function convertFile(inputMdPath, outputDocxPath, options = {}) {
-  console.log(`\n========================================`);
-  console.log(`Processing: ${path.basename(inputMdPath)} -> ${path.basename(outputDocxPath)}`);
-
-  const mdContent = fs.readFileSync(inputMdPath, 'utf8');
+async function convertMarkdown(mdContent, outputDocxPath, options = {}) {
+  console.log('Exporting Word: ' + path.basename(outputDocxPath));
   const blocks = parseMarkdownBlocks(mdContent);
 
   const isLandscape = options.isLandscape || false;
   const isFinalReport = options.isFinalReport || false;
-  const docTitle = options.title || path.basename(inputMdPath, '.md').replace(/^\d+_/, '').replace(/_/g, ' ');
+  const docTitle = options.title || path.basename(outputDocxPath, '.docx').replace(/^\d+_/, '').replace(/_/g, ' ');
 
   const { header, footer } = createDocumentHeaderFooter(docTitle);
 
@@ -932,12 +944,18 @@ async function convertFile(inputMdPath, outputDocxPath, options = {}) {
   // Add cover page if Final Technical Report
   if (isFinalReport) {
     bodyElements.push(...createFinalReportCoverPage());
+    bodyElements.push(new Paragraph({children: [new TextRun({text: 'MỤC LỤC', font: FONT_PRIMARY, size: 32, bold: true, color: COLOR_NAVY})]}));
+    bodyElements.push(new TableOfContents('Mục lục', {hyperlink: true, headingStyleRange: '1-2'}));
+    bodyElements.push(new Paragraph({pageBreakBefore: true, children: []}));
   }
 
   // Add main parsed elements
-  bodyElements.push(...buildDocxElements(blocks, isLandscape));
+  bodyElements.push(...buildDocxElements(blocks, isLandscape, isFinalReport));
 
   const doc = new Document({
+    creator: 'MediCare Plus - Nhóm 04', title: docTitle,
+    description: 'Bản đối chiếu 19/11/2026; báo cáo ngày 23/11/2026',
+    features: {updateFields: true},
     styles: {
       default: {
         document: {
@@ -983,70 +1001,17 @@ async function convertFile(inputMdPath, outputDocxPath, options = {}) {
 /**
  * Execute batch conversion
  */
-async function run() {
-  const docsDir = path.join('D:', 'Quản lý dự án phần mềm', 'docs');
-
-  const filesToConvert = [
-    {
-      md: '01_Final_Technical_Report.md',
-      docx: '01_Final_Technical_Report.docx',
-      options: { isFinalReport: true, title: 'Báo Cáo Tổng Kết Kỹ Thuật' }
-    },
-    {
-      md: '02_Project_Charter_Signed.md',
-      docx: '02_Project_Charter_Signed.docx',
-      options: { title: 'Điều Lệ Dự Án (Project Charter)' }
-    },
-    {
-      md: '03_WBS_and_WBS_Dictionary.md',
-      docx: '03_WBS_and_WBS_Dictionary.docx',
-      options: { title: 'Cơ Cấu Phân Rã & Từ Điển WBS' }
-    },
-    {
-      md: '04_Risk_Register_Evolution.md',
-      docx: '04_Risk_Register_Evolution.docx',
-      options: { isLandscape: true, title: 'Bảng Theo Dõi Rủi Ro (Risk Register)' }
-    },
-    {
-      md: '05_Sprint_Retrospectives.md',
-      docx: '05_Sprint_Retrospectives.docx',
-      options: { title: 'Biên Bản Họp Cải Tiến (Sprint Retrospectives)' }
-    },
-    {
-      md: '06_Scope_Change_Control_Record.md',
-      docx: '06_Scope_Change_Control_Record.docx',
-      options: { title: 'Hồ Sơ Quản Lý Thay Đổi (Change Control)' }
-    },
-    {
-      md: '08_Presentation_Slide_Deck.md',
-      docx: '08_Presentation_Slide_Deck.docx',
-      options: { title: 'Kịch Bản Bảo Vệ & Slide Deck' }
-    },
-    {
-      md: '00_Project_Overview_and_Links.md',
-      docx: '00_Project_Overview_and_Links.docx',
-      options: { title: 'Tổng Quan Dự Án & Danh Mục Link' }
-    }
-  ];
-
-  console.log(`Starting conversion of ${filesToConvert.length} documents into Microsoft Word (.docx)...`);
-  console.log(`Font standard: ${FONT_PRIMARY}`);
-
-  for (const item of filesToConvert) {
-    const inputPath = path.join(docsDir, item.md);
-    const outputPath = path.join(docsDir, item.docx);
-
-    if (fs.existsSync(inputPath)) {
-      await convertFile(inputPath, outputPath, item.options);
-    } else {
-      console.warn(`File not found: ${inputPath}`);
-    }
-  }
-
-  console.log(`\n========================================`);
-  console.log(`All Word documents generated successfully!`);
+async function convertFile(inputMdPath, outputDocxPath, options = {}) {
+  return convertMarkdown(fs.readFileSync(inputMdPath, 'utf8'), outputDocxPath, options);
 }
-
+async function run() {
+  const docsDir = process.argv[2] ? path.resolve(process.argv[2]) : path.resolve(__dirname, '../docs');
+  const savedSource = path.resolve(__dirname, 'report-data/report-source.json');
+  const source = JSON.parse(fs.readFileSync(savedSource, 'utf8').replace(/^\uFEFF/, ''));
+  fs.mkdirSync(docsDir, {recursive: true});
+  for (const item of source.documents) await convertMarkdown(item.content, path.join(docsDir, item.stem + '.docx'), {...item.options, title: item.title});
+  console.log('Exported Word reports from tracked JSON/PNG sources.');
+}
 if (require.main === module) {
 run().catch(err => {
   console.error('Error during conversion:', err);
@@ -1054,4 +1019,4 @@ run().catch(err => {
 });
 
 }
-module.exports = { convertFile };
+module.exports = { convertFile, convertMarkdown };

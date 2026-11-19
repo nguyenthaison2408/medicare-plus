@@ -1,0 +1,65 @@
+{
+  "verifiedAtUtc": "2026-11-19T12:00:17.311Z",
+  "source": "Public GitHub REST plus saved cloud evidence and local git rev-list",
+  "main": {
+    "sha": "8f2059386effedcba25c2e6597ccdb81c711a4cc",
+    "protected": false,
+    "reachableCommitCount": 49
+  },
+  "pullRequests": [
+    {
+      "number": 20,
+      "url": "https://github.com/nguyenthaison2408/medicare-plus/pull/20",
+      "merged": true,
+      "mergedAt": "2026-11-19T07:22:27Z",
+      "mergeCommit": "08abe25e567ae08f5014923e4fe2d35cbeb8b4d0",
+      "head": "7034aceab4a962a183b2e7dbc1b842a053e2b342"
+    },
+    {
+      "number": 21,
+      "url": "https://github.com/nguyenthaison2408/medicare-plus/pull/21",
+      "merged": true,
+      "mergedAt": "2026-11-19T10:55:01Z",
+      "mergeCommit": "8f2059386effedcba25c2e6597ccdb81c711a4cc",
+      "head": "6ee11c2a91ceac5e61cd68edd3b1d29161b4b5b9"
+    }
+  ],
+  "reviews": [
+    {
+      "user": "nguyenthaison2408",
+      "state": "APPROVED",
+      "commit": "6ee11c2a91ceac5e61cd68edd3b1d29161b4b5b9",
+      "url": "https://github.com/nguyenthaison2408/medicare-plus/pull/21#pullrequestreview-5973642215"
+    }
+  ],
+  "ci": {
+    "id": 44510053194,
+    "url": "https://github.com/nguyenthaison2408/medicare-plus/actions/runs/44510053194",
+    "head": "8f2059386effedcba25c2e6597ccdb81c711a4cc",
+    "status": "completed",
+    "conclusion": "success",
+    "jobs": [
+      {
+        "name": "code-quality-and-test (24.x)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "code-quality-and-test (22.x)",
+        "status": "completed",
+        "conclusion": "success"
+      }
+    ]
+  },
+  "cloud": {
+    "evidence": "2026-11-19-pr21-cloud-tests.json",
+    "passed": 28,
+    "total": 28,
+    "cleanupSucceeded": true,
+    "concurrency": {
+      "requests": 50,
+      "successes": 1,
+      "conflicts": 49
+    }
+  }
+}

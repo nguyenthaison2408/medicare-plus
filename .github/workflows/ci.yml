@@ -32,6 +32,9 @@ jobs:
       - name: Install Root Dependencies
         run: npm ci
 
+      - name: Verify Word Report Export
+        run: node scripts/export-word-reports.cjs artifacts/report-export-check
+
       - name: Verify PostgreSQL Migration and RLS
         run: npm run test:db
 

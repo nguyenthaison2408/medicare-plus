@@ -40,6 +40,7 @@ export const AppInput: React.FC<AppInputProps> = ({
       <View
         style={[
           styles.inputBox,
+          rest.multiline && styles.inputBoxMultiline,
           focused && styles.inputBoxFocused,
           error ? styles.inputBoxError : null,
         ]}
@@ -54,7 +55,7 @@ export const AppInput: React.FC<AppInputProps> = ({
           />
         ) : null}
         <TextInput
-          style={styles.input}
+          style={[styles.input, rest.multiline && styles.inputMultiline]}
           placeholderTextColor={COLORS.placeholder}
           secureTextEntry={secure}
           accessibilityLabel={label || rest.placeholder}
@@ -179,6 +180,11 @@ const styles = StyleSheet.create({
     borderColor: COLORS.primary,
     backgroundColor: COLORS.surface,
   },
+  inputBoxMultiline: {
+    minHeight: 104,
+    alignItems: 'flex-start',
+    paddingVertical: 12,
+  },
   inputBoxError: {
     borderColor: COLORS.error,
   },
@@ -189,6 +195,11 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     color: COLORS.textPrimary,
+    paddingVertical: 0,
+  },
+  inputMultiline: {
+    minHeight: 78,
+    textAlignVertical: 'top',
     paddingVertical: 0,
   },
   errorText: {

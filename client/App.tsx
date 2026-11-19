@@ -13,6 +13,7 @@ import { DOCTORS, DoctorItem } from './src/data/mockData';
 import { AppProvider, useAppContext } from './src/context/AppContext';
 import { CLOUD_MODE } from './src/services/supabaseClient';
 import { signOutClinic } from './src/services/clinicCloud';
+import type { PatientBookingInfo } from './src/utils/bookingValidation';
 import { ClinicStaffScreen } from './src/screens/ClinicStaffScreen';
 import { BottomTabBar, MainTabKey } from './src/components';
 import {
@@ -227,7 +228,7 @@ function AppContent() {
             consultMode={bookingInfo.consultMode}
             patient={bookingInfo.patient}
             onBack={() => goBack('bookingSlot')}
-            onPaymentSuccess={async (method) => {
+            onPaymentSuccess={async (method, patientInfo: PatientBookingInfo) => {
               if (bookingInFlight.current) return;
               bookingInFlight.current = true;
               try {
@@ -235,6 +236,7 @@ function AppContent() {
                   doctor: bookingInfo.doctor || selectedDoctor,
                   day: bookingInfo.day, slot: bookingInfo.slot,
                   consultMode: bookingInfo.consultMode, paymentMethod: method,
+                  patientInfo,
                 });
                 setBookingInfo((prev) => ({ ...prev, paymentMethod: method }));
                 navigateTo('bookingSuccess');

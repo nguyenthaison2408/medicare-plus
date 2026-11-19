@@ -63,11 +63,14 @@ try {
   let booking;
   await check('50 concurrent hosted booking requests create exactly one appointment and 49 conflicts', async () => {
     const results = await Promise.all(Array.from({length:50}, () => patientA.client.rpc('clinic_book_appointment', {
-      p_doctor_id:'doc-1',p_starts_at:startsAt,p_payment_method:'at_clinic'})));
+      p_doctor_id:'doc-1',p_starts_at:startsAt,p_payment_method:'at_clinic',
+      p_patient_name:'Demo Patient A',p_patient_phone:'0901234567',p_patient_email:patientA.email,
+      p_symptoms:'Đau đầu kéo dài hai ngày'})));
     const successes = results.filter(result => !result.error);
     const conflicts = results.filter(result => result.error?.code === '23505');
     concurrency = {requests:50,successes:successes.length,conflicts:conflicts.length};
     assert.equal(successes.length,1); assert.equal(conflicts.length,49); booking=successes[0].data;
+    assert.equal(booking.patient_email,patientA.email); assert.equal(booking.symptoms,'Đau đầu kéo dài hai ngày');
   });
   await check('availability marks the occupied hosted slot', async () => {
     const slots=ok(await patientA.client.rpc('clinic_slot_availability',{p_doctor_id:'doc-1',p_date:clock.tomorrow}));

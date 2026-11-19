@@ -789,15 +789,37 @@ export const AppointmentsScreen: React.FC<AppointmentsScreenProps> = ({
   onBookNew,
   onNavigate,
 }) => {
-  const { appointments, cancelAppointment } = useAppContext();
+  const { appointments, cancelAppointment, selectAppointmentTicket } = useAppContext();
   const [statusTab, setStatusTab] = useState('upcoming');
   const [cancelToast, setCancelToast] = useState<string | null>(null);
+  const [cancelConfirmId, setCancelConfirmId] = useState<string | null>(null);
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [cancelError, setCancelError] = useState('');
 
   const upcomingList = sortUpcomingAppointments(
     appointments.filter((a) => a.status === 'upcoming')
   );
   const completedList = appointments.filter((a) => a.status === 'completed');
   const cancelledList = appointments.filter((a) => a.status === 'cancelled');
+
+  const confirmCancellation = async (appointment: AppointmentItem) => {
+    if (cancellingId) return;
+    setCancellingId(appointment.id);
+    setCancelError('');
+    try {
+      await cancelAppointment(appointment.id);
+      setCancelConfirmId(null);
+      setCancelToast(
+        `Đã hủy lịch hẹn ${appointment.code} với ${appointment.doctor.name}.`
+      );
+    } catch (error) {
+      setCancelError(
+        error instanceof Error ? error.message : 'Chưa hủy được lịch hẹn. Vui lòng thử lại.'
+      );
+    } finally {
+      setCancellingId(null);
+    }
+  };
 
   if (CLOUD_MODE) return <ClinicPatientAppointmentsScreen onNavigate={onNavigate} onBookNew={onBookNew} />;
 
@@ -841,35 +863,59 @@ export const AppointmentsScreen: React.FC<AppointmentsScreenProps> = ({
             {upcomingList.length > 0 ? (
               upcomingList.map((apt, idx) => (
                 <AnimatedEntry key={apt.id} delay={Math.min(60, 20 + idx * 20)} direction="up">
-                  <AppointmentCard
-                    appointment={apt}
-                    onPrimaryPress={(item) => {
-                      if (item.mode === 'video') {
-                        onNavigate('teleconsult');
-                      } else {
-                        onNavigate('bookingSuccess');
-                      }
-                    }}
-                    onSecondaryPress={(item) => {
-                      Alert.alert(
-                        'Xác nhận hủy lịch hẹn?',
-                        `Bạn có chắc chắn muốn hủy lịch hẹn ${item.code} với ${item.doctor.name} (${item.timeRange}) không?`,
-                        [
-                          { text: 'Đóng', style: 'cancel' },
-                          {
-                            text: 'Xác nhận hủy',
-                            style: 'destructive',
-                            onPress: () => {
-                              cancelAppointment(item.id);
-                              setCancelToast(
-                                `Đã hủy lịch hẹn ${item.code} với ${item.doctor.name}.`
-                              );
-                            },
-                          },
-                        ]
-                      );
-                    }}
-                  />
+                  <View>
+                    <AppointmentCard
+                      appointment={apt}
+                      onPrimaryPress={(item) => {
+                        selectAppointmentTicket(item);
+                        if (item.mode === 'video') {
+                          onNavigate('teleconsult');
+                        } else {
+                          onNavigate('bookingSuccess');
+                        }
+                      }}
+                      onSecondaryPress={(item) => {
+                        setCancelError('');
+                        setCancelConfirmId(item.id);
+                      }}
+                    />
+                    {cancelConfirmId === apt.id ? (
+                      <View style={[styles.cancelConfirmation, SHADOWS.sm]}>
+                        <Text style={styles.cancelConfirmationTitle}>
+                          Xác nhận hủy lịch hẹn?
+                        </Text>
+                        <Text style={styles.cancelConfirmationText}>
+                          Lịch {apt.code} với {apt.doctor.name} ({apt.timeRange}) sẽ được chuyển sang mục Đã hủy.
+                        </Text>
+                        {cancelError ? (
+                          <Text accessibilityRole="alert" style={styles.cancelConfirmationError}>
+                            {cancelError}
+                          </Text>
+                        ) : null}
+                        <View style={styles.cancelConfirmationActions}>
+                          <AppButton
+                            title="Giữ lịch hẹn"
+                            variant="outline"
+                            size="sm"
+                            fullWidth={false}
+                            disabled={cancellingId === apt.id}
+                            onPress={() => setCancelConfirmId(null)}
+                            style={{ flex: 1 }}
+                          />
+                          <AppButton
+                            title="Xác nhận hủy"
+                            variant="primary"
+                            size="sm"
+                            fullWidth={false}
+                            loading={cancellingId === apt.id}
+                            disabled={Boolean(cancellingId)}
+                            onPress={() => { void confirmCancellation(apt); }}
+                            style={{ flex: 1 }}
+                          />
+                        </View>
+                      </View>
+                    ) : null}
+                  </View>
                 </AnimatedEntry>
               ))
             ) : (
@@ -1767,6 +1813,36 @@ const styles = StyleSheet.create({
     fontSize: TYPOGRAPHY.size.xs,
     color: COLORS.textSecondary,
     marginTop: 3,
+  },
+  cancelConfirmation: {
+    backgroundColor: COLORS.errorSurface,
+    borderWidth: 1,
+    borderColor: COLORS.errorContainer,
+    borderRadius: RADIUS.md,
+    padding: SPACING.md,
+    marginTop: -SPACING.sm,
+    marginBottom: SPACING.lg,
+  },
+  cancelConfirmationTitle: {
+    fontSize: TYPOGRAPHY.size.base,
+    fontWeight: '800',
+    color: COLORS.errorDark,
+  },
+  cancelConfirmationText: {
+    fontSize: TYPOGRAPHY.size.sm,
+    lineHeight: TYPOGRAPHY.lineHeight.normal,
+    color: COLORS.textSecondary,
+    marginTop: SPACING.xs,
+  },
+  cancelConfirmationError: {
+    fontSize: TYPOGRAPHY.size.sm,
+    color: COLORS.error,
+    marginTop: SPACING.sm,
+  },
+  cancelConfirmationActions: {
+    flexDirection: 'row',
+    gap: SPACING.sm,
+    marginTop: SPACING.md,
   },
   statsGrid: {
     flexDirection: 'row',

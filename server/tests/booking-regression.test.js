@@ -32,16 +32,20 @@ async function main() {
     await test('missing required fields', async () => assert.equal((await request('/appointments/book', {})).status, 400));
     await test('short patient name', async () => assert.equal((await request('/appointments/book', { ...valid, patientName: ' x ' })).status, 400));
     await test('non-string patient name', async () => assert.equal((await request('/appointments/book', { ...valid, patientName: {} })).status, 400));
+    await test('patient name containing digits is rejected', async () => assert.equal((await request('/appointments/book', { ...valid, patientName: 'Patient 123' })).status, 400));
     await test('phone with a prefix/suffix is rejected', async () => assert.equal((await request('/appointments/book', { ...valid, phone: 'bad0988776655bad' })).status, 400));
     await test('pipe character is not a phone prefix', async () => assert.equal((await request('/appointments/book', { ...valid, phone: '0|88776655' })).status, 400));
     await test('non-string phone is rejected', async () => assert.equal((await request('/appointments/book', { ...valid, phone: 988776655 })).status, 400));
     await test('invalid email', async () => assert.equal((await request('/appointments/book', { ...valid, email: 'invalid' })).status, 400));
     await test('non-string email', async () => assert.equal((await request('/appointments/book', { ...valid, email: {} })).status, 400));
+    await test('non-string symptoms are rejected', async () => assert.equal((await request('/appointments/book', { ...valid, symptoms: {} })).status, 400));
+    await test('symptoms shorter than five characters are rejected', async () => assert.equal((await request('/appointments/book', { ...valid, symptoms: 'Đau' })).status, 400));
     await test('unknown slot', async () => assert.equal((await request('/appointments/book', { ...valid, slotId: 'missing-slot' })).status, 404));
     await test('successful booking normalizes contact details', async () => {
-      booked = await request('/appointments/book', { ...valid, patientName: ' Test Patient ', phone: ' 0988776655 ', email: ' test@example.com ' });
+      booked = await request('/appointments/book', { ...valid, patientName: ' Test Patient ', phone: ' 0988776655 ', email: ' test@example.com ', symptoms: ' Đau đầu kéo dài hai ngày ' });
       assert.equal(booked.status, 201); assert.equal(booked.body.data.patientName, 'Test Patient');
       assert.equal(booked.body.data.phone, valid.phone); assert.equal(booked.body.data.email, 'test@example.com');
+      assert.equal(booked.body.data.symptoms, 'Đau đầu kéo dài hai ngày');
     });
     await test('a second booking on the same slot conflicts', async () => assert.equal((await request('/appointments/book', valid)).status, 409));
     await test('50 concurrent requests: one success and 49 conflicts in the demo process', async () => {
@@ -60,7 +64,7 @@ async function main() {
       assert.equal(result.status, 200); assert.equal(result.body.data.status, 'COMPLETED');
     });
     await test('completed appointments cannot check in again', async () => assert.equal((await request('/appointments/check-in', { qrCode: booked.body.data.qrCode })).status, 400));
-    console.log(`\n${passed}/21 regression checks passed. This suite does not verify hosted PostgreSQL or RLS.`);
+    console.log(`\n${passed}/24 regression checks passed. This suite does not verify hosted PostgreSQL or RLS.`);
   } finally {
     server.closeAllConnections();
     await new Promise(resolve => server.close(resolve));

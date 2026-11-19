@@ -90,6 +90,8 @@ export function ClinicStaffScreen({ onLogout }: { onLogout: () => void }) {
         <Text selectable style={styles.body}>{appointment.booking_code}</Text>
         <Text style={styles.body}>{new Date(appointment.starts_at).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}</Text>
         <Text style={styles.body}>{appointment.patient_phone}</Text>
+        <Text style={styles.body}>{appointment.patient_email}</Text>
+        <Text style={styles.body}>Triệu chứng: {appointment.symptoms}</Text>
         {canPrescribe && appointment.status === 'CHECKED_IN' ? <AppButton title="Khám và kê đơn" variant="outline"
           onPress={() => { setSelected(appointment); setDiagnosis(''); setMedicineName(''); setDosage(''); setNotes(''); }} /> : null}
       </View>)}

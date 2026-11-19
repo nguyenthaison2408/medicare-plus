@@ -25,6 +25,8 @@ import {
   HospitalItem,
 } from '../data/mockData';
 import { useAppContext } from '../context/AppContext';
+import { runClinicalTriage } from '../services/aiTriageEngine';
+import { checkEHRSafetyGuardrails } from '../services/aiSafetyGuardrails';
 import {
   HomeGreetingHeader,
   SearchBar,
@@ -49,6 +51,8 @@ import {
   AIChatBubble,
   AITypingIndicator,
   AIClinicalResponseCard,
+  FollowUpOptionItem,
+  FollowUpQuestionItem,
   QuickPromptChips,
   ChatBottomInputBar,
   ProfileHeaderCard,
@@ -1042,129 +1046,55 @@ interface AIChatThreadItem {
     specialtyIcon: keyof typeof Ionicons.glyphMap;
     urgencyLevel: 'emergency' | 'soon' | 'routine';
     doctors: DoctorItem[];
+    followUpQuestions?: FollowUpQuestionItem[];
+    homeCareAdvice?: string[];
+    allergyWarning?: string;
   };
 }
 
 const analyzeMedicalSymptom = (
-  rawText: string
+  rawText: string,
+  allergies?: string[]
 ): Omit<AIChatThreadItem, 'id' | 'sender' | 'time'> => {
-  const q = rawText.toLowerCase();
-
-  // 1. Dấu hiệu cấp cứu (Red Flags)
-  if (
-    q.includes('cấp cứu') ||
-    q.includes('khó thở') ||
-    q.includes('đau ngực dữ dội') ||
-    q.includes('tê yếu') ||
-    q.includes('méo miệng') ||
-    q.includes('nói đớ') ||
-    q.includes('co giật') ||
-    q.includes('ngất')
-  ) {
+  // 1. Phân tích an toàn Dược & Tiền sử dị ứng EHR
+  const safety = checkEHRSafetyGuardrails(rawText, { allergies });
+  if (safety.hasAlert && safety.alertMessage) {
+    if (safety.alertType === 'allergy') {
+      const triage = runClinicalTriage('đau đầu');
+      return {
+        clinicalCard: {
+          urgencyLevel: 'soon',
+          analysisText:
+            'Hệ thống ghi nhận bạn đang quan tâm đến việc dùng thuốc giảm đau trong khi có tiền sử dị ứng thuốc trên hồ sơ bệnh án điện tử.',
+          specialtyName: 'Dược Lâm Sàng & Khám Nội',
+          specialtyDesc: 'Tư vấn sử dụng thuốc an toàn & kiểm soát đau',
+          specialtyIcon: 'medkit',
+          doctors: [DOCTORS[0], DOCTORS[1]],
+          allergyWarning: safety.alertMessage,
+          homeCareAdvice: [
+            'Chỉ sử dụng thuốc khi có ý kiến của bác sĩ điều trị hoặc dược sĩ.',
+            'Theo dõi sát các dấu hiệu nổi mẩn, khó thở nếu lỡ uống nhầm thuốc dị ứng.',
+          ],
+        },
+      };
+    }
     return {
-      clinicalCard: {
-        urgencyLevel: 'emergency',
-        analysisText:
-          'CẢNH BÁO ĐỎ: Các dấu hiệu như đau ngực dữ dội, khó thở, tê yếu nửa người, méo miệng, nói đớ hoặc sốt cao co giật là tình trạng cấp cứu nội/ngoại khoa tối khẩn. Vui lòng gọi 115 hoặc nhờ người thân đưa đến Khoa Cấp cứu gần nhất ngay lập tức.',
-        specialtyName: 'Cấp Cứu & Thần Kinh - Tim Mạch',
-        specialtyDesc: 'Can thiệp đột quỵ & tim mạch khẩn cấp 24/7',
-        specialtyIcon: 'medkit',
-        doctors: [DOCTORS[1], DOCTORS[0]],
-      },
+      text: safety.alertMessage,
     };
   }
 
-  // 2. Hỏi về thuốc giảm đau & cảnh báo dị ứng hồ sơ EHR
-  if (q.includes('thuốc') || q.includes('giảm đau') || q.includes('liều')) {
-    return {
-      text: `Lưu ý an toàn dược lâm sàng: Hồ sơ bệnh án của bạn có ghi nhận tiền sử DỊ ỨNG NHÓM NSAIDs (Ibuprofen). Bạn tuyệt đối không tự ý mua các thuốc giảm đau kháng viêm nhóm NSAIDs. Nếu cần giảm đau tạm thời, hãy tham khảo ý kiến bác sĩ chuyên khoa trước khi dùng Paracetamol đúng liều lượng theo cân nặng.`,
-    };
-  }
-
-  // 3. Hỏi về chế độ ăn uống / kiêng cử
-  if (q.includes('kiêng') || q.includes('ăn uống') || q.includes('sinh hoạt')) {
-    return {
-      text: 'Hướng dẫn chăm sóc & sinh hoạt tại nhà:\n• Hạn chế cà phê, trà đặc, rượu bia và thức ăn chế biến sẵn chứa nhiều muối/bột ngọt.\n• Uống đủ 1.8 – 2 lít nước ấm mỗi ngày.\n• Áp dụng quy tắc 20-20-20 khi nhìn màn hình máy tính và ngủ trước 23:00.',
-    };
-  }
-
-  // 4. Triệu chứng Tim mạch & Huyết áp
-  if (
-    q.includes('tim') ||
-    q.includes('tức ngực') ||
-    q.includes('hồi hộp') ||
-    q.includes('đánh trống ngực') ||
-    q.includes('huyết áp') ||
-    q.includes('mạch nhanh')
-  ) {
-    return {
-      clinicalCard: {
-        urgencyLevel: 'soon',
-        analysisText:
-          'Triệu chứng tức ngực, hồi hộp đánh trống ngực hoặc dao động huyết áp cần được kiểm tra điện tâm đồ (ECG) và siêu âm tim Doppler để loại trừ rối loạn nhịp hoặc thiếu máu cơ tim cục bộ.',
-        specialtyName: 'Tim Mạch',
-        specialtyDesc: 'Tăng huyết áp, mạch vành & rối loạn nhịp tim',
-        specialtyIcon: 'heart',
-        doctors: [DOCTORS[1]],
-      },
-    };
-  }
-
-  // 5. Triệu chứng Mắt / Nhãn khoa
-  if (
-    q.includes('mắt') ||
-    q.includes('nhìn mờ') ||
-    q.includes('mỏi mắt') ||
-    q.includes('khô mắt') ||
-    q.includes('nhức mắt') ||
-    q.includes('thị lực')
-  ) {
-    return {
-      clinicalCard: {
-        urgencyLevel: 'routine',
-        analysisText:
-          'Tình trạng mỏi mắt, khô rát hoặc nhìn mờ khi làm việc máy tính kéo dài thường liên quan đến Hội chứng thị giác màn hình (CVS) hoặc thay đổi độ khúc xạ. Bạn nên khám chuyên khoa Mắt để đo khúc xạ và soi đáy mắt.',
-        specialtyName: 'Mắt (Nhãn Khoa)',
-        specialtyDesc: 'Khúc xạ, khô mắt kỹ thuật số & võng mạc',
-        specialtyIcon: 'eye',
-        doctors: [DOCTORS[2]],
-      },
-    };
-  }
-
-  // 6. Triệu chứng Cột sống & Ngoại thần kinh
-  if (
-    q.includes('đau lưng') ||
-    q.includes('cột sống') ||
-    q.includes('thoát vị') ||
-    q.includes('cổ vai gáy') ||
-    q.includes('thần kinh tọa') ||
-    q.includes('tê chân') ||
-    q.includes('tê tay')
-  ) {
-    return {
-      clinicalCard: {
-        urgencyLevel: 'soon',
-        analysisText:
-          'Đau vùng cổ vai gáy hoặc đau thắt lưng lan xuống tay/chân là dấu hiệu gợi ý chèn ép rễ thần kinh hoặc thoát vị đĩa đệm cột sống. Bạn nên khám chuyên khoa Ngoại Thần kinh để đánh giá vận động và chụp cộng hưởng từ (MRI) khi cần.',
-        specialtyName: 'Ngoại Thần Kinh & Cột Sống',
-        specialtyDesc: 'Thoát vị đĩa đệm, đau thần kinh tọa & cột sống',
-        specialtyIcon: 'fitness',
-        doctors: [DOCTORS[3], DOCTORS[0]],
-      },
-    };
-  }
-
-  // 7. Mặc định / Triệu chứng Nội thần kinh (Đau đầu, chóng mặt, mất ngủ)
+  // 2. Phân tầng cấp cứu & định hướng chuyên khoa bằng AI Triage Engine
+  const result = runClinicalTriage(rawText);
   return {
     clinicalCard: {
-      urgencyLevel: 'soon',
-      analysisText:
-        'Dựa trên mô tả triệu chứng của bạn, hệ thống định hướng sàng lọc ban đầu thuộc nhóm bệnh lý Nội Thần kinh (đau đầu vận mạch Migraine, rối loạn tiền đình hoặc căng thẳng thần kinh). Bạn nên đặt lịch khám để bác sĩ chuyên khoa thăm khám trực tiếp.',
-      specialtyName: 'Nội Thần Kinh',
-      specialtyDesc: 'Đau đầu, chóng mặt, rối loạn tiền đình & mất ngủ',
-      specialtyIcon: 'pulse',
-      doctors: [DOCTORS[0], DOCTORS[3]],
+      urgencyLevel: result.urgencyLevel,
+      analysisText: result.analysisText,
+      specialtyName: result.specialtyName,
+      specialtyDesc: result.specialtyDesc,
+      specialtyIcon: result.specialtyIcon as keyof typeof Ionicons.glyphMap,
+      doctors: result.recommendedDoctors || [DOCTORS[0]],
+      followUpQuestions: result.followUpQuestions,
+      homeCareAdvice: result.homeCareAdvice,
     },
   };
 };
@@ -1198,13 +1128,13 @@ export const AIAssistantScreen: React.FC<AIAssistantScreenProps> = ({
     ]);
     if (!customText) setInputMsg('');
 
-    // TODO: Replace simulated typing timeout and local symptom triage with real AI triage backend API
     setIsTyping(true);
     setTimeout(() => {
       chatScrollRef.current?.scrollToEnd({ animated: true });
     }, 80);
 
-    const analysisResult = analyzeMedicalSymptom(content);
+    const patientAllergies = ['Dị ứng nhóm NSAID (Ibuprofen)'];
+    const analysisResult = analyzeMedicalSymptom(content, patientAllergies);
 
     setTimeout(() => {
       setIsTyping(false);
@@ -1285,6 +1215,12 @@ export const AIAssistantScreen: React.FC<AIAssistantScreenProps> = ({
               specialtyIcon={m.clinicalCard.specialtyIcon}
               urgencyLevel={m.clinicalCard.urgencyLevel}
               doctors={m.clinicalCard.doctors}
+              followUpQuestions={m.clinicalCard.followUpQuestions}
+              homeCareAdvice={m.clinicalCard.homeCareAdvice}
+              allergyWarning={m.clinicalCard.allergyWarning}
+              onSelectFollowUp={(opt, q) =>
+                handleSend(`${q.question} -> Lựa chọn: ${opt.label}`)
+              }
               onBookDoctor={onBookDoctor}
               onEmergencyCall={() => Linking.openURL('tel:115')}
             />

@@ -35,22 +35,21 @@ Yêu cầu Node.js 22.13+ trong dòng 22, hoặc 24.3+ trong dòng 24. Cài các
 
 Phần Supabase: xem [hướng dẫn cấu hình](supabase/README.md) và client/.env.example. Publishable key có thể dùng trong client; mật khẩu CSDL và service-role key không được đặt ở đó.
 
-## Quản lý dự án và bằng chứng
+## Hồ sơ dự án
 
 - [Repository](https://github.com/nguyenthaison2408/medicare-plus)
-- [Scrum Board](https://github.com/users/nguyenthaison2408/projects/1/views/1)
-- [Bảng đối chiếu 19 thẻ, lịch và hạn báo cáo](docs/09_Implementation_Audit.docx)
-- [Kịch bản demo và tổng duyệt](docs/11_Demo_Runbook_20261123.docx)
-- [Bản đối chiếu số liệu kỹ thuật](docs/12_Technical_Report_Current_Draft.docx)
-- [Bảng rủi ro Excel hiện tại](docs/04_Risk_Register_Evolution.xlsx)
+- [Scrum Project](https://github.com/users/nguyenthaison2408/projects/1)
+- [01 — Báo cáo tổng kết kỹ thuật](docs/01_Final_Technical_Report.docx)
+- [02 — Project Charter](docs/02_Project_Charter_Signed.docx)
+- [03 — WBS và từ điển công việc](docs/03_WBS_and_WBS_Dictionary.docx)
+- [04 — Sổ rủi ro Excel](docs/04_Risk_Register_Evolution.xlsx)
+- [05 — Hồi cứu Sprint](docs/05_Sprint_Retrospectives.docx)
+- [06 — Hồ sơ thay đổi phạm vi](docs/06_Scope_Change_Control_Record.docx)
+- [08 — PowerPoint thuyết trình 9 slide](docs/08_Presentation_Slide_Deck.pptx)
+- [Hướng dẫn demo từng nút](demo/13_Huong_Dan_Demo_Tung_Buoc.docx)
 
-Bộ Word trong docs đã cập nhật ngày 19/11 theo main 8f20593; báo cáo chính là 01_Final_Technical_Report.docx. PR #21 đã merge và CI Node 22/24 đạt; main hiện chưa bật bảo vệ nhánh. Nhóm còn rà soát/đối chiếu và xác nhận trước nộp. Số commit, test, coverage, UAT, chữ ký và URL production chỉ được ghi là đã kiểm chứng khi có bằng chứng tương ứng. Kiểm thử PostgreSQL nhúng không thay thế kiểm thử Auth, Realtime hoặc tải nhiều kết nối trên Supabase thật.
+Thư mục docs chứa bảy tệp hồ sơ chính; kết quả kiểm thử được lưu riêng trong docs/evidence. Hướng dẫn thao tác nằm trong demo.
 
-- [Báo cáo chính bảy chương](docs/01_Final_Technical_Report.docx)
-- [Hướng dẫn demo từng nút](docs/13_Huong_Dan_Demo_Tung_Buoc.docx)
+Nhánh main yêu cầu một phê duyệt PR, CI Node 22/24 thành công và giải quyết hội thoại trước khi merge. Force push và xóa main bị chặn. Email và Redis thuộc giai đoạn sau; camera, UAT và giao diện HTTPS/APK được theo dõi theo tiêu chí nghiệm thu riêng.
 
-Xuất bộ Word từ nguồn nội bộ: node scripts/export-word-reports.cjs. Nội dung nguồn lưu tại scripts/report-data/report-source.json; quá trình xuất không tạo PDF.
-
-Đã đối chiếu đề bài QLDA do người dùng cung cấp: báo cáo theo 7 chương chuẩn, nhóm bốn người đảm nhiệm năm vai trò. File 07 là tùy chọn theo xác nhận của người dùng và không tạo. PDF là định dạng nộp theo đề; bộ làm việc hiện giữ Word/XLSX. Các yêu cầu còn thiếu được ghi trong tài liệu 09, gồm Branch Protection, dữ liệu burndown/velocity, HTTPS public/APK và nghiệm thu thật.
-
-Nguồn JSON và hình PNG của báo cáo được theo dõi trong scripts/report-data; node scripts/export-word-reports.cjs artifacts/report-export-check kiểm tra xuất Word mà không thay bản trong docs. Mục lục/số trang hoàn thiện cần được cập nhật bằng Microsoft Word; máy CI chỉ kiểm tra tạo tệp.
+Sao chép bộ hồ sơ bằng `node scripts/export-word-reports.cjs [thư-mục-đích]`. Công cụ dùng các bản Word/Excel/PowerPoint trong docs, giữ nguyên nội dung và định dạng đã chỉnh tay, không tạo PDF hoặc tái tạo bản nháp.

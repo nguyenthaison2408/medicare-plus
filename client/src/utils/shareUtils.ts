@@ -10,7 +10,9 @@ export async function shareAppointmentTicket(
 ): Promise<void> {
   const { doctor } = ticket;
   const isBHYT = ticket.paymentMethod === 'at_clinic_bhyt';
-  const paymentStatus = isBHYT
+  const paymentStatus = ticket.paymentMethod === 'at_clinic'
+    ? 'Thanh toán tại cơ sở y tế — chưa thu tiền'
+    : isBHYT
     ? 'Giữ chỗ BHYT (Thanh toán & đối chiếu tại viện)'
     : `Đã thanh toán Online (${ticket.doctor.fee})`;
 

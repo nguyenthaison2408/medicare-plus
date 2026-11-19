@@ -61,6 +61,21 @@ try {
   const {rows:[clock]} = await db.query("select ((now() at time zone 'Asia/Ho_Chi_Minh')::date+1)::text as tomorrow, (now() at time zone 'Asia/Ho_Chi_Minh')::date::text as today");
   const startsAt = `${clock.tomorrow}T08:00:00+07:00`;
   let booking;
+  await check('hosted RPC rejects invalid patient fields independently', async () => {
+    const valid={p_doctor_id:'doc-2',p_starts_at:startsAt,p_payment_method:'at_clinic',p_patient_name:'Nguyễn Văn An',
+      p_patient_phone:'0901234567',p_patient_email:patientA.email,p_symptoms:'Đau đầu kéo dài'};
+    for(const [field,value] of [['p_patient_name','Patient 123'],['p_patient_name',''],['p_patient_phone','123'],
+      ['p_patient_email','invalid-email'],['p_patient_email',''],['p_symptoms','Đau'],['p_symptoms','']]) {
+      assert.equal((await patientA.client.rpc('clinic_book_appointment',{...valid,[field]:value})).error?.code,'22023',field);
+    }
+  });
+  await check('hosted bookings preserve Vietnamese names and patient details', async () => {
+    const result=ok(await patientA.client.rpc('clinic_book_appointment',{p_doctor_id:'doc-2',p_starts_at:startsAt,
+      p_payment_method:'at_clinic',p_patient_name:'Nguyễn Văn An',p_patient_phone:'090.123.4567',
+      p_patient_email:patientA.email,p_symptoms:'Đau đầu kéo dài'}));
+    assert.equal(result.patient_name,'Nguyễn Văn An');assert.equal(result.patient_phone,'0901234567');
+    ok(await patientA.client.rpc('clinic_cancel_appointment',{p_appointment_id:result.id}));
+  });
   await check('50 concurrent hosted booking requests create exactly one appointment and 49 conflicts', async () => {
     const results = await Promise.all(Array.from({length:50}, () => patientA.client.rpc('clinic_book_appointment', {
       p_doctor_id:'doc-1',p_starts_at:startsAt,p_payment_method:'at_clinic',
@@ -112,6 +127,7 @@ try {
   await patientA.client.removeChannel(channel);
   await check('cancelling releases the slot for another patient', async () => {
     booking=ok(await patientB.client.rpc('clinic_book_appointment',{p_doctor_id:'doc-1',p_starts_at:startsAt,p_payment_method:'at_clinic'}));
+    assert.equal(booking.patient_email,'');
   });
   await check('reception cannot check in tomorrow appointments today', async () => {
     assert.equal((await reception.client.rpc('clinic_check_in',{p_booking_code:booking.booking_code})).error?.message,'CHECK_IN_DATE_MISMATCH');

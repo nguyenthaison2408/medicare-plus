@@ -74,9 +74,18 @@ try {
     assert.equal(appointment.symptoms,'Đau đầu kéo dài hai ngày');
   });
   await test('invalid booking contact details are rejected by PostgreSQL', async () => {
-    await expectCode(()=>db.query('select public.clinic_book_appointment($1,$2,$3,$4,$5,$6,$7)',[
-      'doc-2',future,'at_clinic','A','123','invalid-email','Đau',
-    ]),'22023');
+    const valid=['doc-2',future,'at_clinic','Nguyễn Văn An','0988776655','patient@example.com','Đau đầu kéo dài'];
+    for(const [index,value] of [[3,'A'],[3,'Patient 123'],[3,''],[4,'123'],[4,''],[5,'invalid-email'],[5,''],[5,'a'.repeat(255)+'@example.com'],[6,'Đau'],[6,''],[6,null],[6,'x'.repeat(1001)]]) {
+      const args=[...valid];args[index]=value;
+      await expectCode(()=>db.query('select public.clinic_book_appointment($1,$2,$3,$4,$5,$6,$7)',args),'22023');
+    }
+  });
+  await test('Vietnamese patient names and explicit contact details persist', async () => {
+    const result=(await db.query('select public.clinic_book_appointment($1,$2,$3,$4,$5,$6,$7) as result',[
+      'doc-2',future,'at_clinic','Nguyễn Văn An','090.123.4567',' Patient+tag@Example.com ','Đau đầu kéo dài',
+    ])).rows[0].result;
+    assert.equal(result.patient_name,'Nguyễn Văn An');assert.equal(result.patient_phone,'0901234567');
+    assert.equal(result.patient_email,'patient+tag@example.com');
   });
   await test('patients cannot insert appointments directly', async () => expectCode(()=>db.query('insert into public.clinic_appointments default values'),'42501'));
   await asUser(ids.b);
@@ -92,9 +101,13 @@ try {
   await test('cancelling releases the slot for a different patient', async () => {
     replacement = (await db.query('select public.clinic_book_appointment($1,$2) as result',['doc-1',future])).rows[0].result;
     assert.equal(replacement.patient_id,ids.b);
+    assert.equal(replacement.patient_email,'');
   });
   await asUser(ids.otherDoctor);
-  await test('a doctor cannot read another doctor appointments', async () => assert.equal((await db.query('select * from public.clinic_appointments')).rows.length,0));
+  await test('a doctor sees assigned bookings but not another doctor booking', async () => {
+    assert.equal((await db.query('select id from public.clinic_appointments where id=$1',[replacement.id])).rows.length,0);
+    assert.equal((await db.query("select id from public.clinic_appointments where doctor_id='doc-2'")).rows.length,1);
+  });
   await asUser(ids.reception);
   await test('reception cannot check in tomorrow appointments today', async () => expectCode(()=>db.query('select public.clinic_check_in($1)',[replacement.booking_code]),'22023'));
   await asUser(ids.b);

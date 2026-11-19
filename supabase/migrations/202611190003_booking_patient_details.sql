@@ -6,7 +6,7 @@ alter table public.clinic_appointments
 
 alter table public.clinic_appointments
   add constraint clinic_appointment_email_format
-    check (patient_email = '' or patient_email ~* '^[^[:space:]@]+@[^[:space:]@]+[.][^[:space:]@]+$'),
+    check (patient_email = '' or (char_length(patient_email) <= 254 and patient_email ~* '^[^[:space:]@]+@[^[:space:]@]+[.][^[:space:]@]+$')),
   add constraint clinic_appointment_symptoms_length
     check (char_length(trim(symptoms)) between 5 and 1000);
 
@@ -35,22 +35,24 @@ begin
   select * into v_patient from public.clinic_profiles where id = (select auth.uid());
   if not found or v_patient.role <> 'patient' then raise exception 'PATIENT_REQUIRED' using errcode = '42501'; end if;
 
-  v_patient_name := coalesce(nullif(trim(p_patient_name), ''), v_patient.full_name);
-  v_patient_phone := regexp_replace(coalesce(nullif(trim(p_patient_phone), ''), v_patient.phone), '[[:space:].-]', '', 'g');
-  v_patient_email := lower(coalesce(nullif(trim(p_patient_email), ''), v_patient.id::text || '@patient.local'));
-  v_symptoms := coalesce(nullif(trim(p_symptoms), ''), 'Khám tổng quát');
+  v_patient_name := trim(coalesce(p_patient_name, v_patient.full_name));
+  v_patient_phone := regexp_replace(trim(coalesce(p_patient_phone, v_patient.phone)), '[[:space:].-]', '', 'g');
+  -- Legacy three-argument callers have no email field. Keep it unknown rather than inventing a contact address.
+  v_patient_email := lower(trim(coalesce(p_patient_email, '')));
+  v_symptoms := trim(p_symptoms);
 
-  if char_length(v_patient_name) not between 2 and 160 then
+  if char_length(v_patient_name) not between 2 and 160
+     or v_patient_name !~ '^[[:alpha:][:space:].''-]+$' then
     raise exception 'INVALID_PATIENT_NAME' using errcode = '22023';
   end if;
   if v_patient_phone !~ '^0[35789][0-9]{8}$' then
     raise exception 'INVALID_PATIENT_PHONE' using errcode = '22023';
   end if;
-  if char_length(v_patient_email) > 254
-     or v_patient_email !~* '^[^[:space:]@]+@[^[:space:]@]+[.][^[:space:]@]+$' then
+  if p_patient_email is not null and (char_length(v_patient_email) > 254
+     or v_patient_email !~* '^[^[:space:]@]+@[^[:space:]@]+[.][^[:space:]@]+$') then
     raise exception 'INVALID_PATIENT_EMAIL' using errcode = '22023';
   end if;
-  if char_length(v_symptoms) not between 5 and 1000 then
+  if v_symptoms is null or char_length(v_symptoms) not between 5 and 1000 then
     raise exception 'INVALID_SYMPTOMS' using errcode = '22023';
   end if;
 

@@ -35,6 +35,9 @@ jobs:
       - name: Verify PostgreSQL Migration and RLS
         run: npm run test:db
 
+      - name: Verify Patient Information Validation
+        run: npm run test:booking-validation
+
       - name: Install Server Dependencies & Test
         run: |
           cd server

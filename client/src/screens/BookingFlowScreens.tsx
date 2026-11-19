@@ -467,11 +467,12 @@ export const BookingPaymentScreen: React.FC<BookingPaymentScreenProps> = ({
   onBack,
   onPaymentSuccess,
 }) => {
+  const { patientProfile } = useAppContext();
   const [selectedMethod, setSelectedMethod] =
     useState<PaymentMethodType>('at_clinic_bhyt');
   const [submitting, setSubmitting] = useState(false);
   const [patientInfo, setPatientInfo] = useState<PatientBookingInfo>({
-    fullName: patient?.name || PATIENT_PROFILE.name,
+    fullName: patient?.name || patientProfile.name,
     phone: '',
     email: '',
     symptoms: '',
@@ -524,70 +525,19 @@ export const BookingPaymentScreen: React.FC<BookingPaymentScreenProps> = ({
     },
   ].filter(option => !CLOUD_MODE || option.id === 'at_clinic_bhyt');
 
-  return (
-    <View style={styles.screen}>
-      <AppHeader
-        title="Xác Nhận & Thanh Toán"
-        subtitle="Bước cuối: Hoàn tất đặt lịch khám"
-        onBack={onBack}
-      />
+  const submitBooking = async (method: PaymentMethodType) => {
+    if (submitting || (CLOUD_MODE && (!day || !slot))) return;
+    const errors = validatePatientBookingInfo(patientInfo);
+    setPatientErrors(errors);
+    if (hasPatientBookingErrors(errors)) return;
+    const normalized = normalizePatientBookingInfo(patientInfo);
+    setPatientInfo(normalized);
+    setSubmitting(true);
+    try { await onPaymentSuccess(method, normalized); }
+    finally { setSubmitting(false); }
+  };
 
-      <ScrollView
-        contentContainerStyle={styles.scrollPad}
-        showsVerticalScrollIndicator={false}
-      >
-        <StepIndicator
-          steps={['Chọn bác sĩ', 'Chọn lịch', 'Thanh toán']}
-          currentStep={2}
-        />
-
-        {/* 1. Appointment Summary Overview Card */}
-        <AnimatedEntry delay={40} direction="up">
-          <View style={[styles.card, SHADOWS.sm, { marginVertical: 14 }]}>
-            <View style={styles.paymentHeaderRow}>
-              <View style={styles.paymentDocIconBox}>
-                <Ionicons name="calendar-outline" size={20} color={COLORS.primary} />
-              </View>
-              <View style={{ flex: 1, marginLeft: 12 }}>
-                <Text style={styles.paymentDocName} numberOfLines={1}>
-                  {doctor.name}
-                </Text>
-                <Text style={styles.paymentDocSub} numberOfLines={1}>
-                  {doctor.degree} • {doctor.hospital}
-                </Text>
-              </View>
-              <Badge
-                label={consultMode === 'chat' ? 'Tư vấn Chat' : 'Khám tại viện'}
-                variant={consultMode === 'chat' ? 'blue' : 'teal'}
-              />
-            </View>
-
-            <View style={styles.paymentDivider} />
-
-            <View style={styles.paymentInfoGrid}>
-              <View style={styles.paymentInfoCol}>
-                <Text style={styles.paymentInfoCap}>THỜI GIAN KHÁM</Text>
-                <Text style={styles.paymentInfoVal}>{currentSlot.time}</Text>
-                <Text style={styles.paymentInfoSub}>
-                  {currentDay.dayLabel}, {currentDay.fullDate}
-                </Text>
-              </View>
-              <View style={styles.paymentInfoCol}>
-                <Text style={styles.paymentInfoCap}>BỆNH NHÂN</Text>
-                <Text style={styles.paymentInfoVal} numberOfLines={1}>
-                  {patient?.name || PATIENT_PROFILE.name}
-                </Text>
-                <Text style={styles.paymentInfoSub} numberOfLines={1}>
-                  {patient?.meta ||
-                    `BHYT: ${PATIENT_PROFILE.bhytCode.split(' ')[0]} • ${PATIENT_PROFILE.gender} (${PATIENT_PROFILE.age}T)`}
-                </Text>
-              </View>
-            </View>
-          </View>
-        </AnimatedEntry>
-
-        {/* 2. Patient information */}
-        <AnimatedEntry delay={70} direction="up">
+  const patientForm = (<AnimatedEntry delay={70} direction="up">
           <View style={[styles.card, SHADOWS.sm, { marginBottom: 16 }]}>
             <SectionHeader
               title="Thông tin bệnh nhân"
@@ -646,7 +596,92 @@ export const BookingPaymentScreen: React.FC<BookingPaymentScreenProps> = ({
               {patientInfo.symptoms.length}/1000 ký tự
             </Text>
           </View>
+        </AnimatedEntry>);
+
+  if (CLOUD_MODE) return (
+    <View style={styles.screen}>
+      <AppHeader title="Xác nhận lịch khám" onBack={onBack} />
+      <ScrollView contentContainerStyle={styles.scrollPad} keyboardShouldPersistTaps="handled">
+        <View style={[styles.card, SHADOWS.sm, { marginVertical: 14 }]}>
+          <Text style={styles.paymentDocName}>{doctor.name}</Text>
+          <Text style={styles.paymentDocSub}>{doctor.hospital}</Text>
+          <Text style={styles.paymentInfoVal}>Ngày khám: {day?.fullDate || 'Chưa chọn'}</Text>
+          <Text style={styles.paymentInfoVal}>Giờ khám: {slot?.time || 'Chưa chọn'}</Text>
+          <Text style={styles.paymentInfoVal}>Bệnh nhân: {patientInfo.fullName || 'Chưa nhập thông tin'}</Text>
+        </View>
+        {patientForm}
+        <Text style={styles.patientFormHint}>Thanh toán tại cơ sở y tế. Ứng dụng chưa thu tiền; viện phí và quyền lợi BHYT được đối soát tại quầy.</Text>
+      </ScrollView>
+      <StickyBottomBar topLabel="Thanh toán tại cơ sở y tế" topLabelIcon="business-outline"
+        priceLabel="Trạng thái:" priceValue="Chưa thu tiền" buttonTitle="Xác nhận đặt lịch"
+        disabled={submitting || !day || !slot} loading={submitting}
+        onButtonPress={() => submitBooking('at_clinic')} />
+    </View>
+  );
+
+  return (
+    <View style={styles.screen}>
+      <AppHeader
+        title="Xác Nhận & Thanh Toán"
+        subtitle="Bước cuối: Hoàn tất đặt lịch khám"
+        onBack={onBack}
+      />
+
+      <ScrollView
+        contentContainerStyle={styles.scrollPad}
+        showsVerticalScrollIndicator={false}
+      >
+        <StepIndicator
+          steps={['Chọn bác sĩ', 'Chọn lịch', 'Thanh toán']}
+          currentStep={2}
+        />
+
+        {/* 1. Appointment Summary Overview Card */}
+        <AnimatedEntry delay={40} direction="up">
+          <View style={[styles.card, SHADOWS.sm, { marginVertical: 14 }]}>
+            <View style={styles.paymentHeaderRow}>
+              <View style={styles.paymentDocIconBox}>
+                <Ionicons name="calendar-outline" size={20} color={COLORS.primary} />
+              </View>
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={styles.paymentDocName} numberOfLines={1}>
+                  {doctor.name}
+                </Text>
+                <Text style={styles.paymentDocSub} numberOfLines={1}>
+                  {doctor.degree} • {doctor.hospital}
+                </Text>
+              </View>
+              <Badge
+                label={consultMode === 'chat' ? 'Tư vấn Chat' : 'Khám tại viện'}
+                variant={consultMode === 'chat' ? 'blue' : 'teal'}
+              />
+            </View>
+
+            <View style={styles.paymentDivider} />
+
+            <View style={styles.paymentInfoGrid}>
+              <View style={styles.paymentInfoCol}>
+                <Text style={styles.paymentInfoCap}>THỜI GIAN KHÁM</Text>
+                <Text style={styles.paymentInfoVal}>{currentSlot.time}</Text>
+                <Text style={styles.paymentInfoSub}>
+                  {currentDay.dayLabel}, {currentDay.fullDate}
+                </Text>
+              </View>
+              <View style={styles.paymentInfoCol}>
+                <Text style={styles.paymentInfoCap}>BỆNH NHÂN</Text>
+                <Text style={styles.paymentInfoVal} numberOfLines={1}>
+                  {patientInfo.fullName || 'Chưa nhập thông tin'}
+                </Text>
+                <Text style={styles.paymentInfoSub} numberOfLines={1}>
+                  {patient?.meta ||
+                    `BHYT: ${PATIENT_PROFILE.bhytCode.split(' ')[0]} • ${PATIENT_PROFILE.gender} (${PATIENT_PROFILE.age}T)`}
+                </Text>
+              </View>
+            </View>
+          </View>
         </AnimatedEntry>
+
+        {patientForm}
 
         {/* 3. Fee Calculation Breakdown */}
         <AnimatedEntry delay={90} direction="up">
@@ -819,17 +854,7 @@ export const BookingPaymentScreen: React.FC<BookingPaymentScreenProps> = ({
         buttonTitle={isAtClinic ? 'Xác nhận đặt lịch' : 'Thanh toán ngay'}
         disabled={submitting}
         loading={submitting}
-        onButtonPress={async () => {
-          if (submitting) return;
-          const errors = validatePatientBookingInfo(patientInfo);
-          setPatientErrors(errors);
-          if (hasPatientBookingErrors(errors)) return;
-          const normalizedPatientInfo = normalizePatientBookingInfo(patientInfo);
-          setPatientInfo(normalizedPatientInfo);
-          setSubmitting(true);
-          try { await onPaymentSuccess(selectedMethod, normalizedPatientInfo); }
-          finally { setSubmitting(false); }
-        }}
+        onButtonPress={() => submitBooking(selectedMethod)}
       />
     </View>
   );

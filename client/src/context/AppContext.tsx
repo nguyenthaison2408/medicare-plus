@@ -6,6 +6,8 @@ import {
   loadClinicProfile, subscribeClinicAppointments, type ClinicProfile, type ClinicAppointment, type ClinicMedication,
 } from '../services/clinicCloud';
 import { clinicAppointmentToItem, clinicPrescriptions, clinicRecord } from '../services/clinicAdapters';
+import { fetchDoctorReviewsCloud, submitDoctorReviewCloud } from '../services/clinicReviews';
+import { fetchFamilyMembersCloud, addFamilyMemberCloud } from '../services/clinicFamily';
 import type { PatientBookingInfo } from '../utils/bookingValidation';
 import {
   APPOINTMENTS,
@@ -134,7 +136,7 @@ interface AppContextValue {
     dob: string;
     relation: string;
     bhyt: string;
-  }) => void;
+  }) => Promise<void>;
 
   // 4. Prescriptions & Doctors (Shared with Doctor/Admin Portals)
   prescriptions: PrescriptionDrug[];
@@ -155,7 +157,7 @@ interface AppContextValue {
     doctorId: string;
     rating: number;
     comment: string;
-  }) => void;
+  }) => Promise<void>;
 
   // 6. Security & Privacy (PII Masking state) + Storage Persistence
   isPiiMasked: boolean;
@@ -322,11 +324,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   const [cabinetMeds, setCabinetMeds] =
     useState<MedicineCabinetItem[]>(INITIAL_CABINET_MEDS);
   const [doctorReviews, setDoctorReviews] = useState<DoctorReviewItem[]>(
-    INITIAL_DOCTOR_REVIEWS
+    CLOUD_MODE ? [] : INITIAL_DOCTOR_REVIEWS
   );
   const [isPiiMasked, setIsPiiMasked] = useState<boolean>(true);
   const [isHydrated, setIsHydrated] = useState<boolean>(CLOUD_MODE);
   const hydratedRef = useRef<boolean>(CLOUD_MODE);
+  const cloudUserIdRef = useRef<string | null>(null);
   const [cloudProfile, setCloudProfile] = useState<ClinicProfile | null>(null);
   const [cloudSyncError, setCloudSyncError] = useState('');
 
@@ -341,10 +344,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         const supabase = getSupabase();
         const { data: { session } } = await supabase.auth.getSession();
         if (!mounted || request !== generation) return;
+        cloudUserIdRef.current = session?.user.id ?? null;
         if (!session) {
           setAppointments([]);
           setPrescriptions([]);
           setFamilyMembers([]);
+          setDoctorReviews([]);
           setCloudProfile(null);
           setDiagnosisNote('');
           setCloudSyncError('');
@@ -455,6 +460,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         setPrescriptions(clinicPrescriptions(cloudAppointments));
         setDiagnosisNote(cloudAppointments.map(clinicRecord).find(Boolean)?.diagnosis || 'Chưa có chẩn đoán được bác sĩ lưu.');
         setCloudSyncError('');
+        const families = await fetchFamilyMembersCloud();
+        if (!mounted || request !== generation) return;
+        setFamilyMembers(families);
+        const reviews = await fetchDoctorReviewsCloud();
+        if (mounted && request === generation) setDoctorReviews(reviews);
       } catch (error) {
         if (mounted && request === generation) setCloudSyncError(error instanceof Error ? error.message : 'Không tải được dữ liệu trực tuyến.');
       }
@@ -464,9 +474,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     try {
       const { data: { subscription } } = getSupabase().auth.onAuthStateChange((_event, session) => {
         generation++;
+        cloudUserIdRef.current = session?.user.id ?? null;
         if (userId !== session?.user.id) {
           userId = session?.user.id;
           selectedTicketCode.current = null;
+          setFamilyMembers([]);
+          setDoctorReviews([]);
           setAppointments([]); setPrescriptions([]); setCloudProfile(null); setDiagnosisNote('');
           setLatestBooking({ ...DEFAULT_TICKET, code: '' });
         }
@@ -479,6 +492,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
       setTimeout(() => { if (mounted) setCloudSyncError(error instanceof Error ? error.message : 'Chưa kết nối dữ liệu.'); }, 0);
     }
     void refresh();
+    void fetchDoctorReviewsCloud().then(reviews => { if (mounted) setDoctorReviews(reviews); }).catch(error => {
+      if (mounted) setCloudSyncError(error instanceof Error ? error.message : 'Chưa tải được đánh giá.');
+    });
     return () => { mounted = false; generation++; unsubscribeAuth(); unsubscribeChanges(); };
   }, []);
 
@@ -721,12 +737,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     }));
   };
 
-  const addFamilyMember = (member: {
+  const addFamilyMember = async (member: {
     name: string;
     dob: string;
     relation: string;
     bhyt: string;
-  }) => {
+  }): Promise<void> => {
+    if (CLOUD_MODE) {
+      const expectedUser = cloudUserIdRef.current;
+      if (!expectedUser) throw new Error('Vui lòng đăng nhập lại.');
+      const saved = await addFamilyMemberCloud(member);
+      if (cloudUserIdRef.current !== expectedUser) throw new Error('Phiên đăng nhập đã thay đổi. Vui lòng tải lại hồ sơ.');
+      setFamilyMembers(prev => [saved, ...prev]);
+      return;
+    }
     const randCode = Math.floor(100000 + Math.random() * 899999);
     const newMember: FamilyMemberItem = {
       id: `fam-${Date.now()}`,
@@ -742,6 +766,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
       bhyt: member.bhyt,
     };
     setFamilyMembers((prev) => [newMember, ...prev]);
+
   };
 
   const addPrescriptionDrug = (drug: Omit<PrescriptionDrug, 'id'>) => {
@@ -763,11 +788,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     ]);
   };
 
-  const addDoctorReview = (review: {
+  const addDoctorReview = async (review: {
     doctorId: string;
     rating: number;
     comment: string;
-  }) => {
+  }): Promise<void> => {
+    if (CLOUD_MODE) {
+      const expectedUser = cloudUserIdRef.current;
+      if (!expectedUser) throw new Error('Vui lòng đăng nhập để đánh giá.');
+      const saved = await submitDoctorReviewCloud(review);
+      if (cloudUserIdRef.current !== expectedUser) throw new Error('Phiên đăng nhập đã thay đổi.');
+      setDoctorReviews(prev => [saved, ...prev.filter(r => r.id !== saved.id)]);
+      return;
+    }
     const words = PATIENT_PROFILE.name.trim().split(' ');
     const initials =
       words.length >= 2

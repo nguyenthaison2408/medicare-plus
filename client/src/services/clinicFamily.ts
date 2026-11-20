@@ -1,4 +1,4 @@
-﻿import { getSupabase, CLOUD_MODE } from './supabaseClient';
+import { getSupabase, CLOUD_MODE } from './supabaseClient';
 import type { FamilyMemberItem } from '../context/AppContext';
 interface CloudFamilyMember { id: string; full_name: string; relationship: string; dob: string; bhyt_code: string; blood_group: string; note: string }
 function toMember(m: CloudFamilyMember): FamilyMemberItem {

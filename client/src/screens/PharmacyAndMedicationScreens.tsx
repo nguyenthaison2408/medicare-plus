@@ -34,6 +34,7 @@ export const MedicationLogScreen: React.FC<{
 }> = ({ onBack, onOpenPrescription, onOpenCabinet }) => {
   const { takenMap, toggleMedicationTaken } = useAppContext();
   const [toastVisible, setToastVisible] = useState(false);
+  const [updatingSlot, setUpdatingSlot] = useState<string | null>(null);
   const totalDoses = Object.keys(takenMap).length || 3;
   const takenCount = Object.values(takenMap).filter(Boolean).length;
   const adherencePct = Math.round((takenCount / totalDoses) * 100);
@@ -174,7 +175,12 @@ export const MedicationLogScreen: React.FC<{
                 </Text>
                 <PressableScale
                   activeScale={0.96}
-                  onPress={() => toggleMedicationTaken(slot.key)}
+                  onPress={() => {
+                    if (updatingSlot) return;
+                    setUpdatingSlot(slot.key);
+                    void toggleMedicationTaken(slot.key).finally(() => setUpdatingSlot(null));
+                  }}
+                  accessibilityState={{ busy: updatingSlot === slot.key }}
                   style={{ marginTop: 10 }}
                 >
                   <View
@@ -356,6 +362,8 @@ export const FamilyMedicineCabinetScreen: React.FC<{
   const [medExp, setMedExp] = useState('HSD: 12/2027');
   const [medUrgent, setMedUrgent] = useState(false);
   const [nameError, setNameError] = useState('');
+  const [saveError, setSaveError] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
   const [addedToast, setAddedToast] = useState<string | null>(null);
 
   const filteredMeds = cabinetMeds.filter((m) => {
@@ -363,23 +371,32 @@ export const FamilyMedicineCabinetScreen: React.FC<{
     if (filterKey === 'normal') return !m.urgent;
     return true;
   });
+  const urgentMedicine = cabinetMeds.find(medicine => medicine.urgent);
 
-  const handleSaveMedicine = () => {
+  const handleSaveMedicine = async () => {
     if (!medName.trim()) {
       setNameError('Vui lòng nhập tên thuốc và hàm lượng');
       return;
     }
     setNameError('');
-    addCabinetMedicine({
-      name: medName.trim(),
-      owner: medOwner.trim() || 'Nguyễn Văn Vũ (Bản thân)',
-      stock: medStock.trim() || 'Còn 30 / 30 viên',
-      exp: medExp.trim() || 'HSD: 12/2027',
-      urgent: medUrgent,
-    });
-    setAddedToast(`Đã thêm "${medName.trim()}" vào Tủ thuốc gia đình`);
-    setMedName('');
-    setShowAddForm(false);
+    setSaveError('');
+    setIsSaving(true);
+    try {
+      await addCabinetMedicine({
+        name: medName.trim(),
+        owner: medOwner.trim() || 'Nguyễn Văn Vũ (Bản thân)',
+        stock: medStock.trim() || 'Còn 30 / 30 viên',
+        exp: medExp.trim() || 'HSD: 12/2027',
+        urgent: medUrgent,
+      });
+      setAddedToast(`Đã thêm "${medName.trim()}" vào Tủ thuốc gia đình`);
+      setMedName('');
+      setShowAddForm(false);
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : 'Chưa lưu được thuốc. Vui lòng thử lại.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -391,38 +408,39 @@ export const FamilyMedicineCabinetScreen: React.FC<{
       />
       <ScrollView contentContainerStyle={styles.scrollPad}>
         {/* Refill Alert Banner */}
-        <AnimatedEntry delay={40} direction="up">
-          <View style={[styles.alertCard, SHADOWS.sm]}>
-            <View style={styles.rowBetween}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <PulsingDot color={COLORS.error} size={7} />
-                <Badge
-                  label="CẢNH BÁO SẮP HẾT THUỐC"
-                  variant="danger"
-                  icon="alert-circle"
-                />
+        {!!urgentMedicine && (
+          <AnimatedEntry delay={40} direction="up">
+            <View style={[styles.alertCard, SHADOWS.sm]}>
+              <View style={styles.rowBetween}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <PulsingDot color={COLORS.error} size={7} />
+                  <Badge
+                    label="CẢNH BÁO SẮP HẾT THUỐC"
+                    variant="danger"
+                    icon="alert-circle"
+                  />
+                </View>
+                <Text style={[styles.slotTime, { color: COLORS.error }]}>
+                  {urgentMedicine.stock}
+                </Text>
               </View>
-              <Text style={[styles.slotTime, { color: COLORS.error }]}>
-                Còn dùng được 3 ngày
+              <Text style={[styles.cardTitle, { marginTop: 8 }]}>
+                {urgentMedicine.name}
               </Text>
+              <Text style={styles.subText}>
+                Bạn nên đặt lịch tái khám hoặc hỏi ý kiến bác sĩ trước khi mua thêm.
+              </Text>
+              <AppButton
+                title="Nhắn tin hỏi Bác sĩ"
+                variant="primary"
+                size="md"
+                leftIcon="chatbubbles-outline"
+                onPress={onRefillNow}
+                style={{ marginTop: 10 }}
+              />
             </View>
-            <Text style={[styles.cardTitle, { marginTop: 8 }]}>
-              Sibelium 5mg (Flunarizine) chỉ còn 4 viên
-            </Text>
-            <Text style={styles.subText}>
-              Bạn nên đặt lịch tái khám hoặc hỏi ý kiến TS. BS. Lê Thu Trang
-              trước khi mua thêm.
-            </Text>
-            <AppButton
-              title="Nhắn tin hỏi Bác sĩ"
-              variant="primary"
-              size="md"
-              leftIcon="chatbubbles-outline"
-              onPress={onRefillNow}
-              style={{ marginTop: 10 }}
-            />
-          </View>
-        </AnimatedEntry>
+          </AnimatedEntry>
+        )}
 
         <SectionHeader
           title="Thuốc đang lưu trữ trong gia đình"
@@ -481,12 +499,18 @@ export const FamilyMedicineCabinetScreen: React.FC<{
               ]}
               style={{ marginBottom: 12 }}
             />
+            {!!saveError && (
+              <Text style={{ color: COLORS.error, marginBottom: 10 }}>
+                {saveError}
+              </Text>
+            )}
             <AppButton
               title="Lưu vào Tủ thuốc gia đình"
               variant="primary"
               size="md"
               leftIcon="checkmark-circle-outline"
-              onPress={handleSaveMedicine}
+              onPress={() => void handleSaveMedicine()}
+              loading={isSaving}
             />
           </View>
         )}

@@ -8,6 +8,12 @@ import {
 import { clinicAppointmentToItem, clinicPrescriptions, clinicRecord } from '../services/clinicAdapters';
 import { fetchDoctorReviewsCloud, submitDoctorReviewCloud } from '../services/clinicReviews';
 import { fetchFamilyMembersCloud, addFamilyMemberCloud } from '../services/clinicFamily';
+import {
+  addMedicineCabinetCloud,
+  fetchMedicationLogCloud,
+  fetchMedicineCabinetCloud,
+  setMedicationTakenCloud,
+} from '../services/clinicMedicine';
 import type { PatientBookingInfo } from '../utils/bookingValidation';
 import {
   APPOINTMENTS,
@@ -127,7 +133,7 @@ interface AppContextValue {
 
   // 2. Medication Adherence Log
   takenMap: Record<string, boolean>;
-  toggleMedicationTaken: (slotKey: string) => void;
+  toggleMedicationTaken: (slotKey: string) => Promise<void>;
 
   // 3. Family Profiles
   familyMembers: FamilyMemberItem[];
@@ -151,7 +157,7 @@ interface AppContextValue {
 
   // 5. Medicine Cabinet & Doctor Reviews
   cabinetMeds: MedicineCabinetItem[];
-  addCabinetMedicine: (med: Omit<MedicineCabinetItem, 'id'>) => void;
+  addCabinetMedicine: (med: Omit<MedicineCabinetItem, 'id'>) => Promise<void>;
   doctorReviews: DoctorReviewItem[];
   addDoctorReview: (review: {
     doctorId: string;
@@ -306,11 +312,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   const [latestBooking, setLatestBooking] =
     useState<LatestBookingTicket>(CLOUD_MODE ? { ...DEFAULT_TICKET, code: '' } : DEFAULT_TICKET);
   const selectedTicketCode = useRef<string | null>(null);
-  const [takenMap, setTakenMap] = useState<Record<string, boolean>>({
-    morning: true,
-    afternoon: true,
-    evening: false,
-  });
+  const [takenMap, setTakenMap] = useState<Record<string, boolean>>(
+    CLOUD_MODE
+      ? { morning: false, afternoon: false, evening: false }
+      : { morning: true, afternoon: true, evening: false }
+  );
   const [familyMembers, setFamilyMembers] = useState<FamilyMemberItem[]>(
     CLOUD_MODE ? [] : INITIAL_FAMILY_MEMBERS
   );
@@ -322,7 +328,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   const [doctors, setDoctors] = useState<DoctorItem[]>(DOCTORS);
   const [hospitals, setHospitals] = useState<HospitalItem[]>(HOSPITALS);
   const [cabinetMeds, setCabinetMeds] =
-    useState<MedicineCabinetItem[]>(INITIAL_CABINET_MEDS);
+    useState<MedicineCabinetItem[]>(CLOUD_MODE ? [] : INITIAL_CABINET_MEDS);
   const [doctorReviews, setDoctorReviews] = useState<DoctorReviewItem[]>(
     CLOUD_MODE ? [] : INITIAL_DOCTOR_REVIEWS
   );
@@ -350,6 +356,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
           setPrescriptions([]);
           setFamilyMembers([]);
           setDoctorReviews([]);
+          setCabinetMeds([]);
+          setTakenMap({ morning: false, afternoon: false, evening: false });
           setCloudProfile(null);
           setDiagnosisNote('');
           setCloudSyncError('');
@@ -395,10 +403,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
           }).catch(() => {});
           return;
         }
-        const [profile, cloudAppointments, cloudDoctors] = await Promise.all([
+        const [
+          profile,
+          cloudAppointments,
+          cloudDoctors,
+          families,
+          reviews,
+          medicines,
+          medicationLog,
+        ] = await Promise.all([
           loadClinicProfile(),
           listClinicAppointments(),
           listClinicDoctors().catch(() => []),
+          fetchFamilyMembersCloud(),
+          fetchDoctorReviewsCloud(),
+          fetchMedicineCabinetCloud(),
+          fetchMedicationLogCloud(),
         ]);
         if (!mounted || request !== generation) return;
         if (cloudDoctors && cloudDoctors.length > 0) {
@@ -459,12 +479,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         } else { setLatestBooking({ ...DEFAULT_TICKET, code: '' }); }
         setPrescriptions(clinicPrescriptions(cloudAppointments));
         setDiagnosisNote(cloudAppointments.map(clinicRecord).find(Boolean)?.diagnosis || 'Chưa có chẩn đoán được bác sĩ lưu.');
-        setCloudSyncError('');
-        const families = await fetchFamilyMembersCloud();
-        if (!mounted || request !== generation) return;
         setFamilyMembers(families);
-        const reviews = await fetchDoctorReviewsCloud();
-        if (mounted && request === generation) setDoctorReviews(reviews);
+        setDoctorReviews(reviews);
+        setCabinetMeds(medicines);
+        setTakenMap(medicationLog);
+        setCloudSyncError('');
       } catch (error) {
         if (mounted && request === generation) setCloudSyncError(error instanceof Error ? error.message : 'Không tải được dữ liệu trực tuyến.');
       }
@@ -480,6 +499,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
           selectedTicketCode.current = null;
           setFamilyMembers([]);
           setDoctorReviews([]);
+          setCabinetMeds([]);
+          setTakenMap({ morning: false, afternoon: false, evening: false });
           setAppointments([]); setPrescriptions([]); setCloudProfile(null); setDiagnosisNote('');
           setLatestBooking({ ...DEFAULT_TICKET, code: '' });
         }
@@ -730,11 +751,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
-  const toggleMedicationTaken = (slotKey: string) => {
-    setTakenMap((prev) => ({
-      ...prev,
-      [slotKey]: !prev[slotKey],
-    }));
+  const toggleMedicationTaken = async (slotKey: string): Promise<void> => {
+    if (CLOUD_MODE) {
+      const expectedUser = cloudUserIdRef.current;
+      if (!expectedUser) {
+        Alert.alert('Nhật ký uống thuốc', 'Vui lòng đăng nhập lại.');
+        return;
+      }
+      const nextTaken = !takenMap[slotKey];
+      try {
+        const saved = await setMedicationTakenCloud(slotKey, nextTaken);
+        if (cloudUserIdRef.current !== expectedUser) return;
+        setTakenMap(saved);
+      } catch (error) {
+        Alert.alert(
+          'Nhật ký uống thuốc',
+          error instanceof Error ? error.message : 'Không thể cập nhật cữ thuốc.'
+        );
+      }
+      return;
+    }
+    setTakenMap(prev => ({ ...prev, [slotKey]: !prev[slotKey] }));
   };
 
   const addFamilyMember = async (member: {
@@ -778,7 +815,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     ehrService.syncPrescriptionDrug(newDrug, diagnosisNote);
   };
 
-  const addCabinetMedicine = (med: Omit<MedicineCabinetItem, 'id'>) => {
+  const addCabinetMedicine = async (
+    med: Omit<MedicineCabinetItem, 'id'>
+  ): Promise<void> => {
+    if (CLOUD_MODE) {
+      const expectedUser = cloudUserIdRef.current;
+      if (!expectedUser) throw new Error('Vui lòng đăng nhập lại trước khi thêm thuốc.');
+      const saved = await addMedicineCabinetCloud(med);
+      if (cloudUserIdRef.current !== expectedUser) {
+        throw new Error('Phiên đăng nhập đã thay đổi. Vui lòng tải lại Tủ thuốc.');
+      }
+      setCabinetMeds(prev => [saved, ...prev]);
+      return;
+    }
     setCabinetMeds((prev) => [
       {
         ...med,

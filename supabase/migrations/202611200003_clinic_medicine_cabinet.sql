@@ -46,10 +46,61 @@ create policy clinic_medicine_cabinet_owner_only
 
 revoke all on public.clinic_medicine_cabinet from anon, authenticated;
 grant select, delete on public.clinic_medicine_cabinet to authenticated;
-grant insert (owner_id, medicine_name, owner_label, stock_label, expiry_label, urgent)
+grant update (medicine_name, stock_label, expiry_label, urgent)
   on public.clinic_medicine_cabinet to authenticated;
-grant update (medicine_name, owner_label, stock_label, expiry_label, urgent)
-  on public.clinic_medicine_cabinet to authenticated;
+
+-- The server owns owner_id and owner_label. The client may only provide
+-- medicine metadata through this RPC.
+create function public.clinic_add_cabinet_medicine(
+  p_medicine_name text,
+  p_stock_label text,
+  p_expiry_label text,
+  p_urgent boolean default false
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_user uuid := (select auth.uid());
+  v_name text;
+  v_medicine public.clinic_medicine_cabinet;
+begin
+  if v_user is null then
+    raise exception 'AUTH_REQUIRED' using errcode = '42501';
+  end if;
+  select full_name into v_name
+    from public.clinic_profiles
+    where id = v_user and role = 'patient';
+  if not found then
+    raise exception 'PATIENT_REQUIRED' using errcode = '42501';
+  end if;
+  if p_medicine_name is null
+    or char_length(trim(p_medicine_name)) not between 2 and 200
+    or p_stock_label is null
+    or char_length(trim(p_stock_label)) not between 1 and 100
+    or p_expiry_label is null
+    or char_length(trim(p_expiry_label)) not between 1 and 100
+    or p_urgent is null then
+    raise exception 'INVALID_CABINET_MEDICINE' using errcode = '22023';
+  end if;
+
+  insert into public.clinic_medicine_cabinet (
+    owner_id, medicine_name, owner_label, stock_label, expiry_label, urgent
+  ) values (
+    v_user, trim(p_medicine_name), v_name || ' (Bản thân)',
+    trim(p_stock_label), trim(p_expiry_label), p_urgent
+  ) returning * into v_medicine;
+
+  return to_jsonb(v_medicine);
+end;
+$$;
+
+revoke all on function public.clinic_add_cabinet_medicine(text, text, text, boolean)
+  from public, anon, authenticated;
+grant execute on function public.clinic_add_cabinet_medicine(text, text, text, boolean)
+  to authenticated;
 
 -- One row per patient, calendar day and medication time slot.
 create table public.clinic_medication_logs (

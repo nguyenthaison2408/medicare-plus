@@ -26,16 +26,20 @@ try{
   await check('owner can edit and delete family member',async()=>{assert.equal((await db.query("update clinic_family_members set note='Owner edit' where id=$1 returning id",[family.id])).rows.length,1);assert.equal((await db.query('delete from clinic_family_members where id=$1 returning id',[family.id])).rows.length,1);});
  }
  if(tables.includes('clinic_medicine_cabinet')){
+  const addMedicine=(name='Test medicine 500mg',stock='Còn 10 / 20 viên',expiry='HSD: 12/2027',urgent=true)=>db.query('select public.clinic_add_cabinet_medicine($1,$2,$3,$4) as medicine',[name,stock,expiry,urgent]);
   await as(ids.a);
-  const medicine=(await db.query("insert into clinic_medicine_cabinet(owner_id,medicine_name,owner_label,stock_label,expiry_label,urgent) values($1,'Test medicine 500mg','Test a','Còn 10 / 20 viên','HSD: 12/2027',true) returning id",[ids.a])).rows[0];
+  const medicine=(await addMedicine()).rows[0].medicine;
   await check('patient can create and read own medicine',async()=>assert.equal((await db.query('select id from clinic_medicine_cabinet')).rows.length,1));
+  await check('medicine owner label comes from server profile',async()=>assert.equal(medicine.owner_label,'Test a (Bản thân)'));
+  await check('invalid cabinet medicine is rejected',async()=>assert.rejects(()=>addMedicine('x'),e=>e.code==='22023'));
+  await check('direct cabinet inserts cannot forge identity',async()=>denied(()=>db.query("insert into clinic_medicine_cabinet(owner_id,medicine_name,owner_label,stock_label,expiry_label) values($1,'Forged medicine','Forged owner','1 viên','HSD: 2027')",[ids.a])));
   await as(ids.b);
   await check('another patient cannot read medicine cabinet',async()=>assert.equal((await db.query('select * from clinic_medicine_cabinet')).rows.length,0));
-  await check('cannot create cabinet medicine for another owner',async()=>denied(()=>db.query("insert into clinic_medicine_cabinet(owner_id,medicine_name,owner_label,stock_label,expiry_label) values($1,'Forged medicine','Test a','1 viên','HSD: 2027')",[ids.a])));
   await as(ids.a);
   await check('patient cannot transfer medicine ownership',async()=>denied(()=>db.query('update clinic_medicine_cabinet set owner_id=$1 where id=$2',[ids.b,medicine.id])));
+  await check('patient cannot forge medicine owner label',async()=>denied(()=>db.query("update clinic_medicine_cabinet set owner_label='Forged owner' where id=$1",[medicine.id])));
   await check('patient can update own medicine metadata',async()=>assert.equal((await db.query("update clinic_medicine_cabinet set stock_label='Còn 9 / 20 viên' where id=$1 returning id",[medicine.id])).rows.length,1));
-  for(const role of ['doctor','reception','admin']){await as(ids[role]);await check(role+' cannot create personal cabinet data',async()=>denied(()=>db.query("insert into clinic_medicine_cabinet(owner_id,medicine_name,owner_label,stock_label,expiry_label) values($1,'Staff medicine','Staff','1 viên','HSD: 2027')",[ids[role]])));}
+  for(const role of ['doctor','reception','admin']){await as(ids[role]);await check(role+' cannot create personal cabinet data',async()=>denied(()=>addMedicine('Staff medicine')));}
   await as(null);await check('anonymous cabinet read denied',async()=>denied(()=>db.query('select * from clinic_medicine_cabinet')));
 
   const getLog=()=>db.query('select public.clinic_get_medication_log() as log');

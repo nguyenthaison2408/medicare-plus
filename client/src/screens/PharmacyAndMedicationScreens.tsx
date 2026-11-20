@@ -32,19 +32,50 @@ export const MedicationLogScreen: React.FC<{
   onOpenPrescription?: () => void;
   onOpenCabinet?: () => void;
 }> = ({ onBack, onOpenPrescription, onOpenCabinet }) => {
-  const { takenMap, toggleMedicationTaken } = useAppContext();
+  const {
+    takenMap,
+    toggleMedicationTaken,
+    patientProfile,
+    prescriptions,
+    diagnosisNote,
+  } = useAppContext();
   const [toastVisible, setToastVisible] = useState(false);
   const [updatingSlot, setUpdatingSlot] = useState<string | null>(null);
-  const totalDoses = Object.keys(takenMap).length || 3;
-  const takenCount = Object.values(takenMap).filter(Boolean).length;
-  const adherencePct = Math.round((takenCount / totalDoses) * 100);
+  const slotMeta = [
+    { key: 'morning', label: 'Cữ 1' },
+    { key: 'afternoon', label: 'Cữ 2' },
+    { key: 'evening', label: 'Cữ 3' },
+  ];
+  const medicationSchedule = prescriptions.slice(0, slotMeta.length).map((drug, index) => ({
+    key: slotMeta[index].key,
+    time: `${slotMeta[index].label} • Theo toa điện tử`,
+    drug: drug.name,
+    desc: [drug.dosageTag, drug.instructionTag].filter(Boolean).join(' • '),
+  }));
+  const totalDoses = medicationSchedule.length;
+  const takenCount = medicationSchedule.filter(slot => takenMap[slot.key]).length;
+  const adherencePct = totalDoses > 0 ? Math.round((takenCount / totalDoses) * 100) : 0;
+  const today = new Date();
+  const monday = new Date(today);
+  monday.setHours(0, 0, 0, 0);
+  monday.setDate(today.getDate() - ((today.getDay() + 6) % 7));
+  const weekDays = Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(monday);
+    date.setDate(monday.getDate() + index);
+    return {
+      key: date.toISOString().slice(0, 10),
+      day: ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'][index],
+      number: String(date.getDate()).padStart(2, '0'),
+      active: date.toDateString() === today.toDateString(),
+    };
+  });
 
   return (
     <View style={styles.screen}>
       <AppHeader
         title="Nhật Ký & Nhắc Uống Thuốc"
-        subtitle="Nguyễn Văn Vũ (#BN-7824) • Phác đồ Đau nửa đầu vận mạch"
-        badgeText={`${adherencePct}% hôm nay`}
+        subtitle={`${patientProfile.name}${patientProfile.patientCode ? ` (${patientProfile.patientCode})` : ''} • ${diagnosisNote || 'Chưa có phác đồ điều trị'}`}
+        badgeText={totalDoses > 0 ? `${adherencePct}% hôm nay` : 'Chưa có cữ thuốc'}
         onBack={onBack}
       />
       <ScrollView contentContainerStyle={styles.scrollPad}>
@@ -53,22 +84,14 @@ export const MedicationLogScreen: React.FC<{
           <View style={[styles.card, SHADOWS.sm]}>
             <View style={styles.rowBetween}>
               <Text style={[styles.cardTitle, { flex: 1 }]} numberOfLines={1}>
-                Tuần 44 • Tháng 10/2024
+                Tuần hiện tại • {today.toLocaleDateString('vi-VN', { month: '2-digit', year: 'numeric' })}
               </Text>
-              <Badge label={`${takenCount}/${totalDoses} cữ hôm nay`} variant="teal" />
+              <Badge label={totalDoses > 0 ? `${takenCount}/${totalDoses} cữ hôm nay` : 'Chưa có toa thuốc'} variant="teal" />
             </View>
             <View style={styles.weekRow}>
-              {[
-                { d: 'T2', n: '28', done: true },
-                { d: 'T3', n: '29', active: true },
-                { d: 'T4', n: '30', done: false },
-                { d: 'T5', n: '31', done: false },
-                { d: 'T6', n: '01', done: false },
-                { d: 'T7', n: '02', done: false },
-                { d: 'CN', n: '03', done: false },
-              ].map((day) => (
+              {weekDays.map((day) => (
                 <View
-                  key={day.d}
+                  key={day.key}
                   style={[
                     styles.dayPill,
                     day.active && styles.dayPillActive,
@@ -81,7 +104,7 @@ export const MedicationLogScreen: React.FC<{
                     ]}
                     numberOfLines={1}
                   >
-                    {day.d}
+                    {day.day}
                   </Text>
                   <Text
                     style={[
@@ -90,16 +113,14 @@ export const MedicationLogScreen: React.FC<{
                     ]}
                     numberOfLines={1}
                   >
-                    {day.n}
+                    {day.number}
                   </Text>
                   <Ionicons
-                    name={day.done ? 'checkmark-circle' : 'ellipse'}
+                    name={day.active && totalDoses > 0 && takenCount === totalDoses ? 'checkmark-circle' : 'ellipse'}
                     size={12}
                     color={
                       day.active
                         ? '#86F2E4'
-                        : day.done
-                        ? COLORS.secondary
                         : '#CBD5E1'
                     }
                   />
@@ -118,12 +139,13 @@ export const MedicationLogScreen: React.FC<{
             <View style={styles.rowBetween}>
               <Badge label="Trợ lý AI MediCare Plus" variant="glass" icon="sparkles" />
               <Text style={styles.whiteSub} numberOfLines={1}>
-                Toa: TS. BS. Lê Thu Trang
+                {totalDoses > 0 ? `${totalDoses} thuốc từ toa điện tử` : 'Chưa có toa thuốc'}
               </Text>
             </View>
             <Text style={styles.whiteBody}>
-              Bạn đã duy trì uống đúng giờ 6 ngày liên tiếp! Cữ tối nay (21:00 -
-              Flunarizine 5mg) giúp dự phòng cơn đau nửa đầu khi ngủ.
+              {totalDoses > 0
+                ? `Hôm nay bạn đã xác nhận ${takenCount}/${totalDoses} cữ. Hãy dùng thuốc đúng theo liều và hướng dẫn trong toa điện tử.`
+                : 'Chưa có thuốc được bác sĩ kê trong hồ sơ trực tuyến. Nhật ký sẽ hiển thị sau khi toa thuốc được phát hành.'}
             </Text>
           </LinearGradient>
         </AnimatedEntry>
@@ -134,26 +156,7 @@ export const MedicationLogScreen: React.FC<{
           actionText="Xem chi tiết toa"
           onActionPress={onOpenPrescription}
         />
-        {[
-          {
-            key: 'morning',
-            time: '08:00 • Cữ Sáng (Sau ăn)',
-            drug: 'Ginkgo Biloba 80mg (1 viên)',
-            desc: 'Tăng cường tuần hoàn máu não',
-          },
-          {
-            key: 'afternoon',
-            time: '14:00 • Cữ Chiều (Sau ăn)',
-            drug: 'Ginkgo Biloba 80mg (1 viên)',
-            desc: 'Uống với 200ml nước ấm',
-          },
-          {
-            key: 'evening',
-            time: '21:00 • Cữ Tối (Trước khi ngủ)',
-            drug: 'Flunarizine 5mg (1 viên)',
-            desc: 'Ngăn ngừa đau nửa đầu & co thắt mạch',
-          },
-        ].map((slot, idx) => {
+        {medicationSchedule.length > 0 ? medicationSchedule.map((slot, idx) => {
           const isTaken = takenMap[slot.key];
           return (
             <AnimatedEntry key={slot.key} delay={160 + idx * 70} direction="up">
@@ -163,7 +166,7 @@ export const MedicationLogScreen: React.FC<{
                     {slot.time}
                   </Text>
                   <Badge
-                    label={isTaken ? 'Đã uống ✓' : 'Sắp tới (21:00)'}
+                    label={isTaken ? 'Đã uống ✓' : 'Chưa xác nhận'}
                     variant={isTaken ? 'teal' : 'warning'}
                   />
                 </View>
@@ -207,7 +210,13 @@ export const MedicationLogScreen: React.FC<{
               </View>
             </AnimatedEntry>
           );
-        })}
+        }) : (
+          <EmptyState
+            icon="medical-outline"
+            title="Chưa có lịch uống thuốc"
+            description="Thuốc do bác sĩ kê sẽ xuất hiện tại đây sau khi toa điện tử được phát hành."
+          />
+        )}
 
         <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
           <AppButton
@@ -233,7 +242,7 @@ export const MedicationLogScreen: React.FC<{
       <ToastBanner
         visible={toastVisible}
         title="Đã bật thông báo nhắc thuốc"
-        message="Nhắc uống thuốc lúc 08:00, 14:00 và 21:00 hàng ngày."
+        message="Ứng dụng sẽ sử dụng các cữ thuốc trong toa điện tử của bạn."
         onDismiss={() => setToastVisible(false)}
       />
     </View>
@@ -247,14 +256,14 @@ export const PrescriptionDetailScreen: React.FC<{
   onBack?: () => void;
   onOpenMedLog?: () => void;
 }> = ({ onBack, onOpenMedLog }) => {
-  const { prescriptions, diagnosisNote } = useAppContext();
+  const { prescriptions, diagnosisNote, patientProfile } = useAppContext();
 
   return (
     <View style={styles.screen}>
       <AppHeader
         title="Chi Tiết Toa Thuốc Điện Tử"
-        subtitle="#DT-241029-01 • BV ĐHYD TP.HCM"
-        badgeText="Hợp lệ"
+        subtitle={`${patientProfile.name}${patientProfile.patientCode ? ` • ${patientProfile.patientCode}` : ''}`}
+        badgeText={prescriptions.length > 0 ? 'Đã đồng bộ' : 'Chưa có toa'}
         onBack={onBack}
         rightActions={[
           {
@@ -267,38 +276,38 @@ export const PrescriptionDetailScreen: React.FC<{
         {/* Header Summary */}
         <View style={[styles.card, SHADOWS.sm]}>
           <View style={styles.rowBetween}>
-            <Badge label="Đang điều trị tích cực" variant="teal" showDot />
-            <Text style={styles.slotTime}>Ngày 2 / 7 (28%)</Text>
+            <Badge
+              label={prescriptions.length > 0 ? 'Toa thuốc trong hồ sơ' : 'Chưa phát hành toa'}
+              variant="teal"
+              showDot={prescriptions.length > 0}
+            />
+            <Text style={styles.slotTime}>{prescriptions.length} thuốc</Text>
           </View>
           <Text style={[styles.cardTitle, { marginTop: 8 }]}>
-            TS. BS. Lê Thu Trang
+            {patientProfile.name}
           </Text>
           <Text style={styles.subText}>
-            Trưởng khoa Thần kinh • Bệnh nhân: Nguyễn Văn Vũ
+            Thông tin được đồng bộ từ bệnh án điện tử đã hoàn thành
           </Text>
           <Text style={styles.subText}>
-            CĐ: {diagnosisNote}
-          </Text>
-          <Text style={styles.subText}>
-            Ngày kê: 29/10/2024 • Tái khám: 05/11/2024
+            CĐ: {diagnosisNote || 'Chưa có chẩn đoán được lưu'}
           </Text>
         </View>
 
         {/* AI Safety Audit & Dietary Advice */}
         <View style={[styles.card, SHADOWS.sm]}>
           <View style={styles.rowBetween}>
-            <Text style={styles.cardTitle}>Kiểm Tra Tương Tác Thuốc</Text>
-            <Badge label="An toàn" variant="teal" icon="shield-checkmark" />
+            <Text style={styles.cardTitle}>Lưu ý an toàn thuốc</Text>
+            <Badge label="Theo chỉ định" variant="teal" icon="shield-checkmark" />
           </View>
           <Text style={styles.subText}>
-            Không phát hiện tương khắc giữa {prescriptions.length} loại thuốc. Tương thích hoàn toàn
-            với tiền sử dị ứng Penicillin của bạn.
+            Hệ thống đang hiển thị {prescriptions.length} thuốc từ hồ sơ bệnh án và không tự động
+            kết luận về tương tác thuốc hoặc tiền sử dị ứng.
           </Text>
           <View style={styles.noteCallout}>
             <Ionicons name="nutrition-outline" size={16} color={COLORS.primary} />
             <Text style={styles.noteCalloutText}>
-              Kiêng cữ từ BS. Trang: Hạn chế hoàn toàn cà phê, trà đậm, bia rượu
-              trong đợt dùng Flunarizine. Uống đủ 2.0L nước ấm/ngày.
+              Dùng thuốc đúng liều ghi trong toa. Liên hệ bác sĩ hoặc dược sĩ nếu có dấu hiệu bất thường.
             </Text>
           </View>
         </View>
@@ -307,7 +316,7 @@ export const PrescriptionDetailScreen: React.FC<{
           title="Danh Mục Thuốc Kê Đơn"
           subtitle={`${prescriptions.length} loại thuốc trong phác đồ điều trị`}
         />
-        {prescriptions.map((d) => (
+        {prescriptions.length > 0 ? prescriptions.map((d) => (
           <View key={d.id} style={[styles.card, SHADOWS.sm]}>
             <View style={styles.rowBetween}>
               <Text style={[styles.cardTitle, { flex: 1 }]} numberOfLines={1}>
@@ -323,7 +332,13 @@ export const PrescriptionDetailScreen: React.FC<{
               <Badge label={d.instructionTag} variant="surface" />
             </View>
           </View>
-        ))}
+        )) : (
+          <EmptyState
+            icon="document-text-outline"
+            title="Chưa có toa thuốc điện tử"
+            description="Toa thuốc sẽ xuất hiện sau khi bác sĩ hoàn thành bệnh án và kê đơn."
+          />
+        )}
 
         <AppButton
           title="Chia sẻ / Xuất đơn thuốc"
@@ -353,15 +368,16 @@ export const FamilyMedicineCabinetScreen: React.FC<{
   onBack?: () => void;
   onRefillNow?: () => void;
 }> = ({ onBack, onRefillNow }) => {
-  const { cabinetMeds, addCabinetMedicine } = useAppContext();
+  const { cabinetMeds, addCabinetMedicine, patientProfile } = useAppContext();
   const [filterKey, setFilterKey] = useState('all');
   const [showAddForm, setShowAddForm] = useState(false);
   const [medName, setMedName] = useState('');
-  const [medOwner, setMedOwner] = useState('Nguyễn Văn Vũ (Bản thân)');
-  const [medStock, setMedStock] = useState('Còn 30 / 30 viên');
-  const [medExp, setMedExp] = useState('HSD: 12/2027');
+  const [medStock, setMedStock] = useState('');
+  const [medExp, setMedExp] = useState('');
   const [medUrgent, setMedUrgent] = useState(false);
   const [nameError, setNameError] = useState('');
+  const [stockError, setStockError] = useState('');
+  const [expiryError, setExpiryError] = useState('');
   const [saveError, setSaveError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [addedToast, setAddedToast] = useState<string | null>(null);
@@ -378,19 +394,30 @@ export const FamilyMedicineCabinetScreen: React.FC<{
       setNameError('Vui lòng nhập tên thuốc và hàm lượng');
       return;
     }
+    if (!medStock.trim()) {
+      setStockError('Vui lòng nhập số lượng thuốc hiện có');
+      return;
+    }
+    if (!medExp.trim()) {
+      setExpiryError('Vui lòng nhập hạn sử dụng');
+      return;
+    }
     setNameError('');
+    setStockError('');
+    setExpiryError('');
     setSaveError('');
     setIsSaving(true);
     try {
       await addCabinetMedicine({
         name: medName.trim(),
-        owner: medOwner.trim() || 'Nguyễn Văn Vũ (Bản thân)',
-        stock: medStock.trim() || 'Còn 30 / 30 viên',
-        exp: medExp.trim() || 'HSD: 12/2027',
+        stock: medStock.trim(),
+        exp: medExp.trim(),
         urgent: medUrgent,
       });
       setAddedToast(`Đã thêm "${medName.trim()}" vào Tủ thuốc gia đình`);
       setMedName('');
+      setMedStock('');
+      setMedExp('');
       setShowAddForm(false);
     } catch (error) {
       setSaveError(error instanceof Error ? error.message : 'Chưa lưu được thuốc. Vui lòng thử lại.');
@@ -403,7 +430,7 @@ export const FamilyMedicineCabinetScreen: React.FC<{
     <View style={styles.screen}>
       <AppHeader
         title="Tủ Thuốc Gia Đình"
-        subtitle="Quản lý số lượng thuốc tại nhà & cảnh báo sắp hết"
+        subtitle={`${patientProfile.name} • Quản lý thuốc tại nhà và cảnh báo sắp hết`}
         onBack={onBack}
       />
       <ScrollView contentContainerStyle={styles.scrollPad}>
@@ -464,20 +491,20 @@ export const FamilyMedicineCabinetScreen: React.FC<{
               error={nameError}
               leftIcon="medkit-outline"
             />
-            <AppInput
-              label="NGƯỜI SỬ DỤNG"
-              placeholder="VD: Nguyễn Văn Vũ (Bản thân)"
-              value={medOwner}
-              onChangeText={setMedOwner}
-              leftIcon="person-outline"
-            />
+            <Text style={[styles.subText, { marginBottom: 12 }]}>
+              Người sử dụng: {patientProfile.name} (Bản thân)
+            </Text>
             <View style={{ flexDirection: 'row', gap: 10 }}>
               <View style={{ flex: 1 }}>
                 <AppInput
                   label="SỐ LƯỢNG HIỆN CÓ"
                   placeholder="Còn 20 / 30 viên"
                   value={medStock}
-                  onChangeText={setMedStock}
+                  onChangeText={(value) => {
+                    setMedStock(value);
+                    if (stockError) setStockError('');
+                  }}
+                  error={stockError}
                 />
               </View>
               <View style={{ flex: 1 }}>
@@ -485,7 +512,11 @@ export const FamilyMedicineCabinetScreen: React.FC<{
                   label="HẠN SỬ DỤNG"
                   placeholder="HSD: 12/2027"
                   value={medExp}
-                  onChangeText={setMedExp}
+                  onChangeText={(value) => {
+                    setMedExp(value);
+                    if (expiryError) setExpiryError('');
+                  }}
+                  error={expiryError}
                 />
               </View>
             </View>

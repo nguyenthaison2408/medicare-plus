@@ -10,8 +10,7 @@ import { fetchDoctorReviewsCloud, submitDoctorReviewCloud } from '../services/cl
 import { fetchFamilyMembersCloud, addFamilyMemberCloud } from '../services/clinicFamily';
 import {
   addMedicineCabinetCloud,
-  fetchMedicationLogCloud,
-  fetchMedicineCabinetCloud,
+  fetchMedicationDataForRole,
   setMedicationTakenCloud,
 } from '../services/clinicMedicine';
 import type { PatientBookingInfo } from '../utils/bookingValidation';
@@ -157,7 +156,9 @@ interface AppContextValue {
 
   // 5. Medicine Cabinet & Doctor Reviews
   cabinetMeds: MedicineCabinetItem[];
-  addCabinetMedicine: (med: Omit<MedicineCabinetItem, 'id'>) => Promise<void>;
+  addCabinetMedicine: (
+    med: Omit<MedicineCabinetItem, 'id' | 'owner'>
+  ) => Promise<void>;
   doctorReviews: DoctorReviewItem[];
   addDoctorReview: (review: {
     doctorId: string;
@@ -403,22 +404,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
           }).catch(() => {});
           return;
         }
-        const [
-          profile,
-          cloudAppointments,
-          cloudDoctors,
-          families,
-          reviews,
-          medicines,
-          medicationLog,
-        ] = await Promise.all([
-          loadClinicProfile(),
+        const profile = await loadClinicProfile();
+        if (!mounted || request !== generation) return;
+        const [cloudAppointments, cloudDoctors, families, reviews] = await Promise.all([
           listClinicAppointments(),
           listClinicDoctors().catch(() => []),
           fetchFamilyMembersCloud(),
           fetchDoctorReviewsCloud(),
-          fetchMedicineCabinetCloud(),
-          fetchMedicationLogCloud(),
         ]);
         if (!mounted || request !== generation) return;
         if (cloudDoctors && cloudDoctors.length > 0) {
@@ -481,9 +473,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         setDiagnosisNote(cloudAppointments.map(clinicRecord).find(Boolean)?.diagnosis || 'Chưa có chẩn đoán được bác sĩ lưu.');
         setFamilyMembers(families);
         setDoctorReviews(reviews);
-        setCabinetMeds(medicines);
-        setTakenMap(medicationLog);
+        setCabinetMeds([]);
+        setTakenMap({ morning: false, afternoon: false, evening: false });
         setCloudSyncError('');
+
+        // Medicine data is patient-only. It must never block staff profiles,
+        // appointments or the rest of the portal from loading.
+        try {
+          const medicationData = await fetchMedicationDataForRole(profile.role);
+          if (!mounted || request !== generation) return;
+          setCabinetMeds(medicationData.medicines);
+          setTakenMap(medicationData.takenMap);
+        } catch (error) {
+          if (mounted && request === generation) {
+            setCloudSyncError(
+              error instanceof Error
+                ? error.message
+                : 'Không tải được dữ liệu thuốc trực tuyến.'
+            );
+          }
+        }
       } catch (error) {
         if (mounted && request === generation) setCloudSyncError(error instanceof Error ? error.message : 'Không tải được dữ liệu trực tuyến.');
       }
@@ -816,7 +825,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const addCabinetMedicine = async (
-    med: Omit<MedicineCabinetItem, 'id'>
+    med: Omit<MedicineCabinetItem, 'id' | 'owner'>
   ): Promise<void> => {
     if (CLOUD_MODE) {
       const expectedUser = cloudUserIdRef.current;
@@ -831,6 +840,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     setCabinetMeds((prev) => [
       {
         ...med,
+        owner: `${PATIENT_PROFILE.name} (Bản thân)`,
         id: `cab-${prev.length + 1}`,
       },
       ...prev,

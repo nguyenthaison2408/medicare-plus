@@ -49,25 +49,15 @@ export async function fetchMedicineCabinetCloud(): Promise<MedicineCabinetItem[]
 }
 
 export async function addMedicineCabinetCloud(
-  medicine: Omit<MedicineCabinetItem, 'id'>
+  medicine: Omit<MedicineCabinetItem, 'id' | 'owner'>
 ): Promise<MedicineCabinetItem> {
   if (!CLOUD_MODE) throw new Error('Chưa bật dữ liệu trực tuyến.');
-  const supabase = getSupabase();
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError || !user) throw new Error('Vui lòng đăng nhập lại trước khi thêm thuốc.');
-
-  const { data, error } = await supabase
-    .from('clinic_medicine_cabinet')
-    .insert({
-      owner_id: user.id,
-      medicine_name: medicine.name.trim(),
-      owner_label: medicine.owner.trim(),
-      stock_label: medicine.stock.trim(),
-      expiry_label: medicine.exp.trim(),
-      urgent: medicine.urgent,
-    })
-    .select('id,medicine_name,owner_label,stock_label,expiry_label,urgent')
-    .single();
+  const { data, error } = await getSupabase().rpc('clinic_add_cabinet_medicine', {
+    p_medicine_name: medicine.name.trim(),
+    p_stock_label: medicine.stock.trim(),
+    p_expiry_label: medicine.exp.trim(),
+    p_urgent: medicine.urgent,
+  });
   if (error || !data) throw new Error('Chưa lưu được thuốc. Vui lòng kiểm tra thông tin và thử lại.');
   return toMedicine(data as CloudMedicineCabinetRow);
 }
@@ -90,4 +80,18 @@ export async function setMedicationTakenCloud(
   });
   if (error) throw new Error('Chưa cập nhật được cữ thuốc. Vui lòng thử lại.');
   return normalizeTakenMap(data);
+}
+
+export async function fetchMedicationDataForRole(role: string): Promise<{
+  medicines: MedicineCabinetItem[];
+  takenMap: Record<string, boolean>;
+}> {
+  if (role !== 'patient') {
+    return { medicines: [], takenMap: { ...EMPTY_TAKEN_MAP } };
+  }
+  const [medicines, takenMap] = await Promise.all([
+    fetchMedicineCabinetCloud(),
+    fetchMedicationLogCloud(),
+  ]);
+  return { medicines, takenMap };
 }

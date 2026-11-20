@@ -293,9 +293,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const [appointments, setAppointments] =
-    useState<AppointmentItem[]>(INITIAL_APPOINTMENTS);
+    useState<AppointmentItem[]>(CLOUD_MODE ? [] : INITIAL_APPOINTMENTS);
   const [latestBooking, setLatestBooking] =
-    useState<LatestBookingTicket>(DEFAULT_TICKET);
+    useState<LatestBookingTicket>(CLOUD_MODE ? { ...DEFAULT_TICKET, code: '' } : DEFAULT_TICKET);
   const selectedTicketCode = useRef<string | null>(null);
   const [takenMap, setTakenMap] = useState<Record<string, boolean>>({
     morning: true,
@@ -303,12 +303,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     evening: false,
   });
   const [familyMembers, setFamilyMembers] = useState<FamilyMemberItem[]>(
-    INITIAL_FAMILY_MEMBERS
+    CLOUD_MODE ? [] : INITIAL_FAMILY_MEMBERS
   );
   const [prescriptions, setPrescriptions] =
-    useState<PrescriptionDrug[]>(PRESCRIPTION_DRUGS);
+    useState<PrescriptionDrug[]>(CLOUD_MODE ? [] : PRESCRIPTION_DRUGS);
   const [diagnosisNote, setDiagnosisNote] = useState<string>(
-    'Đau đầu căng thẳng (Tension headache) / Rối loạn vận mạch não nhẹ'
+    CLOUD_MODE ? '' : 'Đau đầu căng thẳng (Tension headache) / Rối loạn vận mạch não nhẹ'
   );
   const [doctors, setDoctors] = useState<DoctorItem[]>(DOCTORS);
   const [hospitals, setHospitals] = useState<HospitalItem[]>(HOSPITALS);
@@ -335,13 +335,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         const { data: { session } } = await supabase.auth.getSession();
         if (!mounted || request !== generation) return;
         if (!session) {
-          setAppointments(INITIAL_APPOINTMENTS);
-          setPrescriptions(PRESCRIPTION_DRUGS);
-          setFamilyMembers(INITIAL_FAMILY_MEMBERS);
+          setAppointments([]);
+          setPrescriptions([]);
+          setFamilyMembers([]);
           setCloudProfile(null);
-          setDiagnosisNote('Đau đầu căng thẳng (Tension headache) / Rối loạn vận mạch não nhẹ');
+          setDiagnosisNote('');
           setCloudSyncError('');
-          setLatestBooking(DEFAULT_TICKET);
+          setLatestBooking({ ...DEFAULT_TICKET, code: '' });
           listClinicDoctors().then(cloudDoctors => {
             if (mounted && cloudDoctors && cloudDoctors.length > 0) {
               setDoctors(prev =>
@@ -878,7 +878,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     setFamilyMembers(INITIAL_FAMILY_MEMBERS);
     setPrescriptions(PRESCRIPTION_DRUGS);
     setDiagnosisNote(
-      'Đau đầu căng thẳng (Tension headache) / Rối loạn vận mạch não nhẹ'
+      CLOUD_MODE ? '' : 'Đau đầu căng thẳng (Tension headache) / Rối loạn vận mạch não nhẹ'
     );
     setCabinetMeds(INITIAL_CABINET_MEDS);
     setDoctorReviews(INITIAL_DOCTOR_REVIEWS);

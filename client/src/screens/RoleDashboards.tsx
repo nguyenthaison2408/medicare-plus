@@ -22,6 +22,8 @@ import {
   type AppointmentItem,
 } from '../data/mockData';
 import { useAppContext } from '../context/AppContext';
+import { CLOUD_MODE } from '../services/supabaseClient';
+import { ClinicStaffScreen } from './ClinicStaffScreen';
 import {
   AppHeader,
   AppButton,
@@ -48,7 +50,7 @@ export interface AdminDashboardScreenProps {
   onNavigate?: (routeKey: string) => void;
 }
 
-type AdminTab = 'overview' | 'doctors' | 'appointments' | 'settings';
+type AdminTab = 'overview' | 'doctors' | 'appointments' | 'settings' | 'reception';
 
 export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({
   onLogout,
@@ -856,6 +858,7 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({
         {activeTab === 'doctors' && renderDoctorsManagement()}
         {activeTab === 'appointments' && renderAppointmentsManagement()}
         {activeTab === 'settings' && renderAdminSettings()}
+        {activeTab === 'reception' && <ClinicStaffScreen embedded onLogout={onLogout} />}
       </View>
 
       {/* Admin Bottom Navigation */}
@@ -865,6 +868,7 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({
           { key: 'doctors', label: 'QL Bác sĩ', icon: 'medkit' },
           { key: 'appointments', label: 'Điều phối lịch', icon: 'calendar' },
           { key: 'settings', label: 'Cấu hình', icon: 'settings' },
+          ...(CLOUD_MODE ? [{ key: 'reception', label: 'Tiếp đón QR', icon: 'qr-code' }] : []),
         ].map((t) => {
           const active = activeTab === t.key;
           return (
@@ -924,6 +928,7 @@ export const DoctorDashboardScreen: React.FC<DoctorDashboardScreenProps> = ({
   const {
     appointments,
     completeAppointment,
+    doctors,
     prescriptions,
     addPrescriptionDrug,
     diagnosisNote,
@@ -932,8 +937,8 @@ export const DoctorDashboardScreen: React.FC<DoctorDashboardScreenProps> = ({
   } = useAppContext();
 
   // Xác định bác sĩ đang làm việc từ Supabase Profile hoặc danh mục
-  const doctor = (cloudProfile?.doctor_id && DOCTORS.find((d) => d.id === cloudProfile.doctor_id))
-    || (cloudProfile?.full_name && DOCTORS.find((d) => d.name === cloudProfile.full_name))
+  const doctor = (cloudProfile?.doctor_id && doctors.find((d) => d.id === cloudProfile.doctor_id))
+    || (cloudProfile?.full_name && doctors.find((d) => d.name === cloudProfile.full_name))
     || DOCTORS[0];
 
   const [activeTab, setActiveTab] = useState<DoctorTab>('schedule');
@@ -951,6 +956,8 @@ export const DoctorDashboardScreen: React.FC<DoctorDashboardScreenProps> = ({
   );
   const upcomingPatientApts = doctorAppointments.filter((a) => a.status === 'upcoming');
   const completedPatientApts = doctorAppointments.filter((a) => a.status === 'completed');
+
+  const todayAppointments = doctorAppointments.filter(a => getAppointmentDateKey(a) === getRelativeDayMeta(0).fullDate && a.status === 'upcoming');
 
   const activePatient = selectedPatientApt || upcomingPatientApts[0] || doctorAppointments[0] || null;
   const activePatientName = activePatient?.patientName || 'Bệnh nhân';
@@ -988,21 +995,21 @@ export const DoctorDashboardScreen: React.FC<DoctorDashboardScreenProps> = ({
           <View style={styles.heroMetricsStrip}>
             <View style={styles.heroMetricItem}>
               <Text style={styles.heroMetricVal}>
-                {doctorAppointments.length} ca
+                {doctorAppointments.filter(a => getAppointmentDateKey(a) === getRelativeDayMeta(0).fullDate).length} ca
               </Text>
               <Text style={styles.heroMetricLabel}>Tổng lịch hôm nay</Text>
             </View>
             <View style={styles.heroDivider} />
             <View style={styles.heroMetricItem}>
               <Text style={styles.heroMetricVal}>
-                {completedPatientApts.length} ca
+                {completedPatientApts.filter(a => getAppointmentDateKey(a) === getRelativeDayMeta(0).fullDate).length} ca
               </Text>
               <Text style={styles.heroMetricLabel}>Đã hoàn tất</Text>
             </View>
             <View style={styles.heroDivider} />
             <View style={styles.heroMetricItem}>
               <Text style={styles.heroMetricVal}>
-                {upcomingPatientApts.length} ca
+                {todayAppointments.length} ca
               </Text>
               <Text style={styles.heroMetricLabel}>Đang chờ khám</Text>
             </View>
@@ -1015,7 +1022,7 @@ export const DoctorDashboardScreen: React.FC<DoctorDashboardScreenProps> = ({
         subtitle={`Đồng bộ trực tiếp từ cơ sở dữ liệu Supabase • ${doctor.hospital}`}
       />
 
-      {doctorAppointments.length === 0 ? (
+      {todayAppointments.length === 0 ? (
         <AnimatedEntry delay={100} direction="up">
           <View style={[styles.card, SHADOWS.sm, { alignItems: 'center', paddingVertical: 32 }]}>
             <Ionicons name="people-outline" size={44} color={COLORS.textSecondary} />
@@ -1028,7 +1035,7 @@ export const DoctorDashboardScreen: React.FC<DoctorDashboardScreenProps> = ({
           </View>
         </AnimatedEntry>
       ) : (
-        doctorAppointments.map((pt, idx) => (
+        todayAppointments.map((pt, idx) => (
           <AnimatedEntry key={pt.id} delay={100 + idx * 70} direction="up">
             <View style={[styles.card, SHADOWS.sm]}>
               <View style={styles.aptRowTop}>
@@ -1323,8 +1330,9 @@ export const DoctorDashboardScreen: React.FC<DoctorDashboardScreenProps> = ({
 
       <View style={{ flex: 1 }}>
         {activeTab === 'schedule' && renderSchedule()}
-        {activeTab === 'patients' && renderPatientsEHR()}
-        {activeTab === 'prescribe' && renderPrescribe()}
+        {(activeTab === 'patients' || activeTab === 'prescribe') && (CLOUD_MODE
+          ? <ClinicStaffScreen key={selectedPatientApt?.id || 'queue'} embedded onLogout={onLogout} initialAppointmentId={selectedPatientApt?.id} />
+          : activeTab === 'patients' ? renderPatientsEHR() : renderPrescribe())}
         {activeTab === 'profile' && renderDoctorProfile()}
       </View>
 

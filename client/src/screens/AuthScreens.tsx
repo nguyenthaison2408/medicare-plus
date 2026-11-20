@@ -221,9 +221,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
     try {
       const profile = await signInClinic(targetEmail, password);
       onLoginSuccess(profile.role === 'reception' ? 'admin' : profile.role, trimmed);
-    } catch {
-      // Fallback cho tài khoản nếu Supabase từ chối
-      onLoginSuccess(detectRoleFromEmail(trimmed), trimmed);
+    } catch (error) {
+      setPasswordError(error instanceof Error ? error.message : 'Không thể đăng nhập. Vui lòng thử lại.');
     } finally {
       setLoading(false);
     }

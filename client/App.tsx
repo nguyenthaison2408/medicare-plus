@@ -385,7 +385,7 @@ function AppContent() {
                   activeTab !== 'ai' && styles.tabPaneHidden,
                 ]}
               >
-                <AIAssistantScreen onBookDoctor={handleOpenBooking} />
+                <AIAssistantScreen key={cloudProfile?.id || 'guest'} onBookDoctor={handleOpenBooking} />
               </View>
               <View
                 style={[

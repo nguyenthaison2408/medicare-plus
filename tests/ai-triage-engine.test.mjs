@@ -1,4 +1,7 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import vm from 'node:vm';
+import {stripTypeScriptTypes} from 'node:module';
 import test from 'node:test';
 import {
   checkRedFlags,
@@ -10,24 +13,12 @@ import {
 } from '../client/src/services/aiFollowUpQuestions.ts';
 import { DOCTORS } from '../client/src/data/mockData.ts';
 
-// Helper matching logic as used in aiTriageEngine
-function resolveSpecialtyDoctors(category, specialtyName) {
-  const target = (specialtyName || '').toLowerCase();
-  const bySpecialty = DOCTORS.filter((d) => {
-    const spec = d.specialty.toLowerCase();
-    const sub = d.subSpecialty.toLowerCase();
-    if (category === 'dermatology') return spec.includes('da liễu') || sub.includes('da liễu');
-    if (category === 'gastroenterology') return spec.includes('tiêu hóa') || sub.includes('tiêu hóa');
-    if (category === 'pulmonology') return spec.includes('hô hấp') || sub.includes('hô hấp');
-    if (category === 'pediatrics') return spec.includes('nhi') || sub.includes('nhi');
-    if (category === 'ophthalmology') return spec.includes('mắt') || sub.includes('mắt');
-    if (category === 'cardiology') return spec.includes('tim') || sub.includes('tim');
-    if (category === 'neurology') return spec.includes('thần kinh') || sub.includes('thần kinh');
-    if (category === 'orthopedics') return sub.includes('cột sống') || sub.includes('ngoại thần kinh') || spec.includes('thần kinh');
-    return target && (spec.includes(target) || target.includes(spec));
-  });
-  return bySpecialty.length > 0 ? bySpecialty : [DOCTORS[0]];
-}
+const clean = source => stripTypeScriptTypes(source.replace(/import[\s\S]*?from\s*['"][^'"]+['"];?/g, '')).replace(/export\s+/g, '');
+const source = file => fs.readFileSync(new URL('../client/src/' + file, import.meta.url), 'utf8');
+const engineCode = ['services/aiMedicalKnowledge.ts', 'services/aiFollowUpQuestions.ts', 'services/aiTriageEngine.ts']
+  .map(file => clean(source(file))).join('\n');
+const engine = vm.runInNewContext(engineCode + ';({getDoctorsForSpecialty,runClinicalTriage})', {DOCTORS});
+const resolveSpecialtyDoctors = engine.getDoctorsForSpecialty;
 
 test('1. Red Flag Emergency Detection: identifies life-threatening signs', () => {
   const criticalSymptoms = [
@@ -179,4 +170,51 @@ test('10. Follow-up Risk Modifier & Urgency Escalation: severe options have risk
   const severeOption = severityQuestion.options.find((o) => o.value === 'severe');
   assert.ok(severeOption, 'Severe option must exist');
   assert.ok(Number(severeOption.riskModifier) >= 3, 'Severe option riskModifier must be >= 3 to escalate urgency');
+});
+
+test('cloud routing uses only supplied active doctors and never falls back to mock ids', () => {
+  const catalog = [DOCTORS[0], DOCTORS[1]];
+  const result = engine.runClinicalTriage('Nổi mẩn ngứa phát ban', {availableDoctors: catalog});
+  assert.equal(result.recommendedDoctors.length, 0);
+  const empty = engine.runClinicalTriage('đau đầu', {availableDoctors: []});
+  assert.equal(empty.recommendedDoctors.length, 0);
+  const cardiology = engine.runClinicalTriage('hồi hộp đánh trống ngực', {availableDoctors: catalog});
+  assert.ok(cardiology.recommendedDoctors.length > 0);
+  assert.ok(cardiology.recommendedDoctors.every(d => catalog.some(c => c.id === d.id)));
+});
+test('actual screen analysis preserves emergency even with medication keywords', () => {
+  const main = source('screens/MainTabScreens.tsx');
+  const analyzer = main.slice(main.indexOf('const analyzeMedicalSymptom ='), main.indexOf('export const AIAssistantScreen:'));
+  const analyze = vm.runInNewContext(clean(analyzer) + ';analyzeMedicalSymptom', {runClinicalTriage: engine.runClinicalTriage, checkEHRSafetyGuardrails});
+  assert.equal(analyze('đau ngực dữ dội, uống thuốc gì?', [], []).clinicalCard.urgencyLevel, 'emergency');
+  assert.equal(analyze('nổi mẩn ngứa phát ban', [], []).clinicalCard.doctors.length, 0);
+});
+test('cloud patient profile does not inherit the sample allergy list', () => {
+  const src = source('context/AppContext.tsx');
+  const begin = src.indexOf('patientProfile: CLOUD_MODE ? {') + 'patientProfile: '.length;
+  const end = src.indexOf(' : PATIENT_PROFILE,', begin) + ' : PATIENT_PROFILE'.length;
+  const profile = vm.runInNewContext('(' + src.slice(begin, end) + ')', {CLOUD_MODE: true, PATIENT_PROFILE: {allergies: ['SAMPLE-ALLERGY']}, cloudProfile: {id:'patient',full_name:'Patient'}});
+  assert.equal(profile.allergies.length, 0);
+});
+const refine = vm.runInNewContext(clean(source('services/aiConversation.ts')) + ';refineFollowUp');
+const context = () => ({id: 1, urgencyLevel: 'routine', remainingFollowUps: getFollowUpQuestions('neurology'), accumulatedRisk: 0});
+test('follow-up responses cannot be applied twice or to a different conversation', () => {
+  const initial = context();
+  const q = initial.remainingFollowUps[0];
+  const next = refine(initial, 1, q.id, q.options[1].value);
+  assert.ok(next);
+  assert.equal(refine(next, 1, q.id, q.options[1].value), null);
+  assert.equal(refine(initial, 2, q.id, q.options[1].value), null);
+});
+test('follow-up cannot downgrade emergency or accept an unknown answer', () => {
+  const initial = context(), q = initial.remainingFollowUps[0];
+  assert.equal(refine({...initial, urgencyLevel:'emergency'}, 1, q.id, q.options[0].value), null);
+  assert.equal(refine(initial, 1, q.id, 'unrecognized'), null);
+});
+test('severe canonical answer increases urgency while preserving specialty context', () => {
+  const initial = {...context(), specialtyName:'Original specialty'};
+  const q = initial.remainingFollowUps.find(x => x.id === 'neuro_severity');
+  const next = refine(initial, 1, q.id, 'severe');
+  assert.equal(next.urgencyLevel, 'soon');
+  assert.equal(next.specialtyName, initial.specialtyName);
 });

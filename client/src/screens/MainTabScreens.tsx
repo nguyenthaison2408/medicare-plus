@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -25,6 +25,8 @@ import {
   HospitalItem,
 } from '../data/mockData';
 import { useAppContext } from '../context/AppContext';
+import { CLOUD_MODE } from '../services/supabaseClient';
+import { refineFollowUp } from '../services/aiConversation';
 import { runClinicalTriage } from '../services/aiTriageEngine';
 import { checkEHRSafetyGuardrails } from '../services/aiSafetyGuardrails';
 import {
@@ -1049,16 +1051,18 @@ interface AIChatThreadItem {
     followUpQuestions?: FollowUpQuestionItem[];
     homeCareAdvice?: string[];
     allergyWarning?: string;
+    contextId?: number;
   };
 }
 
 const analyzeMedicalSymptom = (
   rawText: string,
-  allergies?: string[]
+  allergies?: string[],
+  catalog?: DoctorItem[]
 ): Omit<AIChatThreadItem, 'id' | 'sender' | 'time'> => {
   // 1. Dấu hiệu CẤP CỨU ĐỎ (Red Flag) PHẢI LUÔN CÓ ƯU TIÊN CAO NHẤT!
   // Tuyệt đối không để câu hỏi về thuốc hay dị ứng đè bẹp triệu chứng nguy kịch!
-  const triageResult = runClinicalTriage(rawText);
+  const triageResult = runClinicalTriage(rawText, { availableDoctors: catalog });
   if (triageResult.urgencyLevel === 'emergency') {
     return {
       clinicalCard: {
@@ -1067,7 +1071,7 @@ const analyzeMedicalSymptom = (
         specialtyName: triageResult.specialtyName,
         specialtyDesc: triageResult.specialtyDesc,
         specialtyIcon: triageResult.specialtyIcon as keyof typeof Ionicons.glyphMap,
-        doctors: triageResult.recommendedDoctors || [DOCTORS[0]],
+        doctors: triageResult.recommendedDoctors || [],
         followUpQuestions: triageResult.followUpQuestions,
         homeCareAdvice: triageResult.homeCareAdvice,
       },
@@ -1087,7 +1091,7 @@ const analyzeMedicalSymptom = (
           specialtyName: triageResult.specialtyName || 'Dược Lâm Sàng & Khám Nội',
           specialtyDesc: triageResult.specialtyDesc || 'Tư vấn sử dụng thuốc an toàn & kiểm soát đau',
           specialtyIcon: (triageResult.specialtyIcon as keyof typeof Ionicons.glyphMap) || 'medkit',
-          doctors: triageResult.recommendedDoctors || [DOCTORS[0]],
+          doctors: triageResult.recommendedDoctors || [],
           allergyWarning: safety.alertMessage,
           homeCareAdvice: [
             'Chỉ sử dụng thuốc khi có ý kiến của bác sĩ điều trị hoặc dược sĩ.',
@@ -1109,7 +1113,7 @@ const analyzeMedicalSymptom = (
       specialtyName: triageResult.specialtyName,
       specialtyDesc: triageResult.specialtyDesc,
       specialtyIcon: triageResult.specialtyIcon as keyof typeof Ionicons.glyphMap,
-      doctors: triageResult.recommendedDoctors || [DOCTORS[0]],
+      doctors: triageResult.recommendedDoctors || [],
       followUpQuestions: triageResult.followUpQuestions,
       homeCareAdvice: triageResult.homeCareAdvice,
     },
@@ -1119,13 +1123,15 @@ const analyzeMedicalSymptom = (
 export const AIAssistantScreen: React.FC<AIAssistantScreenProps> = ({
   onBookDoctor,
 }) => {
-  const { patientProfile } = useAppContext();
+  const { patientProfile, doctors } = useAppContext();
+  const conversationGeneration = useRef(0);
   const displayName = patientProfile.name || PATIENT_PROFILE.name;
   const [inputMsg, setInputMsg] = useState('');
-  const [showSampleThread, setShowSampleThread] = useState(true);
+  const [showSampleThread, setShowSampleThread] = useState(!CLOUD_MODE);
   const [isTyping, setIsTyping] = useState(false);
   const [extraMessages, setExtraMessages] = useState<AIChatThreadItem[]>([]);
   const [currentTriageContext, setCurrentTriageContext] = useState<{
+    id: number;
     specialtyName: string;
     specialtyDesc: string;
     specialtyIcon: keyof typeof Ionicons.glyphMap;
@@ -1136,6 +1142,8 @@ export const AIAssistantScreen: React.FC<AIAssistantScreenProps> = ({
     accumulatedRisk: number;
   } | null>(null);
   const chatScrollRef = useRef<React.ComponentRef<typeof ScrollView>>(null);
+
+  useEffect(() => () => { conversationGeneration.current += 1; }, []);
 
   const getCurrentTimeStr = () => {
     const now = new Date();
@@ -1148,6 +1156,8 @@ export const AIAssistantScreen: React.FC<AIAssistantScreenProps> = ({
     const content = (customText ?? inputMsg).trim();
     if (!content || isTyping) return;
     const timeStr = getCurrentTimeStr();
+    const generation = ++conversationGeneration.current;
+    setCurrentTriageContext(null);
 
     setExtraMessages((prev) => [
       ...prev,
@@ -1160,13 +1170,15 @@ export const AIAssistantScreen: React.FC<AIAssistantScreenProps> = ({
       chatScrollRef.current?.scrollToEnd({ animated: true });
     }, 80);
 
-    const patientAllergies = (patientProfile as any)?.allergies || [];
-    const analysisResult = analyzeMedicalSymptom(content, patientAllergies);
+    const patientAllergies = CLOUD_MODE ? [] : patientProfile.allergies;
+    const analysisResult = analyzeMedicalSymptom(content, patientAllergies, doctors);
 
     setTimeout(() => {
+      if (conversationGeneration.current !== generation) return;
       setIsTyping(false);
       if (analysisResult.clinicalCard) {
         setCurrentTriageContext({
+          id: generation,
           specialtyName: analysisResult.clinicalCard.specialtyName,
           specialtyDesc: analysisResult.clinicalCard.specialtyDesc,
           specialtyIcon: analysisResult.clinicalCard.specialtyIcon,
@@ -1185,6 +1197,7 @@ export const AIAssistantScreen: React.FC<AIAssistantScreenProps> = ({
           sender: 'ai',
           time: getCurrentTimeStr(),
           ...analysisResult,
+          ...(analysisResult.clinicalCard ? { clinicalCard: { ...analysisResult.clinicalCard, contextId: generation } } : {}),
         },
       ]);
       setTimeout(() => {
@@ -1194,86 +1207,33 @@ export const AIAssistantScreen: React.FC<AIAssistantScreenProps> = ({
   };
 
   const handleSelectFollowUp = (
-    opt: FollowUpOptionItem,
-    question: FollowUpQuestionItem
+    opt: FollowUpOptionItem, question: FollowUpQuestionItem, contextId?: number
   ) => {
     if (isTyping) return;
-    const timeStr = getCurrentTimeStr();
-    const risk = opt.riskModifier || 0;
-
-    setExtraMessages((prev) => [
-      ...prev,
-      {
-        id: `usr-${prev.length + 1}`,
-        sender: 'user',
-        text: `Trả lời: ${opt.label} (${question.question})`,
-        time: timeStr,
-      },
-    ]);
-
+    const next = refineFollowUp(currentTriageContext, contextId, question.id, opt.value);
+    if (!next) return;
+    const generation = conversationGeneration.current;
     setIsTyping(true);
+    setCurrentTriageContext(next);
+    setExtraMessages(prev => [...prev, {
+      id: `usr-${prev.length + 1}`, sender: 'user',
+      text: `Trả lời: ${opt.label} (${question.question})`, time: getCurrentTimeStr(),
+    }]);
     setTimeout(() => {
-      chatScrollRef.current?.scrollToEnd({ animated: true });
-    }, 80);
-
-    setTimeout(() => {
+      if (conversationGeneration.current !== generation) return;
       setIsTyping(false);
-      const prevContext = currentTriageContext;
-      const newRisk = (prevContext?.accumulatedRisk || 0) + risk;
-
-      let newUrgency = prevContext?.urgencyLevel || 'routine';
-      if (newRisk >= 3 || risk >= 3) {
-        newUrgency = 'soon';
-      }
-
-      const updatedRemaining = (prevContext?.remainingFollowUps || []).filter(
-        (q) => q.id !== question.id
-      );
-
-      const riskNote =
-        risk > 0
-          ? ` (Điểm nguy cơ lâm sàng: +${risk})`
-          : ' (Mức độ ổn định/nhẹ)';
-
-      const refinedAnalysis = `Đã ghi nhận thông tin làm rõ lâm sàng: "${opt.label}"${riskNote}. ${
-        newRisk >= 3
-          ? 'Với triệu chứng kéo dài hoặc mức độ đau gia tăng, bạn nên ưu tiên khám bác sĩ chuyên khoa sớm để chẩn đoán phân biệt và can thiệp kịp thời.'
-          : 'Triệu chứng hiện ở mức độ nhẹ/ổn định, bạn nên tiếp tục theo dõi sát tại nhà và đến khám theo lịch hẹn thông thường.'
-      }`;
-
-      setCurrentTriageContext({
-        specialtyName: prevContext?.specialtyName || 'Nội Thần Kinh',
-        specialtyDesc: prevContext?.specialtyDesc || '',
-        specialtyIcon: prevContext?.specialtyIcon || 'pulse',
-        urgencyLevel: newUrgency,
-        doctors: prevContext?.doctors || [DOCTORS[0]],
-        homeCareAdvice: prevContext?.homeCareAdvice,
-        remainingFollowUps: updatedRemaining,
-        accumulatedRisk: newRisk,
-      });
-
-      setExtraMessages((prev) => [
-        ...prev,
-        {
-          id: `ai-${prev.length + 1}`,
-          sender: 'ai',
-          time: getCurrentTimeStr(),
-          clinicalCard: {
-            urgencyLevel: newUrgency,
-            analysisText: refinedAnalysis,
-            specialtyName: prevContext?.specialtyName || 'Nội Thần Kinh',
-            specialtyDesc: prevContext?.specialtyDesc || '',
-            specialtyIcon: prevContext?.specialtyIcon || 'pulse',
-            doctors: prevContext?.doctors || [DOCTORS[0]],
-            followUpQuestions: updatedRemaining.length > 0 ? updatedRemaining : undefined,
-            homeCareAdvice: prevContext?.homeCareAdvice,
-          },
+      setExtraMessages(prev => [...prev, {
+        id: `ai-${prev.length + 1}`, sender: 'ai', time: getCurrentTimeStr(),
+        clinicalCard: {
+          ...next,
+          contextId: next.id,
+          analysisText: `Đã ghi nhận: "${opt.label}". ${next.urgencyLevel === 'soon'
+            ? 'Giữ khuyến nghị khám sớm để được bác sĩ đánh giá trực tiếp.'
+            : 'Thông tin này bổ sung cho mô tả ban đầu; tiếp tục theo dõi và khám theo khuyến nghị.'}`,
+          followUpQuestions: next.remainingFollowUps,
         },
-      ]);
-
-      setTimeout(() => {
-        chatScrollRef.current?.scrollToEnd({ animated: true });
-      }, 100);
+      }]);
+      chatScrollRef.current?.scrollToEnd({ animated: true });
     }, 500);
   };
 
@@ -1292,6 +1252,8 @@ export const AIAssistantScreen: React.FC<AIAssistantScreenProps> = ({
             icon: 'refresh-outline',
             label: 'Làm mới cuộc trò chuyện',
             onPress: () => {
+              conversationGeneration.current += 1;
+              setCurrentTriageContext(null);
               setShowSampleThread(false);
               setIsTyping(false);
               setExtraMessages([]);
@@ -1342,7 +1304,7 @@ export const AIAssistantScreen: React.FC<AIAssistantScreenProps> = ({
               followUpQuestions={m.clinicalCard.followUpQuestions}
               homeCareAdvice={m.clinicalCard.homeCareAdvice}
               allergyWarning={m.clinicalCard.allergyWarning}
-              onSelectFollowUp={handleSelectFollowUp}
+              onSelectFollowUp={(opt, question) => handleSelectFollowUp(opt, question, m.clinicalCard?.contextId)}
               onBookDoctor={onBookDoctor}
               onEmergencyCall={() => Linking.openURL('tel:115')}
             />

@@ -261,7 +261,8 @@ export const AIClinicalResponseCard: React.FC<AIClinicalResponseCardProps> = ({
           <Text style={styles.recCount}>{doctors.length} gợi ý</Text>
         </View>
 
-        {doctors.map((doc, index) => (
+        {!isEmergency && doctors.length === 0 && <Text style={styles.analysisBody}>Chưa có bác sĩ phù hợp trong danh mục hiện tại. Bạn có thể liên hệ cơ sở y tế để được hướng dẫn.</Text>}
+        {!isEmergency && doctors.map((doc, index) => (
           <View key={doc.id} style={[styles.aiDocCard, SHADOWS.sm]}>
             <View style={styles.aiDocTop}>
               <Image source={{ uri: doc.avatar }} style={styles.aiDocAvatar} />

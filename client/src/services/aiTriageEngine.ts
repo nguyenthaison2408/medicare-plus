@@ -11,27 +11,15 @@ import {
 } from './aiMedicalKnowledge';
 import { getFollowUpQuestions } from './aiFollowUpQuestions';
 
-const DOCTOR_SPECIALTY_MAP: Record<SymptomCategory, string[]> = {
-  cardiology: ['doc-2', 'doc-1'],
-  neurology: ['doc-1', 'doc-4'],
-  orthopedics: ['doc-4', 'doc-1'],
-  ophthalmology: ['doc-3'],
-  gastroenterology: ['doc-6', 'doc-2'],
-  pulmonology: ['doc-7', 'doc-1'],
-  pediatrics: ['doc-8', 'doc-1'],
-  dermatology: ['doc-5'],
-  ent: ['doc-7', 'doc-3'],
-  general: ['doc-1', 'doc-2'],
-};
-
 export const getDoctorsForSpecialty = (
   category: SymptomCategory,
-  specialtyName?: string
+  specialtyName?: string,
+  catalog: DoctorItem[] = DOCTORS
 ): DoctorItem[] => {
   const target = (specialtyName || '').toLowerCase();
-  const bySpecialty = DOCTORS.filter((d) => {
+  const bySpecialty = catalog.filter((d) => {
     const spec = d.specialty.toLowerCase();
-    const sub = d.subSpecialty.toLowerCase();
+    const sub = (d.subSpecialty || '').toLowerCase();
     if (category === 'dermatology') return spec.includes('da liễu') || sub.includes('da liễu');
     if (category === 'gastroenterology') return spec.includes('tiêu hóa') || sub.includes('tiêu hóa');
     if (category === 'pulmonology') return spec.includes('hô hấp') || sub.includes('hô hấp');
@@ -43,14 +31,11 @@ export const getDoctorsForSpecialty = (
     return target && (spec.includes(target) || target.includes(spec));
   });
 
-  if (bySpecialty.length > 0) return bySpecialty;
-
-  const preferredIds = DOCTOR_SPECIALTY_MAP[category] || ['doc-1'];
-  const matched = DOCTORS.filter((d) => preferredIds.includes(d.id));
-  return matched.length > 0 ? matched : [DOCTORS[0]];
+  return bySpecialty;
 };
 
 export interface TriageEngineOptions {
+  availableDoctors?: DoctorItem[];
   patientAge?: number;
   patientGender?: 'male' | 'female' | 'other';
   hasChronicCondition?: boolean;
@@ -65,7 +50,7 @@ export const runClinicalTriage = (
   // 1. Phân luồng Cấp cứu Red Flag
   const redFlag = checkRedFlags(normalized);
   if (redFlag.isEmergency) {
-    const emergencyDoctors = [DOCTORS[1], DOCTORS[0]];
+    const emergencyDoctors: DoctorItem[] = [];
     return {
       urgencyLevel: 'emergency',
       triageLevel: 'emergency' as TriageUrgencyLevel,
@@ -102,7 +87,7 @@ export const runClinicalTriage = (
 
   // 3. Nếu phát hiện chuyên khoa phù hợp
   if (bestRule && maxMatchedScore > 0) {
-    const recommendedDocs = getDoctorsForSpecialty(bestRule.category, bestRule.specialtyName);
+    const recommendedDocs = getDoctorsForSpecialty(bestRule.category, bestRule.specialtyName, options?.availableDoctors);
     const confidence = Math.min(0.95, 0.65 + maxMatchedScore * 0.08);
 
     let calculatedUrgency: 'emergency' | 'soon' | 'routine' =
@@ -132,7 +117,7 @@ export const runClinicalTriage = (
   }
 
   // 4. Fallback mặc định: Nội Thần kinh & Y học gia đình tổng quát
-  const defaultDocs = [DOCTORS[0], DOCTORS[3]];
+  const defaultDocs = getDoctorsForSpecialty('general', 'Nội khoa', options?.availableDoctors);
   return {
     urgencyLevel: 'soon',
     triageLevel: 'routine' as TriageUrgencyLevel,

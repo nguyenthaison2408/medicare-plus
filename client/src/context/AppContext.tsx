@@ -2,8 +2,8 @@ import React, { createContext, useContext, useState, useEffect, useRef } from 'r
 import { Alert } from 'react-native';
 import { CLOUD_MODE, getSupabase } from '../services/supabaseClient';
 import {
-  bookClinicAppointment, cancelClinicAppointment, listClinicAppointments, listClinicDoctors,
-  loadClinicProfile, subscribeClinicAppointments, type ClinicProfile, type ClinicAppointment,
+  bookClinicAppointment, cancelClinicAppointment, checkInClinic, completeClinicAppointment, listClinicAppointments, listClinicDoctors,
+  loadClinicProfile, subscribeClinicAppointments, type ClinicProfile, type ClinicAppointment, type ClinicMedication,
 } from '../services/clinicCloud';
 import { clinicAppointmentToItem, clinicPrescriptions, clinicRecord } from '../services/clinicAdapters';
 import { fetchFamilyMembersCloud, addFamilyMemberCloud } from '../services/clinicFamily';
@@ -115,7 +115,14 @@ interface AppContextValue {
     patientInfo: PatientBookingInfo;
   }) => Promise<LatestBookingTicket>;
   cancelAppointment: (appointmentId: string) => Promise<void>;
-  completeAppointment: (appointmentId: string) => void;
+  completeAppointment: (
+    appointmentId: string,
+    diagnosis?: string,
+    medications?: ClinicMedication[],
+    notes?: string
+  ) => Promise<boolean>;
+
+  checkInAppointment: (appointmentId: string, bookingCode?: string) => Promise<boolean>;
 
   // 2. Medication Adherence Log
   takenMap: Record<string, boolean>;
@@ -128,7 +135,7 @@ interface AppContextValue {
     dob: string;
     relation: string;
     bhyt: string;
-  }) => void;
+  }) => Promise<void>;
 
   // 4. Prescriptions & Doctors (Shared with Doctor/Admin Portals)
   prescriptions: PrescriptionDrug[];
@@ -321,6 +328,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   const [isPiiMasked, setIsPiiMasked] = useState<boolean>(true);
   const [isHydrated, setIsHydrated] = useState<boolean>(CLOUD_MODE);
   const hydratedRef = useRef<boolean>(CLOUD_MODE);
+  const cloudUserIdRef = useRef<string | null>(null);
   const [cloudProfile, setCloudProfile] = useState<ClinicProfile | null>(null);
   const [cloudSyncError, setCloudSyncError] = useState('');
 
@@ -335,6 +343,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         const supabase = getSupabase();
         const { data: { session } } = await supabase.auth.getSession();
         if (!mounted || request !== generation) return;
+        cloudUserIdRef.current = session?.user.id ?? null;
         if (!session) {
           setAppointments([]);
           setPrescriptions([]);
@@ -449,6 +458,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         setPrescriptions(clinicPrescriptions(cloudAppointments));
         setDiagnosisNote(cloudAppointments.map(clinicRecord).find(Boolean)?.diagnosis || 'Chưa có chẩn đoán được bác sĩ lưu.');
         setCloudSyncError('');
+        const families = await fetchFamilyMembersCloud();
+        if (mounted && request === generation) setFamilyMembers(families);
       } catch (error) {
         if (mounted && request === generation) setCloudSyncError(error instanceof Error ? error.message : 'Không tải được dữ liệu trực tuyến.');
       }
@@ -458,9 +469,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     try {
       const { data: { subscription } } = getSupabase().auth.onAuthStateChange((_event, session) => {
         generation++;
+        cloudUserIdRef.current = session?.user.id ?? null;
         if (userId !== session?.user.id) {
           userId = session?.user.id;
           selectedTicketCode.current = null;
+          setFamilyMembers([]);
           setAppointments([]); setPrescriptions([]); setCloudProfile(null); setDiagnosisNote('');
           setLatestBooking({ ...DEFAULT_TICKET, code: '' });
         }
@@ -473,13 +486,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
       setTimeout(() => { if (mounted) setCloudSyncError(error instanceof Error ? error.message : 'Chưa kết nối dữ liệu.'); }, 0);
     }
     void refresh();
-    if (CLOUD_MODE) {
-      void fetchFamilyMembersCloud().then((cloudFams) => {
-        if (mounted && cloudFams.length > 0) {
-          setFamilyMembers(cloudFams);
-        }
-      });
-    }
     return () => { mounted = false; generation++; unsubscribeAuth(); unsubscribeChanges(); };
   }, []);
 
@@ -673,19 +679,46 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     if (!CLOUD_MODE) bookingService.syncCancelAppointment(appointmentId);
   };
 
-  const completeAppointment = (appointmentId: string) => {
-    if (CLOUD_MODE) { Alert.alert('Hoàn thành khám', 'Vui lòng lưu chẩn đoán và đơn thuốc trong bàn khám bác sĩ.'); return; }
-    setAppointments((prev) =>
-      prev.map((apt) =>
-        apt.id === appointmentId
-          ? {
-              ...apt,
-              status: 'completed',
-              statusBadge: 'Đã hoàn tất khám',
-            }
-          : apt
-      )
-    );
+  const completeAppointment = async (
+    appointmentId: string, diagnosis?: string, medications?: ClinicMedication[], notes?: string
+  ): Promise<boolean> => {
+    try {
+      if (CLOUD_MODE) {
+        if (!diagnosis?.trim() || diagnosis.trim().length < 2) throw new Error('Vui lòng nhập chẩn đoán sau khi khám.');
+        await completeClinicAppointment(appointmentId, diagnosis, medications || [], notes || '');
+        const rows = await listClinicAppointments();
+        setAppointments(rows.map(clinicAppointmentToItem));
+        setPrescriptions(clinicPrescriptions(rows));
+      } else {
+        setAppointments(prev => prev.map(a => a.id === appointmentId
+          ? { ...a, status: 'completed', statusBadge: 'Đã hoàn tất khám' } : a));
+      }
+      return true;
+    } catch (error) {
+      Alert.alert('Bệnh án điện tử', error instanceof Error ? error.message : 'Không thể lưu bệnh án. Vui lòng tải lại lịch khám.');
+      return false;
+    }
+  };
+
+  const checkInAppointment = async (appointmentId: string, bookingCode?: string): Promise<boolean> => {
+    try {
+      const target = appointments.find(a => a.id === appointmentId);
+      if (!target || (bookingCode && bookingCode !== target.code) || target.status !== 'upcoming') {
+        throw new Error('Phiếu hẹn không hợp lệ hoặc không còn chờ khám.');
+      }
+      if (CLOUD_MODE) {
+        if (!target.code) throw new Error('Phiếu hẹn chưa có mã tiếp đón.');
+        await checkInClinic(target.code);
+        const rows = await listClinicAppointments();
+        setAppointments(rows.map(clinicAppointmentToItem));
+      } else {
+        setAppointments(prev => prev.map(a => a.id === appointmentId ? { ...a, statusBadge: 'Đã có mặt' } : a));
+      }
+      return true;
+    } catch (error) {
+      Alert.alert('Tiếp đón bệnh nhân', error instanceof Error ? error.message : 'Không thể tiếp đón. Vui lòng tải lại lịch khám.');
+      return false;
+    }
   };
 
   const toggleMedicationTaken = (slotKey: string) => {
@@ -695,12 +728,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     }));
   };
 
-  const addFamilyMember = (member: {
+  const addFamilyMember = async (member: {
     name: string;
     dob: string;
     relation: string;
     bhyt: string;
-  }) => {
+  }): Promise<void> => {
+    if (CLOUD_MODE) {
+      const expectedUser = cloudUserIdRef.current;
+      if (!expectedUser) throw new Error('Vui lòng đăng nhập lại.');
+      const saved = await addFamilyMemberCloud(member);
+      if (cloudUserIdRef.current !== expectedUser) throw new Error('Phiên đăng nhập đã thay đổi. Vui lòng tải lại hồ sơ.');
+      setFamilyMembers(prev => [saved, ...prev]);
+      return;
+    }
     const randCode = Math.floor(100000 + Math.random() * 899999);
     const newMember: FamilyMemberItem = {
       id: `fam-${Date.now()}`,
@@ -717,9 +758,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     };
     setFamilyMembers((prev) => [newMember, ...prev]);
 
-    if (CLOUD_MODE) {
-      void addFamilyMemberCloud(member);
-    }
   };
 
   const addPrescriptionDrug = (drug: Omit<PrescriptionDrug, 'id'>) => {
@@ -909,6 +947,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         createBooking,
         cancelAppointment,
         completeAppointment,
+        checkInAppointment,
         takenMap,
         toggleMedicationTaken,
         familyMembers,

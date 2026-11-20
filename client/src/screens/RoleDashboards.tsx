@@ -928,6 +928,7 @@ export const DoctorDashboardScreen: React.FC<DoctorDashboardScreenProps> = ({
   const {
     appointments,
     completeAppointment,
+    checkInAppointment,
     doctors,
     prescriptions,
     addPrescriptionDrug,
@@ -947,6 +948,7 @@ export const DoctorDashboardScreen: React.FC<DoctorDashboardScreenProps> = ({
   const [newDrugQty, setNewDrugQty] = useState('14 viên');
   const [newDrugDosage, setNewDrugDosage] = useState('1 viên/lần • Sáng, Tối');
   const [showAddDrugForm, setShowAddDrugForm] = useState(false);
+  const [checkingId, setCheckingId] = useState<string | null>(null);
   const [queueStatuses, setQueueStatuses] = useState<Record<string, string>>({});
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -1064,17 +1066,22 @@ export const DoctorDashboardScreen: React.FC<DoctorDashboardScreenProps> = ({
                   leftIcon={pt.mode === 'video' ? 'videocam-outline' : 'megaphone-outline'}
                   fullWidth={false}
                   style={{ flex: 1 }}
-                  onPress={() => {
+                  loading={checkingId === pt.id}
+                  disabled={checkingId !== null}
+                  onPress={async () => {
+                    if (checkingId) return;
                     setSelectedPatientApt(pt);
                     if (pt.mode === 'video' && onNavigate) {
                       onNavigate('teleconsult');
                       return;
                     }
-                    setQueueStatuses((prev) => ({
-                      ...prev,
-                      [pt.id]: 'Đang khám tại P.302',
-                    }));
-                    setToastMessage(`Đã phát loa gọi ${pt.patientName || 'bệnh nhân'} vào Phòng 302.`);
+                    setCheckingId(pt.id);
+                    try {
+                      const success = await checkInAppointment(pt.id, pt.code);
+                      if (!success) return;
+                      setQueueStatuses(prev => ({ ...prev, [pt.id]: 'Đã có mặt' }));
+                      setToastMessage(`Đã tiếp đón ${pt.patientName || 'bệnh nhân'}.`);
+                    } finally { setCheckingId(null); }
                   }}
                 />
                 <AppButton
@@ -1268,9 +1275,20 @@ export const DoctorDashboardScreen: React.FC<DoctorDashboardScreenProps> = ({
             size="lg"
             leftIcon="checkmark-circle-outline"
             style={{ marginTop: 14 }}
-            onPress={() => {
+            onPress={async () => {
+              if (!activePatient) return;
               if (activePatient) {
-                completeAppointment(activePatient.id);
+                const meds = prescriptions.map((p) => ({
+                  name: p.name,
+                  dosage: `${p.quantity} - ${p.dosageTag} (${p.instructionTag})`,
+                }));
+                const success = await completeAppointment(
+                  activePatient.id,
+                  diagnosisNote || 'Khám và tư vấn chuyên khoa',
+                  meds,
+                  ''
+                );
+                if (!success) return;
               }
               setToastMessage(
                 `Đã phát hành đơn thuốc và đồng bộ tức thì sang Hồ sơ Bệnh án của ${activePatientName}!`
@@ -1331,7 +1349,7 @@ export const DoctorDashboardScreen: React.FC<DoctorDashboardScreenProps> = ({
       <View style={{ flex: 1 }}>
         {activeTab === 'schedule' && renderSchedule()}
         {(activeTab === 'patients' || activeTab === 'prescribe') && (CLOUD_MODE
-          ? <ClinicStaffScreen key={selectedPatientApt?.id || 'queue'} embedded onLogout={onLogout} initialAppointmentId={selectedPatientApt?.id} />
+          ? <ClinicStaffScreen key={selectedPatientApt?.id || 'queue'} embedded onLogout={onLogout} onComplete={completeAppointment} initialAppointmentId={selectedPatientApt?.id} />
           : activeTab === 'patients' ? renderPatientsEHR() : renderPrescribe())}
         {activeTab === 'profile' && renderDoctorProfile()}
       </View>

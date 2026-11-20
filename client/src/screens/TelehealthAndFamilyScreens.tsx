@@ -673,7 +673,11 @@ export const AddEditFamilyMemberScreen: React.FC<{ onBack?: () => void }> = ({
   const [nameError, setNameError] = useState('');
   const [dobError, setDobError] = useState('');
 
-  const handleSaveMember = () => {
+  const [savingFamily, setSavingFamily] = useState(false);
+  const [familySaveError, setFamilySaveError] = useState('');
+
+  const handleSaveMember = async () => {
+    if (savingFamily) return;
     let hasErr = false;
     if (!name.trim() || name.trim().length < 2) {
       setNameError('Vui lòng nhập họ và tên đầy đủ của người thân');
@@ -688,8 +692,12 @@ export const AddEditFamilyMemberScreen: React.FC<{ onBack?: () => void }> = ({
       setDobError('');
     }
     if (hasErr) return;
-    addFamilyMember({ name: name.trim(), dob: dob.trim(), relation, bhyt });
-    onBack?.();
+    setSavingFamily(true); setFamilySaveError('');
+    try {
+      await addFamilyMember({ name: name.trim(), dob: dob.trim(), relation, bhyt });
+      onBack?.();
+    } catch (error) { setFamilySaveError(error instanceof Error ? error.message : 'Chưa lưu được hồ sơ.'); }
+    finally { setSavingFamily(false); }
   };
 
   const RELATION_OPTIONS = [
@@ -847,11 +855,14 @@ export const AddEditFamilyMemberScreen: React.FC<{ onBack?: () => void }> = ({
           />
         </View>
 
+        {familySaveError ? <Text accessibilityRole="alert" style={{ color: COLORS.error }}>{familySaveError}</Text> : null}
         <AppButton
           title="Lưu hồ sơ người thân"
           variant="primary"
           size="lg"
           leftIcon="checkmark-circle-outline"
+          loading={savingFamily}
+          disabled={savingFamily}
           onPress={handleSaveMember}
         />
       </ScrollView>

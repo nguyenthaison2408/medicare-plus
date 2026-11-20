@@ -29,16 +29,9 @@ create policy "Users can manage own family members"
   using (auth.uid() = owner_id)
   with check (auth.uid() = owner_id);
 
--- Bác sĩ và nhân viên y tế có thể xem hồ sơ gia đình khi khám bệnh
+-- Family data remains private to its owner; a staff role grants no blanket access.
 drop policy if exists "Staff can view patient family members" on public.clinic_family_members;
-create policy "Staff can view patient family members"
-  on public.clinic_family_members for select
-  to authenticated
-  using (
-    exists (
-      select 1 from public.clinic_profiles
-      where id = auth.uid() and role in ('doctor', 'reception', 'admin')
-    )
-  );
+revoke all on public.clinic_family_members from anon, authenticated;
+grant select, insert, update, delete on public.clinic_family_members to authenticated;
 
 commit;

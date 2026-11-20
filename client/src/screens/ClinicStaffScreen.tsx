@@ -6,10 +6,10 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import {
   checkInClinic, completeClinicAppointment, listClinicAppointments,
   loadClinicProfile, subscribeClinicAppointments,
-  type ClinicAppointment, type ClinicProfile,
+  type ClinicAppointment, type ClinicProfile, type ClinicMedication,
 } from '../services/clinicCloud';
 
-export function ClinicStaffScreen({ onLogout, embedded = false, initialAppointmentId }: { onLogout: () => void; embedded?: boolean; initialAppointmentId?: string }) {
+export function ClinicStaffScreen({ onLogout, embedded = false, initialAppointmentId, onComplete }: { onLogout: () => void; embedded?: boolean; initialAppointmentId?: string; onComplete?: (id: string, diagnosis: string, medications: ClinicMedication[], notes: string) => Promise<boolean> }) {
   const [profile, setProfile] = useState<ClinicProfile | null>(null);
   const [appointments, setAppointments] = useState<ClinicAppointment[]>([]);
   const [bookingCode, setBookingCode] = useState('');
@@ -111,8 +111,13 @@ export function ClinicStaffScreen({ onLogout, embedded = false, initialAppointme
               Alert.alert('Thông tin thuốc', 'Vui lòng nhập đủ tên thuốc và liều dùng.'); return;
             }
             void perform(async () => {
-              await completeClinicAppointment(selected.id, diagnosis,
-                medicineName.trim() ? [{ name: medicineName.trim(), dosage: dosage.trim() }] : [], notes);
+              const medications = medicineName.trim() ? [{ name: medicineName.trim(), dosage: dosage.trim() }] : [];
+              if (onComplete) {
+                const success = await onComplete(selected.id, diagnosis, medications, notes);
+                if (!success) return;
+              } else {
+                await completeClinicAppointment(selected.id, diagnosis, medications, notes);
+              }
               setSelected(null);
             });
           }} />

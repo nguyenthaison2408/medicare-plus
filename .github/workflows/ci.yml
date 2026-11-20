@@ -38,6 +38,9 @@ jobs:
       - name: Verify AI Conversation and Routing
         run: npm run test:ai
 
+      - name: Verify Portal Session and Administration
+        run: npm run test:portal
+
       - name: Verify Staff Workflow Results
         run: npm run test:staff
 

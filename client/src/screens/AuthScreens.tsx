@@ -12,8 +12,8 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { CLOUD_MODE } from '../services/supabaseClient';
-import { signInClinic, signUpClinic } from '../services/clinicCloud';
+import { CLOUD_MODE, SUPABASE_CONFIGURED } from '../services/supabaseClient';
+import { signInClinic, signInWithGoogleClinic, signUpClinic } from '../services/clinicCloud';
 import { COLORS, GRADIENTS, RADIUS, SHADOWS, TOUCH, TYPOGRAPHY } from '../theme';
 import {
   AppButton,
@@ -182,6 +182,29 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
   const [emailError, setEmailError] = useState('');
   const [passwordError, setPasswordError] = useState('');
 
+  const handleGoogleLoginPress = async () => {
+    if (loading) return;
+    setEmailError('');
+    setPasswordError('');
+    if (!SUPABASE_CONFIGURED) {
+      setPasswordError('Chưa cấu hình Supabase OAuth trong client/.env.local.');
+      return;
+    }
+    setLoading(true);
+    try {
+      await signInWithGoogleClinic();
+    } catch (error) {
+      setPasswordError(
+        error instanceof Error
+          ? error.message
+          : 'Không thể mở trang đăng nhập Google. Vui lòng thử lại.'
+      );
+      setLoading(false);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleLoginPress = async () => {
     if (loading) return;
     const trimmed = email.trim();
@@ -345,10 +368,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
 
           <AppButton
             title="Đăng nhập bằng Google"
-            disabled={CLOUD_MODE || loading}
+            disabled={loading}
             variant="google"
             size="lg"
-            onPress={handleLoginPress}
+            onPress={handleGoogleLoginPress}
           />
 
           <View style={styles.switchAuthRow}>

@@ -4,6 +4,8 @@ import {
   StatusBar,
   StyleSheet,
   BackHandler,
+  Linking,
+  Platform,
   useWindowDimensions,
   Text,
 } from 'react-native';
@@ -11,8 +13,9 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, LAYOUT } from './src/theme';
 import { DOCTORS, DoctorItem } from './src/data/mockData';
 import { AppProvider, useAppContext } from './src/context/AppContext';
-import { CLOUD_MODE } from './src/services/supabaseClient';
-import { signOutClinic } from './src/services/clinicCloud';
+import { CLOUD_MODE, SUPABASE_CONFIGURED, getSupabase } from './src/services/supabaseClient';
+import { parseClinicAuthCallback, routeForClinicRole } from './src/utils/clinicAuthRouting';
+import { loadClinicProfile, signOutClinic } from './src/services/clinicCloud';
 import { ClinicStaffScreen } from './src/screens/ClinicStaffScreen';
 import type { PatientBookingInfo } from './src/utils/bookingValidation';
 import { BottomTabBar, MainTabKey } from './src/components';
@@ -58,6 +61,8 @@ function AppContent() {
   const { createBooking, cloudProfile, cloudSyncError } = useAppContext();
   const bookingInFlight = useRef(false);
   const [route, setRoute] = useState<string>('login');
+  const [actionMessage, setActionMessage] = useState('');
+
   const [routeHistory, setRouteHistory] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<MainTabKey>('home');
   const [selectedDoctor, setSelectedDoctor] = useState<DoctorItem>(DOCTORS[0]);
@@ -72,9 +77,63 @@ function AppContent() {
       meta: string;
     };
   }>({});
-  const [actionMessage, setActionMessage] = useState('');
   const { width } = useWindowDimensions();
   const isTablet = width > 700;
+
+  useEffect(() => {
+    if (!CLOUD_MODE || !SUPABASE_CONFIGURED) return;
+    let active = true;
+    let generation = 0;
+    let routedUser: string | null = null;
+    const supabase = getSupabase();
+    const applySession = async (userId: string | null) => {
+      const request = ++generation;
+      if (!userId) {
+        if (active) { routedUser = null; setRoute('login'); setRouteHistory([]); setActiveTab('home'); setBookingInfo({}); }
+        return;
+      }
+      try {
+        const profile = await loadClinicProfile();
+        const current = await supabase.auth.getSession();
+        if (!active || request !== generation || current.data.session?.user.id !== userId || profile.id !== userId) return;
+        const destination = routeForClinicRole(profile.role);
+        const changed = routedUser !== userId;
+        routedUser = userId;
+        if (changed) { setRouteHistory([]); setActiveTab('home'); setBookingInfo({}); }
+        setRoute(previous => changed || ['login','splash','register'].includes(previous) ? destination : previous);
+      } catch {
+        if (active && request === generation) {
+          setRoute('login');
+          setActionMessage('Chưa tải được vai trò tài khoản. Vui lòng đăng nhập lại.');
+        }
+      }
+    };
+    const handleDeepLinkUrl = async (incoming: string | null | undefined) => {
+      if (!incoming) return;
+      try {
+        const callback = parseClinicAuthCallback(incoming);
+        if (!callback) return;
+        const response = callback.code
+          ? await supabase.auth.exchangeCodeForSession(callback.code)
+          : await supabase.auth.setSession({access_token: callback.accessToken!, refresh_token: callback.refreshToken!});
+        if (response.error) throw response.error;
+      } catch {
+        if (active) setActionMessage('Đăng nhập Google chưa hoàn tất. Vui lòng thử lại.');
+      }
+    };
+    let linkingSub: {remove: () => void} | undefined;
+    if (Platform.OS !== 'web') {
+      void Linking.getInitialURL().then(handleDeepLinkUrl).catch(() => {});
+      linkingSub = Linking.addEventListener('url', ({url}) => { void handleDeepLinkUrl(url); });
+    }
+    void supabase.auth.getSession().then(({data}) => applySession(data.session?.user.id || null)).catch(() => {});
+    const {data: {subscription}} = supabase.auth.onAuthStateChange((_event, session) => {
+      // Leave the auth callback before calling SDK methods that acquire its lock.
+      generation += 1;
+      setTimeout(() => { if (active) void applySession(session?.user.id || null); }, 0);
+    });
+    return () => { active = false; generation += 1; subscription.unsubscribe(); linkingSub?.remove(); };
+  }, []);
 
   const navigateTo = (nextRoute: string) => {
     setActionMessage('');
@@ -142,13 +201,16 @@ function AppContent() {
 
   const handleLogout = async () => {
     try {
-      if (CLOUD_MODE) await signOutClinic();
+      if (SUPABASE_CONFIGURED) await signOutClinic();
       setRouteHistory([]);
       setRoute('login');
     } catch (error) { setActionMessage(error instanceof Error ? error.message : 'Chưa đăng xuất được. Vui lòng thử lại.'); }
   };
 
   const renderCurrentScreen = () => {
+    if (CLOUD_MODE && !cloudProfile && !['login', 'register', 'splash'].includes(route)) {
+      return <Text>Đang tải tài khoản...</Text>;
+    }
     switch (route) {
       case 'splash':
         return <SplashScreen onContinue={() => navigateTo('login')} />;

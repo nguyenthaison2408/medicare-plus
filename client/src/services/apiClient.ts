@@ -10,7 +10,9 @@ import {
   FamilyMemberItem,
   LatestBookingTicket,
   MedicineCabinetItem,
+  PatientProfileState,
 } from '../context/AppContext';
+import type { BhytConfigItem, DoctorScheduleItem } from './clinicAdmin';
 
 // ============================================================================
 // 1. CẤU HÌNH API & QUẢN LÝ PHIÊN ĐĂNG NHẬP (JWT ACCESS / REFRESH TOKEN)
@@ -49,6 +51,9 @@ export interface PersistedAppState {
   doctorReviews?: DoctorReviewItem[];
   doctors?: DoctorItem[];
   hospitals?: HospitalItem[];
+  patientProfile?: PatientProfileState;
+  doctorSchedules?: DoctorScheduleItem[];
+  bhytConfigs?: BhytConfigItem[];
   updatedAt: string;
 }
 

@@ -1,3 +1,4 @@
+import { Linking, Platform } from 'react-native';
 import type { DaySlotItem, DoctorItem, TimeSlotItem } from '../data/mockData';
 import type { PatientBookingInfo } from '../utils/bookingValidation';
 import { getSupabase } from './supabaseClient';
@@ -17,6 +18,27 @@ export interface ClinicProfile {
   phone: string;
   role: ClinicRole;
   doctor_id: string | null;
+  gender?: string;
+  dob?: string;
+  blood_type?: string;
+  emergency_contact?: string;
+  bhyt_code?: string;
+  bhyt_hospital?: string;
+  bhyt_expiry?: string;
+  avatar_url?: string;
+}
+
+export interface UpdateClinicProfileInput {
+  full_name: string;
+  phone?: string;
+  gender?: string;
+  dob?: string;
+  blood_type?: string;
+  emergency_contact?: string;
+  bhyt_code?: string;
+  bhyt_hospital?: string;
+  bhyt_expiry?: string;
+  avatar_url?: string;
 }
 export interface ClinicMedication { name: string; dosage: string }
 export interface ClinicMedicalRecord {
@@ -42,6 +64,7 @@ export interface ClinicAppointment {
 
 const errorMessages: Record<string, string> = {
   SLOT_ALREADY_BOOKED: 'Khung giờ này vừa được người khác đặt. Vui lòng chọn giờ khác.',
+  OUTSIDE_DOCTOR_SHIFT: 'Bác sĩ không có ca trực trong khung giờ này. Vui lòng chọn khung giờ thuộc ca trực.',
   INVALID_BOOKING_TIME: 'Giờ khám đã qua hoặc không nằm trong lịch làm việc.',
   INVALID_BOOKING_DATE: 'Ngày khám không hợp lệ. Vui lòng chọn lại.',
   DOCTOR_NOT_FOUND: 'Bác sĩ chưa có lịch trên hệ thống trực tuyến.',
@@ -82,11 +105,65 @@ export async function loadClinicProfile(): Promise<ClinicProfile> {
   return data as ClinicProfile;
 }
 
+export async function updateClinicProfile(updates: UpdateClinicProfileInput, expectedUserId?: string): Promise<ClinicProfile> {
+  const { data: { user }, error: authError } = await getSupabase().auth.getUser();
+  checkError(authError);
+  if (!user) throw new Error(errorMessages.AUTH_REQUIRED);
+  if (expectedUserId && user.id !== expectedUserId) throw new Error('Phiên đăng nhập đã thay đổi.');
+  const payload: Record<string, string> = {
+    full_name: updates.full_name.trim(),
+  };
+  if (updates.phone !== undefined) payload.phone = updates.phone.replace(/\s+/g, '');
+  if (updates.gender !== undefined) payload.gender = updates.gender.trim();
+  if (updates.dob !== undefined) payload.dob = updates.dob.trim();
+  if (updates.blood_type !== undefined) payload.blood_type = updates.blood_type.trim();
+  if (updates.emergency_contact !== undefined) payload.emergency_contact = updates.emergency_contact.trim();
+  if (updates.bhyt_code !== undefined) payload.bhyt_code = updates.bhyt_code.trim().toUpperCase();
+  if (updates.bhyt_hospital !== undefined) payload.bhyt_hospital = updates.bhyt_hospital.trim();
+  if (updates.bhyt_expiry !== undefined) payload.bhyt_expiry = updates.bhyt_expiry.trim();
+  if (updates.avatar_url !== undefined) payload.avatar_url = updates.avatar_url.trim();
+
+  const { data, error } = await getSupabase()
+    .from('clinic_profiles')
+    .update(payload)
+    .eq('id', user.id)
+    .select('*')
+    .single();
+  checkError(error);
+  return data as ClinicProfile;
+}
+
 export async function signInClinic(email: string, password: string): Promise<ClinicProfile> {
   const { error } = await getSupabase().auth.signInWithPassword({ email: email.trim(), password });
   checkError(error);
   try { return await loadClinicProfile(); }
   catch (error) { await getSupabase().auth.signOut(); throw error; }
+}
+
+export async function signInWithGoogleClinic(): Promise<void> {
+  const isWeb = Platform.OS === 'web';
+  const redirectTo = isWeb
+    ? typeof window !== 'undefined' && window.location?.origin
+      ? window.location.origin
+      : undefined
+    : 'medicareplus://auth-callback';
+
+  const { data, error } = await getSupabase().auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      ...(redirectTo ? { redirectTo } : {}),
+      ...(!isWeb ? { skipBrowserRedirect: true } : {}),
+    },
+  });
+  if (error) {
+    if (error.message.toLowerCase().includes('provider is not enabled')) {
+      throw new Error('Nhà cung cấp Google OAuth chưa được bật trong Supabase Authentication.');
+    }
+    checkError(error);
+  }
+  if (!isWeb && data?.url) {
+    await Linking.openURL(data.url);
+  }
 }
 
 export async function signUpClinic(params: { email: string; password: string; fullName: string; phone: string }): Promise<boolean> {

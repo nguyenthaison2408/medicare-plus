@@ -1,0 +1,384 @@
+{
+  "version": "submission-office-masters-20261119",
+  "shared": {
+    "updated": "19/11/2026",
+    "report": "23/11/2026",
+    "rehearsal": "22/11/2026",
+    "repo": "https://github.com/nguyenthaison2408/medicare-plus",
+    "project": "https://github.com/users/nguyenthaison2408/projects/1",
+    "dashboard": "https://supabase.com/dashboard/project/eulckfyojbbovwpslrep",
+    "ci": "https://github.com/nguyenthaison2408/medicare-plus/actions/runs/44510053194",
+    "pr21": "https://github.com/nguyenthaison2408/medicare-plus/pull/21",
+    "review": "https://github.com/nguyenthaison2408/medicare-plus/pull/21#pullrequestreview-5973642215",
+    "team": "| Thành viên | Mã sinh viên | Vai trò | Phân bổ nhóm đã chốt |\n|---|---|---|---|\n| Nguyễn Thái Sơn | 23IT.EB086 | PM / Scrum Master / QA | 40% |\n| Vi Hữu Thành | 23IT.EB096 | Tech Lead / CI | 20% |\n| Đặng Thanh Vũ | 23IT.EB120 | Frontend / Mobile Lead | 20% |\n| Nguyễn Từ Anh Nguyên | 23IT.EB064 | Full-stack / Booking | 20% |",
+    "sprints": "| Kỳ tham chiếu | Thời gian | Ý nghĩa |\n|---|---|---|\n| Sprint 1 | 07–20/09/2026 | Kỳ đối chiếu kế hoạch và Git |\n| Sprint 2 | 21/09–04/10/2026 | Kỳ đối chiếu kế hoạch và Git |\n| Sprint 3 | 05–18/10/2026 | Kỳ đối chiếu kế hoạch và Git |\n| Sprint 4 | 19/10–01/11/2026 | Kỳ đối chiếu kế hoạch và Git |\n| Sprint 5 | 02–15/11/2026 | Kỳ đối chiếu kế hoạch và Git |\n| Sprint 6 – hoàn thiện | 16–22/11/2026 | Phần việc còn lại trước báo cáo |\n| Tổng duyệt | 22/11/2026 | Kế hoạch, chưa lập biên bản hoàn tất |\n| Báo cáo | 23/11/2026 | Ngày PM đã xác nhận |",
+    "tests": "| Tầng kiểm tra | Kết quả phiên bản sau PR #21 | Phạm vi và giới hạn |\n|---|---|---|\n| API Express | 34/34: 10 API + 24 hồi quy booking | API demo lưu trong bộ nhớ; kết quả tách khỏi PostgreSQL |\n| PostgreSQL nhúng / RLS | 29/29 | Migration và quyền với Auth fixture cục bộ |\n| Validation frontend | 5/5 | Tên tiếng Việt, điện thoại/email, bắt buộc và biên độ dài |\n| Tổng kiểm thử local | 68/68 | Tổng ba tầng trên; số ca không phải tỷ lệ coverage |\n| Supabase trực tuyến | 28/28 | Auth thật, RLS, RPC, lưu bền vững, Realtime, check-in và EMR |\n| Chất lượng client | Lint, TypeScript, xuất web đạt | Bản Supabase; đã build lại sau merge |\n| CI trên GitHub | Node 22.x và 24.x đều thành công | PR #21 và main 8f20593 |",
+    "loads": "| Phép đo đã lưu ngày 19/11, trước PR #21 | Kết quả | Giới hạn diễn giải |\n|---|---|---|\n| k6 danh mục/lịch trống | 100 VU × 30 giây; 8.596 request; p95 137,53 ms; lỗi HTTP 0% | Đo luồng tra cứu trong lần chạy đó |\n| k6 tranh chấp booking | 50 request: 1 HTTP 200, 49 HTTP 409 dự kiến; p95 182,43 ms | Một tài khoản giả; không phải tải đặt lịch 100 người duy trì |\n| Cloud hồi quy sau PR #21 | 50 yêu cầu cùng slot: 1 thành công, 49 xung đột | Ca tranh chấp trong bộ 28 kiểm tra; chưa chạy lại toàn bộ benchmark k6 |",
+    "risks": [
+      {
+        "code": "R-01",
+        "type": "Kỹ thuật",
+        "name": "Trùng lịch khi nhiều phiên đặt cùng slot",
+        "p": 2,
+        "i": 4,
+        "level": "Vừa",
+        "owner": "Nguyễn Từ Anh Nguyên / Nguyễn Thái Sơn",
+        "due": "20/11/2026",
+        "status": "Đang giảm thiểu",
+        "action": "Row lock và unique đã kiểm tra; tiếp tục thử nhiều thiết bị và thay đổi lịch bác sĩ.",
+        "evidence": "28/28 cloud sau PR #21; 50 yêu cầu: 1 thành công, 49 xung đột."
+      },
+      {
+        "code": "R-02",
+        "type": "Phạm vi",
+        "name": "Thêm tính năng làm loãng luồng demo cốt lõi",
+        "p": 3,
+        "i": 4,
+        "level": "Cao",
+        "owner": "Nguyễn Thái Sơn",
+        "due": "22/11/2026",
+        "status": "Đang theo dõi",
+        "action": "Giữ Supabase/Auth/booking/QR/EMR; hoãn email và Redis theo phạm vi ưu tiên.",
+        "evidence": "Quyết định của PM; hồ sơ 06 và PR #20–#21."
+      },
+      {
+        "code": "R-03",
+        "type": "Hạ tầng",
+        "name": "Quota gói Free, Internet và khả năng truy cập bản web",
+        "p": 3,
+        "i": 3,
+        "level": "Vừa",
+        "owner": "Vi Hữu Thành",
+        "due": "22/11/2026",
+        "status": "Mở",
+        "action": "Kiểm tra project và mạng trước demo; giữ build dự phòng; quyết định host web nếu cần người ngoài truy cập.",
+        "evidence": "Supabase Free Singapore; app hiện chạy localhost, chưa xác minh website công khai."
+      },
+      {
+        "code": "R-04",
+        "type": "Tiến độ",
+        "name": "Còn ít ngày trước báo cáo 23/11",
+        "p": 4,
+        "i": 4,
+        "level": "Rất cao",
+        "owner": "Nguyễn Thái Sơn",
+        "due": "22/11/2026",
+        "status": "Mở",
+        "action": "Ưu tiên P0, rà soát hàng ngày và tổng duyệt 22/11; hạn chế thêm phạm vi.",
+        "evidence": "Ngày báo cáo PM xác nhận; Board snapshot 19/11 còn các thẻ chưa đạt DoD."
+      },
+      {
+        "code": "R-05",
+        "type": "Thiết bị",
+        "name": "Camera/QR và giao diện chưa nghiệm thu trên điện thoại",
+        "p": 3,
+        "i": 3,
+        "level": "Vừa",
+        "owner": "Đặng Thanh Vũ / Nguyễn Thái Sơn",
+        "due": "21/11/2026",
+        "status": "Mở",
+        "action": "Quét QR giữa hai thiết bị; kiểm tra quyền camera; dự phòng nhập mã; lưu kết quả thật.",
+        "evidence": "Có chức năng quét/nhập mã; kiểm tra camera vật lý còn chờ."
+      },
+      {
+        "code": "R-06",
+        "type": "Nghiệm thu",
+        "name": "UAT và xác nhận nghiệm thu chưa hoàn tất",
+        "p": 4,
+        "i": 3,
+        "level": "Cao",
+        "owner": "Nguyễn Thái Sơn / Nguyễn Từ Anh Nguyên",
+        "due": "22/11/2026",
+        "status": "Mở",
+        "action": "Tổ chức thử nghiệm, ghi người tham gia, ngày, kịch bản, kết quả và phản hồi; thu xác nhận bàn giao.",
+        "evidence": "28 kiểm tra cloud dùng tài khoản giả; UAT người dùng còn chờ."
+      },
+      {
+        "code": "R-07",
+        "type": "Hồ sơ",
+        "name": "Hồ sơ cần nhóm đối chiếu và xác nhận trước nộp",
+        "p": 4,
+        "i": 4,
+        "level": "Rất cao",
+        "owner": "Nguyễn Thái Sơn",
+        "due": "22/11/2026",
+        "status": "Đang rà soát",
+        "action": "Rà soát nội dung, vai trò, số liệu, liên kết và xác nhận hồ sơ trước bàn giao.",
+        "evidence": "Phân công đã thống nhất trên 17 Issue; main yêu cầu review và CI; bộ hồ sơ được tổ chức theo các hạng mục nộp."
+      }
+    ],
+    "roleAssignments": {
+      "Nguyễn Thái Sơn": "PM / Scrum Master; QA; tích hợp hệ thống",
+      "Vi Hữu Thành": "Tech Lead / CI; hỗ trợ backend và kiểm tra mã",
+      "Đặng Thanh Vũ": "Frontend / Mobile Lead",
+      "Nguyễn Từ Anh Nguyên": "Full-stack Developer; nghiệp vụ đặt lịch"
+    },
+    "mainProtected": true
+  },
+  "documents": [
+    {
+      "stem": "01_Final_Technical_Report",
+      "title": "Báo cáo kỹ thuật và quản trị MediCare Plus",
+      "wordMaster": "docs/01_Final_Technical_Report.docx"
+    },
+    {
+      "stem": "02_Project_Charter_Signed",
+      "title": "Điều lệ dự án MediCare Plus — bản cập nhật",
+      "content": "ĐIỀU LỆ DỰ ÁN MEDICARE PLUSMã dự án: VKU-SPM-MEDICARE | Nhóm 04 | Học phần Quản trị dự án phần mềm1. Tổng quan dự ánMediCare Plus là nền tảng quản lý phòng khám và đặt lịch khám trực tuyến do Nhóm 04 thực hiện trong học phần Quản trị dự án phần mềm tại VKU. Sản phẩm kết nối quá trình chọn lịch, tiếp đón và ghi bệnh án trên một nguồn dữ liệu trực tuyến. Phạm vi học phần sử dụng dữ liệu minh họa để đánh giá chức năng và quy trình quản lý dự án.2. Nguồn gốc đề tài và các bên liên quanĐề tài được tổ chức theo hướng kế thừa và phát triển ứng dụng Expo/React Native, kết hợp các hoạt động quản trị dự án. TS. Nguyễn Thanh Tuấn phụ trách học phần. Nhóm phát triển chịu trách nhiệm về phạm vi, kế hoạch và sản phẩm bàn giao; bệnh nhân, nhân viên tiếp đón, bác sĩ và quản trị viên là các nhóm người dùng được mô hình hóa. Kết quả thử nghiệm với người dùng được ghi nhận qua UAT.3. Bài toán và mục tiêuDự án giải quyết sự rời rạc giữa đặt lịch, tiếp đón và bệnh án; đồng thời kiểm soát nguy cơ trùng khung giờ khi nhiều yêu cầu đến đồng thời. Mục tiêu tập trung vào tính nhất quán dữ liệu, quyền truy cập và khả năng thực hiện luồng nghiệp vụ xuyên suốt.Mục tiêuTiêu chí đánh giáLưu trữ trực tuyếnPhiếu hẹn đọc lại được sau khi đăng nhập bằng phiên độc lậpKiểm soát trùng lịchMột bác sĩ/khung giờ chỉ có một lịch hoạt độngBảo vệ dữ liệuBệnh nhân chỉ xem dữ liệu của mình; nhân viên theo quyền được cấpTiếp đón và bệnh ánCheck-in đúng ngày; bác sĩ được phân công lưu bệnh án; chủ lịch đọc lạiChất lượng mã nguồnKiểm thử, lint/typecheck/build, CI và phê duyệt PR đạt yêu cầuBàn giaoHồ sơ, bản chạy và kết quả kiểm tra được nhóm rà soát trước báo cáo 23/11/20264. Phạm vi dự ánPhạm vi ưu tiên gồm Supabase PostgreSQL và Auth, danh mục bác sĩ/lịch trống, đặt lịch chống trùng, thông tin bệnh nhân, phiếu QR, hủy lịch, check-in và bệnh án điện tử. Giao diện hỗ trợ bốn vai trò nghiệp vụ; quản trị viên theo dõi danh sách và số lượng theo quyền truy cập.Email nhắc hẹn và Redis được hoãn sang giai đoạn sau. Thanh toán trực tuyến, xác minh bảo hiểm, eKYC, video, AI y tế, xét nghiệm và dashboard doanh thu đầy đủ nằm ngoài phạm vi nghiệm thu hiện tại.5. Lịch trình và mốc bàn giaoMốcTuần trong kế hoạch gốcSản phẩmM1Tuần 2Project Charter và repositoryM2Tuần 5Cơ sở dữ liệu và API nền tảngM3Tuần 8MVP đặt lịch và trình diễn giữa kỳM4Tuần 11Tiếp đón QR và bệnh ánM5Tuần 14–15UAT, bàn giao và bảo vệNăm Sprint ban đầu được giữ làm đường cơ sở. Sprint 6 tập trung vào phần việc còn lại trước tổng duyệt ngày 22/11 và báo cáo ngày 23/11/2026.Giai đoạnThời gianMục đíchSprint 107–20/09/2026Khởi tạo và phân tíchSprint 221/09–04/10/2026Chức năng đặt lịch cốt lõiSprint 305–18/10/2026Tích hợp và chống trùng lịchSprint 419/10–01/11/2026Tiếp đón QR và bệnh ánSprint 502–15/11/2026Kiểm thử và chuẩn bị bàn giaoSprint 616–22/11/2026Hoàn thiện và tổng duyệtBáo cáo23/11/2026Trình bày và bảo vệ học phần6. Nguồn lực và ngân sáchNhóm sử dụng bốn thành viên, thiết bị phát triển sẵn có, GitHub và gói Supabase Free tại Singapore. Việc lựa chọn công cụ miễn phí giảm nhu cầu chi trả cho hạ tầng trong phạm vi học phần. Chi phí vận hành tại quy mô thực tế và công lao động chưa được hạch toán trong báo cáo này.7. Công cụ quản trị và kiểm soát mã nguồnRepository và GitHub Projects là nền tảng quản lý thống nhất. Board gồm Backlog, Ready, In Progress, In Review và Done; các Issue có người phụ trách, tiêu chí chấp nhận, Story Points và milestone. Backlog gồm 18 Issue với tổng 136 SP; Sprint 6 có 123 SP.Nhánh main đã bật bảo vệ: yêu cầu một phê duyệt PR, hai kiểm tra CI Node 22.x/24.x thành công và giải quyết các hội thoại trước khi merge. Chính sách áp dụng cả quản trị viên, yêu cầu nhánh đồng bộ và chặn force push hoặc xóa main.Repository: https://github.com/nguyenthaison2408/medicare-plusProject: https://github.com/users/nguyenthaison2408/projects/18. Definition of DoneĐiều kiệnYêu cầuChức năngĐạt tiêu chí chấp nhận và không còn lỗi chặn luồngDữ liệuKiểm tra quyền truy cập, tính nhất quán và lưu trữ trên môi trường phù hợpChất lượngKiểm thử, lint, TypeScript và build liên quan đạtReviewPR được phê duyệt, CI đạt và các vấn đề review được xử lýTài liệuMô tả chức năng, giới hạn và nguồn kiểm chứng đầy đủNghiệm thuCamera, triển khai và UAT có kết quả kiểm tra đúng loạiĐộ bao phủ mã nguồn được đánh giá bằng phép đo riêng. Số lượng ca kiểm thử và việc merge PR không tự thay thế kết luận nghiệm thu từng hạng mục.9. Giả định và ràng buộcBản chạy cần Internet và quyền truy cập Supabase phù hợp. Dữ liệu trình diễn là dữ liệu giả. Đặt lịch chỉ nhận giờ tương lai và check-in phải đúng ngày theo múi giờ Việt Nam. Quota hạ tầng, camera và thiết bị trình diễn là các yếu tố cần kiểm tra trước buổi bảo vệ.10. Tổ chức nhóm và RACIThành viênMã sinh viênVai tròĐóng gópNguyễn Thái Sơn23IT.EB086PM / Scrum Master / QA40%Vi Hữu Thành23IT.EB096Tech Lead / CI20%Đặng Thanh Vũ23IT.EB120Frontend / Mobile Lead20%Nguyễn Từ Anh Nguyên23IT.EB064Full-stack / Booking20%Sơn phụ trách điều phối, QA và tích hợp; Thành phụ trách Tech Lead/CI, hỗ trợ backend và review; Vũ phụ trách Frontend/Mobile; Nguyên phụ trách Full-stack và nghiệp vụ đặt lịch.Hoạt độngSơnThànhVũNguyênPhạm vi, kế hoạch và hồ sơA/RCCCKiến trúc, CI và kiểm tra mãRA/RCRBackend, dữ liệu và tích hợpA/RCCRGiao diện web/mobileCCA/RRKiểm thử và QAA/RCRRRủi ro và thay đổi phạm viA/RCCCUAT và bàn giaoA/RRRRA: chịu trách nhiệm cuối cùng; R: thực hiện; C: tham vấn; I: nhận thông tin. Tỷ lệ đóng góp là phân bổ đã thống nhất trong nhóm.11. Rủi ro chínhBảy rủi ro R-01 đến R-07 được quản lý trong 04_Risk_Register_Evolution.xlsx. Các nhóm rủi ro gồm trùng lịch, mở rộng phạm vi, hạ tầng, thời hạn, thiết bị, UAT và hồ sơ bàn giao. Mỗi rủi ro có xác suất, mức ảnh hưởng, chủ sở hữu, biện pháp ứng phó và trạng thái theo dõi.12. Truyền thông và kiểm soát thay đổiNhóm trao đổi công việc, trở ngại và kết quả kiểm tra qua Issue/PR và các buổi rà soát. Đề xuất thay đổi phải xác định yêu cầu, phạm vi bị tác động, ảnh hưởng kỹ thuật và tiến độ, người quyết định cùng tiêu chí nghiệm thu. CR-01 bổ sung luồng tiếp đón QR; email và Redis được hoãn để ưu tiên chuỗi nghiệp vụ cốt lõi.13. Phê duyệt và xác nhậnTrưởng nhóm đã thống nhất phạm vi ưu tiên, lựa chọn Supabase, lịch báo cáo và việc tích hợp PR #21. Phần xác nhận hồ sơ được thực hiện bởi người có trách nhiệm dưới đây.Người xác nhậnNội dungChữ ký và ngàyNguyễn Thái Sơn — Trưởng nhómPhạm vi, tổ chức, tiến độ và hồ sơ........................TS. Nguyễn Thanh TuấnĐánh giá học phần và hồ sơ dự án........................",
+      "wordMaster": "docs/02_Project_Charter_Signed.docx"
+    },
+    {
+      "stem": "03_WBS_and_WBS_Dictionary",
+      "title": "WBS và từ điển 25 gói công việc",
+      "content": "WBS VÀ TỪ ĐIỂN CÔNG VIỆCMã dự án: VKU-SPM-MEDICARE | Nhóm 04 | Học phần Quản trị dự án phần mềmCấu trúc phân rã công việc của MediCare Plus bao quát sản phẩm kỹ thuật, quản trị và bàn giao. Mỗi gói công việc có mã, người phụ trách, đầu ra và tiêu chí chấp nhận. Gói đã hoãn được giữ trong đường cơ sở để theo dõi phạm vi.1. Cấu trúc phân rã và quy tắc 100%NhómSố góiPhạm vi1.1 Quản trị dự án4Charter, GitHub, rủi ro, Sprint và hồi cứu1.2 Phân tích và kiến trúc4Yêu cầu, schema, giao diện, cloud/CI1.3 Backend và dữ liệu5Auth, danh mục, booking, EMR, thông báo1.4 Frontend và mobile4Patient, reception, doctor, tích hợp1.5 Đảm bảo chất lượng4Ma trận, hồi quy, tải và bảo mật1.6 Nghiệm thu và bàn giao4Triển khai, UAT, hồ sơ và báo cáoTổng25Toàn bộ phạm vi dự ánQuy tắc 100% được áp dụng theo đầu ra: tổng các gói lá bao quát phạm vi của nhóm cha và tránh tính trùng công việc. PR là bằng chứng triển khai, không được cộng thành gói nghiệp vụ độc lập.1.0 MEDICARE PLUS├─ 1.1 Quản trị dự án│  ├─ 1.1.1 Charter và RACI│  ├─ 1.1.2 Repository và Projects│  ├─ 1.1.3 Rủi ro và truyền thông│  └─ 1.1.4 Sprint và hồi cứu├─ 1.2 Phân tích và kiến trúc│  ├─ 1.2.1 Phân tích yêu cầu│  ├─ 1.2.2 Kiến trúc và schema│  ├─ 1.2.3 UI và design system│  └─ 1.2.4 Cloud và CI├─ 1.3 Backend và dữ liệu│  ├─ 1.3.1 Auth và RBAC/RLS│  ├─ 1.3.2 Danh mục bác sĩ/lịch trống│  ├─ 1.3.3 Đặt lịch và chống trùng│  ├─ 1.3.4 EMR và thuốc minh họa│  └─ 1.3.5 Thông báo/nhắc hẹn├─ 1.4 Frontend và mobile│  ├─ 1.4.1 Cổng bệnh nhân│  ├─ 1.4.2 Tiếp đón QR/mã│  ├─ 1.4.3 Bàn khám bác sĩ│  └─ 1.4.4 Tích hợp và lỗi mạng├─ 1.5 Đảm bảo chất lượng│  ├─ 1.5.1 Ma trận kiểm thử│  ├─ 1.5.2 Tự động/hồi quy│  ├─ 1.5.3 Tải và tranh chấp│  └─ 1.5.4 Phân quyền/dependency└─ 1.6 Nghiệm thu và bàn giao   ├─ 1.6.1 Host ứng dụng   ├─ 1.6.2 UAT và xác nhận   ├─ 1.6.3 Tài liệu/bàn giao   └─ 1.6.4 Báo cáo và bảo vệ2. Danh mục gói công việcMãGói công việcPhụ tráchƯớc lượngTrạng thái1.1.1Charter và RACISơn1 tuầnĐã có Charter và RACI; chờ ký xác nhận1.1.2Repository và ProjectsSơn / Thành1 tuầnBoard, Table, Roadmap và bảo vệ main đã thiết lập1.1.3Rủi ro và truyền thôngSơn1 tuầnĐang theo dõi bảy rủi ro1.1.4Sprint và hồi cứuSơn / cả nhóm1 tuầnĐã tổng hợp nội dung hồi cứu; còn xác nhận cuộc họp1.2.1Phân tích yêu cầuSơn / Nguyên1 tuầnĐã mô tả luồng và phạm vi; chờ UAT1.2.2Kiến trúc và schemaSơn / Nguyên / Thành2 tuầnCó ba migration và kiểm thử dữ liệu1.2.3UI và design systemVũ1 tuầnCó giao diện web; tiếp tục kiểm tra thiết bị1.2.4Cloud và CISơn / Thành1 tuầnSupabase và CI hoạt động; giao diện công khai còn chờ1.3.1Auth và RBAC/RLSSơn / Nguyên2 tuầnAuth, RLS và vai trò đã kiểm thử1.3.2Danh mục bác sĩ/lịch trốngSơn / Nguyên1 tuầnCó danh mục minh họa và lịch trống1.3.3Đặt lịch và chống trùngNguyên / Sơn2 tuầnĐã kiểm thử tranh chấp và hủy lịch1.3.4EMR và thuốc minh họaSơn / Nguyên2 tuầnLưu/đọc EMR đã kiểm thử; cần tổng duyệt giao diện1.3.5Thông báo/nhắc hẹnNguyên1 tuầnHoãn sang giai đoạn sau1.4.1Cổng bệnh nhânVũ / Nguyên2 tuầnCó luồng bệnh nhân; cần tổng duyệt1.4.2Tiếp đón QR/mãVũ / Nguyên / Sơn1 tuầnNhập mã đã kiểm tra; camera thiết bị còn chờ1.4.3Bàn khám bác sĩVũ / Nguyên1 tuầnCó form bệnh án; tiếp tục kiểm tra thiết bị1.4.4Tích hợp và lỗi mạngSơn / Nguyên / Thành2 tuầnCó kiểm thử tích hợp; UAT còn chờ1.5.1Ma trận kiểm thửSơn1 tuầnCó ca kiểm thử; bổ sung kết quả UAT1.5.2Tự động/hồi quySơn / Nguyên / Thành2 tuần68 kiểm thử local và 28 cloud đạt1.5.3Tải và tranh chấpSơn / Thành1 tuầnCó k6 trước PR #21; chưa đo lại toàn bộ trên bản mới1.5.4Phân quyền/dependencySơn / Thành / Nguyên1 tuầnRLS đã kiểm thử; còn ba cảnh báo moderate1.6.1Host ứng dụngThành / Sơn1 tuầnChưa có giao diện HTTPS/APK được kiểm chứng1.6.2UAT và xác nhậnSơn / cả nhóm1 tuầnChưa hoàn tất UAT người dùng1.6.3Tài liệu/bàn giaoSơn / cả nhóm1 tuầnĐang hoàn thiện bộ hồ sơ bàn giao1.6.4Báo cáo và bảo vệSơn / cả nhóm1 tuầnTổng duyệt 22/11; báo cáo 23/11Ước lượng 1–2 tuần là quy mô lập kế hoạch của gói công việc. Các gói có thể thực hiện song song; tổng thời lượng gói không tương đương thời gian lịch hoặc số giờ công thực tế.3. Từ điển công việc1.1.1. Charter và RACIPhụ trách: Sơn. Đầu ra: Charter 13 mục và phân công.Tiêu chí chấp nhận: Nhóm xác nhận phạm vi, vai trò, lịch; có xác nhận của người chịu trách nhiệm.Trạng thái: Đã có Charter và RACI; chờ ký xác nhận.1.1.2. Repository và ProjectsPhụ trách: Sơn / Thành. Đầu ra: Board, Table, Roadmap; PR/CI.Tiêu chí chấp nhận: Các view dùng được; trạng thái và chính sách nhánh có bằng chứng.Trạng thái: Board, Table, Roadmap và bảo vệ main đã thiết lập.1.1.3. Rủi ro và truyền thôngPhụ trách: Sơn. Đầu ra: Bảy rủi ro có chủ sở hữu.Tiêu chí chấp nhận: P/I, hành động, hạn và evidence thống nhất.Trạng thái: Đang theo dõi bảy rủi ro.1.1.4. Sprint và hồi cứuPhụ trách: Sơn / cả nhóm. Đầu ra: Lịch tham chiếu và ghi nhận thực tế.Tiêu chí chấp nhận: Ghi cuộc họp/người tham gia khi thực hiện; lưu chỉ số theo từng Sprint.Trạng thái: Đã tổng hợp nội dung hồi cứu; còn xác nhận cuộc họp.1.2.1. Phân tích yêu cầuPhụ trách: Sơn / Nguyên. Đầu ra: Luồng patient–reception–doctor.Tiêu chí chấp nhận: Nhóm duyệt phạm vi core và tiêu chí UAT.Trạng thái: Đã mô tả luồng và phạm vi; chờ UAT.1.2.2. Kiến trúc và schemaPhụ trách: Sơn / Nguyên / Thành. Đầu ra: Bốn bảng, ba migration, RLS.Tiêu chí chấp nhận: Migration áp dụng; quan hệ/quyền và transaction qua test.Trạng thái: Có ba migration và kiểm thử dữ liệu.1.2.3. UI và design systemPhụ trách: Vũ. Đầu ra: Giao diện Expo/React Native.Tiêu chí chấp nhận: Form đúng dữ liệu; kiểm tra web/mobile và khả dụng.Trạng thái: Có giao diện web; tiếp tục kiểm tra thiết bị.1.2.4. Cloud và CIPhụ trách: Sơn / Thành. Đầu ra: Supabase và GitHub Actions.Tiêu chí chấp nhận: CI Node 22/24 đạt; host public chỉ ghi khi có URL được kiểm tra.Trạng thái: Supabase và CI hoạt động; giao diện công khai còn chờ.1.3.1. Auth và RBAC/RLSPhụ trách: Sơn / Nguyên. Đầu ra: Tài khoản thật, quyền theo profile.Tiêu chí chấp nhận: Không tự nâng role; A/B độc lập; staff đúng quyền.Trạng thái: Auth, RLS và vai trò đã kiểm thử.1.3.2. Danh mục bác sĩ/lịch trốngPhụ trách: Sơn / Nguyên. Đầu ra: Danh mục minh họa và RPC slot.Tiêu chí chấp nhận: Đọc JSON đúng, slot bận/đã qua không chọn được.Trạng thái: Có danh mục minh họa và lịch trống.1.3.3. Đặt lịch và chống trùngPhụ trách: Nguyên / Sơn. Đầu ra: RPC transaction và unique.Tiêu chí chấp nhận: Một slot chỉ có một lịch hoạt động; hủy giải phóng slot.Trạng thái: Đã kiểm thử tranh chấp và hủy lịch.1.3.4. EMR và thuốc minh họaPhụ trách: Sơn / Nguyên. Đầu ra: Lưu/đọc bệnh án.Tiêu chí chấp nhận: Đã check-in, đúng bác sĩ; patient chủ lịch đọc lại.Trạng thái: Lưu/đọc EMR đã kiểm thử; cần tổng duyệt giao diện.1.3.5. Thông báo/nhắc hẹnPhụ trách: Nguyên. Đầu ra: Gói baseline cho giai đoạn sau.Tiêu chí chấp nhận: Chỉ nghiệm thu khi tích hợp và kiểm thử gửi thật.Trạng thái: Hoãn sang giai đoạn sau.1.4.1. Cổng bệnh nhânPhụ trách: Vũ / Nguyên. Đầu ra: Chọn giờ, form, phiếu, hủy.Tiêu chí chấp nhận: Validation, lỗi server và dữ liệu tài khoản chính xác.Trạng thái: Có luồng bệnh nhân; cần tổng duyệt.1.4.2. Tiếp đón QR/mãPhụ trách: Vũ / Nguyên / Sơn. Đầu ra: Quét/nhập và check-in.Tiêu chí chấp nhận: Đúng ngày/quyền; quét camera thật có kết quả.Trạng thái: Nhập mã đã kiểm tra; camera thiết bị còn chờ.1.4.3. Bàn khám bác sĩPhụ trách: Vũ / Nguyên. Đầu ra: Form bệnh án và hoàn thành.Tiêu chí chấp nhận: Chỉ đúng phân công sau check-in; lưu đủ thuốc/liều.Trạng thái: Có form bệnh án; tiếp tục kiểm tra thiết bị.1.4.4. Tích hợp và lỗi mạngPhụ trách: Sơn / Nguyên / Thành. Đầu ra: Auth/Data API/RPC và Realtime.Tiêu chí chấp nhận: Chờ phản hồi; dữ liệu đồng bộ theo quyền, lỗi thể hiện đúng kết quả xử lý.Trạng thái: Có kiểm thử tích hợp; UAT còn chờ.1.5.1. Ma trận kiểm thửPhụ trách: Sơn. Đầu ra: Ca theo vai trò và luồng.Tiêu chí chấp nhận: Có đầu vào, expected, môi trường/người thử và kết quả.Trạng thái: Có ca kiểm thử; bổ sung kết quả UAT.1.5.2. Tự động/hồi quyPhụ trách: Sơn / Nguyên / Thành. Đầu ra: Bộ local và cloud.Tiêu chí chấp nhận: 68 local + 28 cloud đạt; giữ artifact và giới hạn.Trạng thái: 68 kiểm thử local và 28 cloud đạt.1.5.3. Tải và tranh chấpPhụ trách: Sơn / Thành. Đầu ra: k6 và ca concurrency.Tiêu chí chấp nhận: Báo cáo đúng VU, thời lượng, status, percentile và head đo.Trạng thái: Có k6 trước PR #21; chưa đo lại toàn bộ trên bản mới.1.5.4. Phân quyền/dependencyPhụ trách: Sơn / Thành / Nguyên. Đầu ra: RLS, role, audit dependency.Tiêu chí chấp nhận: Không lộ dữ liệu chéo; ghi đúng snapshot audit và phần còn mở.Trạng thái: RLS đã kiểm thử; còn ba cảnh báo moderate.1.6.1. Host ứng dụngPhụ trách: Thành / Sơn. Đầu ra: Web dùng chung nếu nhóm triển khai.Tiêu chí chấp nhận: URL public truy cập độc lập và giữ cấu hình public/private đúng.Trạng thái: Chưa có giao diện HTTPS/APK được kiểm chứng.1.6.2. UAT và xác nhậnPhụ trách: Sơn / cả nhóm. Đầu ra: Kết quả người thử và giảng viên.Tiêu chí chấp nhận: Người tham gia, ngày, ca và xác nhận thực tế.Trạng thái: Chưa hoàn tất UAT người dùng.1.6.3. Tài liệu/bàn giaoPhụ trách: Sơn / cả nhóm. Đầu ra: Hồ sơ, bảng rủi ro và kết quả kiểm thử.Tiêu chí chấp nhận: Số liệu/link đúng, không chứa secret, người nhận mở được.Trạng thái: Đang hoàn thiện bộ hồ sơ bàn giao.1.6.4. Báo cáo và bảo vệPhụ trách: Sơn / cả nhóm. Đầu ra: Trình bày và live demo.Tiêu chí chấp nhận: Tổng duyệt có thời lượng/lỗi thực; trình bày đúng ngày.Trạng thái: Tổng duyệt 22/11; báo cáo 23/11.4. Quan hệ phụ thuộc và nghiệm thuSchema và Auth là nền tảng cho RPC; đặt lịch có validation đi trước sinh phiếu; check-in đúng ngày đi trước hoàn thành bệnh án; lưu bệnh án đi trước ca bệnh nhân đọc lại. Sau tích hợp, nhóm ưu tiên kiểm tra giao diện/thiết bị, UAT và hồ sơ.Transaction và unique index xử lý tranh chấp hiện tại; Redis được hoãn. Camera cần kết quả thử trên thiết bị thật. Triển khai giao diện cần địa chỉ HTTPS hoặc APK truy cập độc lập. Kết quả nghiệm thu gắn với tiêu chí của từng gói.",
+      "wordMaster": "docs/03_WBS_and_WBS_Dictionary.docx"
+    },
+    {
+      "stem": "05_Sprint_Retrospectives",
+      "title": "Hồi cứu và hành động cải tiến MediCare Plus",
+      "content": "HỒI CỨU SPRINT VÀ BÀI HỌC KINH NGHIỆMMã dự án: VKU-SPM-MEDICARE | Nhóm 04 | Học phần Quản trị dự án phần mềmTài liệu tổng hợp việc tổ chức công việc, kết quả kỹ thuật và hành động cải tiến của Nhóm 04. Phân tích sử dụng hồ sơ dự án, Issue, PR và kiểm thử đến ngày 19/11/2026. Thông tin cuộc họp và kết luận được xác nhận ở phần cuối.1. Phương pháp hồi cứuNhóm sử dụng mô hình 4Ls: Liked — điều làm tốt; Learned — điều đã học; Lacked — điều còn thiếu; Longed for — điều cần cải thiện. Mỗi nội dung được gắn với sự kiện hoặc sản phẩm cụ thể, sau đó chuyển thành hành động có người phụ trách và tiêu chí hoàn tất.2. Hồi cứu Sprint 1Sprint khởi tạo tập trung tổ chức kho mã, môi trường phát triển và giao diện nền tảng. Việc hồi cứu xem xét khả năng tạo đường cơ sở và hỗ trợ các giai đoạn tích hợp tiếp theo.Nhóm nội dungNhận xétBài họcLikedKho mã và cấu trúc dự án đã tạo được điểm làm việc chung.Thống nhất nơi quản lý mã và công việc từ đầu.LearnedPhân công theo chức danh cần được kiểm tra với phần việc thực hiện.Vai trò phải gắn đầu ra, người chịu trách nhiệm và tiêu chí kiểm tra.LackedKết quả ước lượng và biên bản hoạt động Sprint chưa được lưu đều đặn.Lưu số liệu ngay trong Sprint để hỗ trợ đánh giá tiến độ.Longed forLuồng nghiệp vụ xuyên suốt và quy trình kiểm thử cần được ưu tiên sớm.Tạo một luồng nhỏ chạy được trước khi mở rộng tiện ích.Chỉ số velocity của Sprint 1 chưa được tính do chưa có đủ dữ liệu khối lượng cam kết và hoàn thành theo DoD.3. Hồi cứu cuối dự án theo 4LsNội dung phản ánh kết quả giai đoạn hoàn thiện; UAT, kiểm tra camera và bàn giao còn được theo dõi riêng.Liked — Điểm làm tốtNhóm đã tập trung vào Auth, đặt lịch, tiếp đón và bệnh án, đồng thời hoãn email/Redis. Supabase đã lưu dữ liệu trực tuyến. PR #21 có kiểm tra mã, xử lý lỗi và CI trước khi merge. Bộ kiểm thử được phân chia theo API, SQL/RLS, frontend và cloud.Learned — Bài học kỹ thuật và phối hợpKiểm tra giao diện, API demo và PostgreSQL có phạm vi khác nhau. Validation cần kiểm tra từng trường độc lập; phân quyền cần thử giữa các tài khoản. Với Realtime, bài test phải chờ xác nhận subscription PostgreSQL sẵn sàng trước khi thay đổi dữ liệu. Một bản build thành công chưa thay thế thử nghiệm trên thiết bị hoặc UAT.Lacked — Hạn chếGiao diện sau tích hợp còn cần tổng duyệt trên thiết bị, quét QR vật lý và thu phản hồi người dùng. Chưa có phép đo độ bao phủ mã nguồn hoặc chuỗi velocity theo Sprint. Giao diện HTTPS/APK và các xác nhận bàn giao chưa hoàn tất tại thời điểm tổng hợp.Longed for — Cải tiến quy trìnhNhóm đã thống nhất lại vai trò và người phụ trách trên 17 Issue đang mở; liên kết PR với các chức năng; bật bảo vệ main và CI bắt buộc. Việc lưu số liệu, biên bản và kết quả thử nghiệm đều đặn giúp giảm công sức tổng hợp vào cuối kỳ. Tài khoản, dữ liệu và thiết bị demo cần được chuẩn bị trước buổi tổng duyệt.4. Hành động cải tiếnHành độngPhụ tráchMốc thực hiệnKết quả cần cóTổng duyệt booking, QR và EMRSơn, Vũ, Nguyên21–22/11Kịch bản, kết quả và lỗi đã xử lýThử camera giữa hai thiết bịVũ, phối hợp SơnTrước tổng duyệtThiết bị, quyền camera và kết quả quétDuy trì CI và phê duyệt PRThành, phối hợp SơnMỗi thay đổi vào mainCI Node 22/24, review và hội thoại được xử lýTriển khai và UATThành, Sơn; cả nhóm hỗ trợTrước bàn giaoBản truy cập độc lập và phản hồi người thửHoàn thiện hồ sơ và slideSơn; cả nhóm rà soát22/11Hồ sơ thống nhất và slide đúng thời lượngĐo thời lượng tổng duyệtCả nhóm22/11Sáu phút trình bày, năm phút demo, năm phút hỏi đáp5. Xác nhận nội dung hồi cứuNgày và hình thức họp: ........................................................................Kết luận và hành động được thống nhất: ..............................................Thành viênChữ ký và ngàyNguyễn Thái Sơn........................................Vi Hữu Thành........................................Đặng Thanh Vũ........................................Nguyễn Từ Anh Nguyên........................................6. Nguồn phân tíchGitHub Projects; PR #19, #20, #21; workflow CI; kết quả 68 kiểm thử cục bộ và 28 kiểm tra Supabase. Số liệu k6 thuộc lần đo trước PR #21.",
+      "wordMaster": "docs/05_Sprint_Retrospectives.docx"
+    },
+    {
+      "stem": "06_Scope_Change_Control_Record",
+      "title": "Kiểm soát thay đổi phạm vi MediCare Plus",
+      "content": "HỒ SƠ KIỂM SOÁT THAY ĐỔI PHẠM VIMã dự án: VKU-SPM-MEDICARE | Nhóm 04 | Học phần Quản trị dự án phần mềmMã thay đổi: CR-01 | Dự án MediCare Plus | Trưởng nhóm: Nguyễn Thái Sơn1. Nội dung và mục đích thay đổiCR-01 bổ sung tiếp đón bằng QR/mã lịch hẹn để nối quy trình đặt lịch trực tuyến với quá trình đến khám và ghi bệnh án. Nhóm ưu tiên tính nhất quán dữ liệu, quyền theo vai trò và chuỗi nghiệp vụ hoàn chỉnh trước mốc báo cáo 23/11/2026.Thuộc tínhNội dungNội dungTiếp đón QR/mã, thông tin bệnh nhân và bệnh án trên SupabaseQuyết định phạm viƯu tiên Auth, booking chống trùng, check-in và EMR; hoãn email/RedisĐường cơ sởGiữ năm Sprint và mốc M1–M5; phần việc còn lại thuộc Sprint 6Thời điểm quyết định19/11/2026Người điều phốiNguyễn Thái Sơn — PM/Scrum Master2. Các phương án và lựa chọnPhương ánĐánh giáQuyết địnhTiếp tục dữ liệu cục bộThuận tiện phát triển giao diện nhưng hạn chế kiểm tra nhiều phiên và phân quyền dữ liệuKhông dùng làm nguồn dữ liệu chính của luồng trình diễnSupabase PostgreSQL/AuthHỗ trợ lưu trữ trực tuyến, JWT, RLS, RPC và RealtimeĐược lựa chọnBổ sung đồng thời email và RedisTăng tích hợp và kiểm thử trong giai đoạn thời gian ngắnChuyển sang giai đoạn sau3. Phạm vi sau thay đổiHạng mụcNội dungXác thực và phân quyềnSupabase Auth, profile và RLS cho patient/reception/doctor/adminĐặt lịchForm bệnh nhân, validation, transaction và ràng buộc duy nhấtTiếp đónQR chứa booking code; kiểm tra vai trò, ngày Việt Nam và trạng tháiBệnh ánBác sĩ được phân công ghi sau check-in; bệnh nhân chủ lịch đọc lạiNgoài phạm vi ưu tiênEmail, Redis, thanh toán trực tuyến, AI/video và dashboard doanh thu đầy đủTransaction khóa dòng bác sĩ và unique index bảo vệ khung giờ hiện tại. Redis TTL giữ chỗ năm phút chưa được triển khai trong phương án được chọn.4. Phân tích tác độngKhía cạnhTác độngDữ liệuBốn bảng clinic, RLS và ba migration. Migration 003 bổ sung email/triệu chứng; RPC duy trì lời gọi ba tham số trước đó.Giao diệnForm thông tin bệnh nhân, phiếu QR, thao tác tiếp đón và form bệnh án; phiếu ghi chưa thu tiền.Kiểm thửValidation độc lập, quyền giữa các tài khoản, tranh chấp slot, Realtime, check-in và EMR.Tiến độPhần việc còn lại tập trung vào 16–22/11; tổng duyệt 22/11 và báo cáo 23/11.Tổ chứcVũ phụ trách Frontend/Mobile; Nguyên phụ trách Full-stack/Booking; Sơn tích hợp/QA; Thành CI và review.5. Kết quả triển khai và kiểm soát chất lượngPR #20 được merge với commit 08abe25 và PR #21 với commit 8f20593 ngày 19/11/2026. Ba migration đã được áp dụng. Kết quả kiểm tra gồm 68 ca cục bộ và 28 ca Supabase trực tuyến đạt yêu cầu; CI Node 22.x/24.x thành công.Nhánh main đã bật bảo vệ: yêu cầu một phê duyệt PR, hai kiểm tra CI Node 22.x/24.x thành công và giải quyết các hội thoại trước khi merge. Chính sách áp dụng cả quản trị viên, yêu cầu nhánh đồng bộ và chặn force push hoặc xóa main.PR #21: https://github.com/nguyenthaison2408/medicare-plus/pull/21CI: https://github.com/nguyenthaison2408/medicare-plus/actions/runs/445100531946. Điều kiện nghiệm thu sau thay đổiCác điều kiện còn lại gồm tổng duyệt giao diện trên bản tích hợp, quét camera giữa hai thiết bị, thử nghiệm người dùng, bản triển khai truy cập độc lập và xác nhận hồ sơ bàn giao. Kết quả kiểm thử kỹ thuật được dùng làm đầu vào cho nghiệm thu.Nội dungKết quả hiện cóTrạng tháiDữ liệu, RPC và phân quyềnKiểm thử SQL/cloud đạtĐã kiểm tra kỹ thuậtTranh chấp slotMột thành công trong 50 yêu cầu cùng slotĐã kiểm tra kỹ thuậtCamera và giao diện thiết bịCó chức năng quét/nhập mãTiếp tục thử thiết bịUAT và bàn giaoCó kịch bản và hồ sơChờ kết quả và xác nhận7. Phê duyệt và xác nhậnTrưởng nhóm đã thống nhất lựa chọn nền tảng và phạm vi ưu tiên; kết quả triển khai được ghi trong PR và kiểm thử. Phần phê duyệt hồ sơ và đánh giá của các bên liên quan được xác nhận dưới đây.Vai tròNgười xác nhậnChữ ký và ngàyTrưởng nhóm / PMNguyễn Thái Sơn........................Tech LeadVi Hữu Thành........................Giảng viên phụ tráchTS. Nguyễn Thanh Tuấn........................",
+      "wordMaster": "docs/06_Scope_Change_Control_Record.docx"
+    }
+  ],
+  "wbs": [
+    [
+      "1.1.1",
+      "Charter và RACI",
+      "Sơn",
+      "Charter 13 mục và phân công",
+      "Nhóm xác nhận phạm vi, vai trò, lịch; chữ ký chỉ ghi sau khi có",
+      "02; xác nhận PM",
+      "Tài liệu cập nhật; chờ xác nhận"
+    ],
+    [
+      "1.1.2",
+      "Repository và Projects",
+      "Sơn / Thành",
+      "Board, Table, Roadmap; PR/CI",
+      "Các view dùng được; trạng thái và chính sách nhánh có bằng chứng",
+      "Board snapshot; PR #21; CI",
+      "Có Board/CI; main chưa protected"
+    ],
+    [
+      "1.1.3",
+      "Rủi ro và truyền thông",
+      "Sơn",
+      "Bảy rủi ro có chủ sở hữu",
+      "P/I, hành động, hạn và evidence thống nhất",
+      "04 Word/XLSX",
+      "Đang theo dõi"
+    ],
+    [
+      "1.1.4",
+      "Sprint và hồi cứu",
+      "Sơn / cả nhóm",
+      "Lịch tham chiếu và ghi nhận thực tế",
+      "Ghi cuộc họp/người tham gia khi thực hiện; không điền velocity bù",
+      "05; snapshot Projects",
+      "Kỳ cũ cần xác nhận"
+    ],
+    [
+      "1.2.1",
+      "Phân tích yêu cầu",
+      "Sơn / Nguyên",
+      "Luồng patient–reception–doctor",
+      "Nhóm duyệt phạm vi core và tiêu chí UAT",
+      "01; 06; 13",
+      "Có mô tả; chờ UAT"
+    ],
+    [
+      "1.2.2",
+      "Kiến trúc và schema",
+      "Sơn / Nguyên / Thành",
+      "Bốn bảng, ba migration, RLS",
+      "Migration áp dụng; quan hệ/quyền và transaction qua test",
+      "supabase/migrations; 29 SQL; 28 cloud",
+      "Có bằng chứng kỹ thuật"
+    ],
+    [
+      "1.2.3",
+      "UI và design system",
+      "Vũ",
+      "Giao diện Expo/React Native",
+      "Form đúng dữ liệu; kiểm tra web/mobile và khả dụng",
+      "client/src; build; 13",
+      "Web có; mobile cần tổng duyệt"
+    ],
+    [
+      "1.2.4",
+      "Cloud và CI",
+      "Sơn / Thành",
+      "Supabase và GitHub Actions",
+      "CI Node 22/24 đạt; host public chỉ ghi khi có URL được kiểm tra",
+      "CI run 44510053194",
+      "Database/CI có; host còn chờ"
+    ],
+    [
+      "1.3.1",
+      "Auth và RBAC/RLS",
+      "Sơn / Nguyên",
+      "Tài khoản thật, quyền theo profile",
+      "Không tự nâng role; A/B độc lập; staff đúng quyền",
+      "29 SQL; 28 cloud",
+      "Có bằng chứng kỹ thuật"
+    ],
+    [
+      "1.3.2",
+      "Danh mục bác sĩ/lịch trống",
+      "Sơn / Nguyên",
+      "Danh mục minh họa và RPC slot",
+      "Đọc JSON đúng, slot bận/đã qua không chọn được",
+      "API; clinic_slot_availability",
+      "Danh mục minh họa"
+    ],
+    [
+      "1.3.3",
+      "Đặt lịch và chống trùng",
+      "Nguyên / Sơn",
+      "RPC transaction và unique",
+      "Một slot chỉ có một lịch hoạt động; hủy giải phóng slot",
+      "Migration 003; 50 yêu cầu cloud",
+      "Có bằng chứng kỹ thuật"
+    ],
+    [
+      "1.3.4",
+      "EMR và thuốc minh họa",
+      "Sơn / Nguyên",
+      "Lưu/đọc bệnh án",
+      "Đã check-in, đúng bác sĩ; patient chủ lịch đọc lại",
+      "28 cloud; UI trước PR #21",
+      "Cần tổng duyệt UI mới"
+    ],
+    [
+      "1.3.5",
+      "Thông báo/nhắc hẹn",
+      "Nguyên",
+      "Gói baseline cho giai đoạn sau",
+      "Chỉ nghiệm thu khi tích hợp và kiểm thử gửi thật",
+      "Quyết định PM 19/11",
+      "Hoãn email/SMS"
+    ],
+    [
+      "1.4.1",
+      "Cổng bệnh nhân",
+      "Vũ / Nguyên",
+      "Chọn giờ, form, phiếu, hủy",
+      "Validation, lỗi server và dữ liệu tài khoản chính xác",
+      "PR #21; 5 validation; web build",
+      "Cần tổng duyệt bản mới"
+    ],
+    [
+      "1.4.2",
+      "Tiếp đón QR/mã",
+      "Vũ / Nguyên / Sơn",
+      "Quét/nhập và check-in",
+      "Đúng ngày/quyền; quét camera thật có kết quả",
+      "ClinicStaffScreen; 28 cloud",
+      "Nhập mã có; camera cần thử"
+    ],
+    [
+      "1.4.3",
+      "Bàn khám bác sĩ",
+      "Vũ / Nguyên",
+      "Form bệnh án và hoàn thành",
+      "Chỉ đúng phân công sau check-in; lưu đủ thuốc/liều",
+      "28 cloud; 13",
+      "Cần tổng duyệt thiết bị"
+    ],
+    [
+      "1.4.4",
+      "Tích hợp và lỗi mạng",
+      "Sơn / Nguyên / Thành",
+      "Auth/Data API/RPC và Realtime",
+      "Chờ phản hồi; dữ liệu cập nhật theo quyền, lỗi không báo thành công giả",
+      "clinicCloud.ts; PR #21",
+      "Có hồi quy; còn UAT"
+    ],
+    [
+      "1.5.1",
+      "Ma trận kiểm thử",
+      "Sơn",
+      "Ca theo vai trò và luồng",
+      "Có đầu vào, expected, môi trường/người thử và kết quả",
+      "01; 09; 13",
+      "Tự động có; UAT cần bổ sung"
+    ],
+    [
+      "1.5.2",
+      "Tự động/hồi quy",
+      "Sơn / Nguyên / Thành",
+      "Bộ local và cloud",
+      "68 local + 28 cloud đạt; giữ artifact và giới hạn",
+      "CI; JSON cloud",
+      "Đã có kết quả kiểm tra"
+    ],
+    [
+      "1.5.3",
+      "Tải và tranh chấp",
+      "Sơn / Thành",
+      "k6 và ca concurrency",
+      "Báo cáo đúng VU, thời lượng, status, percentile và head đo",
+      "Hai bộ HTML/JSON k6",
+      "k6 trước PR #21; cần chạy lại nếu yêu cầu"
+    ],
+    [
+      "1.5.4",
+      "Phân quyền/dependency",
+      "Sơn / Thành / Nguyên",
+      "RLS, role, audit dependency",
+      "Không lộ dữ liệu chéo; ghi đúng snapshot audit và phần còn mở",
+      "29 SQL; 28 cloud; CI audit",
+      "Có bằng chứng; còn moderate"
+    ],
+    [
+      "1.6.1",
+      "Host ứng dụng",
+      "Thành / Sơn",
+      "Web dùng chung nếu nhóm triển khai",
+      "URL public truy cập độc lập và giữ cấu hình public/private đúng",
+      "Hiện localhost; Supabase dashboard",
+      "Chưa có URL web được xác minh"
+    ],
+    [
+      "1.6.2",
+      "UAT và xác nhận",
+      "Sơn / cả nhóm",
+      "Kết quả người thử và giảng viên",
+      "Người tham gia, ngày, ca và xác nhận thực tế",
+      "Kế hoạch 22/11",
+      "Chưa có biên bản hoàn tất"
+    ],
+    [
+      "1.6.3",
+      "Tài liệu/bàn giao",
+      "Sơn / cả nhóm",
+      "Word, XLSX, JSON/HTML evidence",
+      "Số liệu/link đúng, không chứa secret, người nhận mở được",
+      "Bộ 00–13",
+      "Đang rà soát cuối"
+    ],
+    [
+      "1.6.4",
+      "Báo cáo và bảo vệ",
+      "Sơn / cả nhóm",
+      "Trình bày và live demo",
+      "Tổng duyệt có thời lượng/lỗi thực; trình bày đúng ngày",
+      "08; 11; 13",
+      "Tổng duyệt 22/11; báo cáo 23/11"
+    ]
+  ],
+  "riskWorkbook": "docs/04_Risk_Register_Evolution.xlsx",
+  "demoGuide": "demo/13_Huong_Dan_Demo_Tung_Buoc.docx",
+  "presentation": {
+    "master": "docs/08_Presentation_Slide_Deck.pptx",
+    "slides": 9,
+    "aspectRatio": "16:9",
+    "speakerNotesSeconds": 360
+  }
+}

@@ -4,7 +4,7 @@ on:
   push:
     branches: [ main, develop ]
   pull_request:
-    branches: [ main, develop ]
+    branches: [ main, develop, feat/cloud-checkin-reception, feat/cloud-emr-prescription, feat/supabase-family-profiles ]
   workflow_dispatch:
 
 permissions:

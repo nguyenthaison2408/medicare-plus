@@ -35,12 +35,19 @@ export async function fetchDoctorReviewsCloud(doctorId?: string): Promise<Doctor
   if (!CLOUD_MODE) return [];
   let query = getSupabase()
     .from('clinic_doctor_reviews')
-    .select('id,doctor_id,patient_name,rating,comment,created_at,is_hidden,admin_note')
+    .select('id,doctor_id,patient_name,rating,comment,created_at,is_hidden')
     .order('created_at', { ascending: false });
   if (doctorId) query = query.eq('doctor_id', doctorId);
   const { data, error } = await query;
   if (error) throw new Error('Chưa tải được đánh giá bác sĩ. Vui lòng thử lại.');
   return (data || []).map(toReview);
+}
+
+export async function fetchAdminDoctorReviewsCloud(): Promise<DoctorReviewItem[]> {
+  if (!CLOUD_MODE) return [];
+  const { data, error } = await getSupabase().rpc('clinic_admin_list_reviews');
+  if (error) throw new Error('Chưa tải được danh sách kiểm duyệt đánh giá.');
+  return ((data || []) as CloudReview[]).map(toReview);
 }
 
 export async function submitDoctorReviewCloud(params: {
@@ -90,12 +97,12 @@ export async function moderateDoctorReviewCloud(
     .from('clinic_doctor_reviews')
     .update({ is_hidden: isHidden, admin_note: adminNote.trim() })
     .eq('id', reviewId)
-    .select('id,doctor_id,patient_name,rating,comment,created_at,is_hidden,admin_note')
+    .select('id,doctor_id,patient_name,rating,comment,created_at,is_hidden')
     .single();
   if (error || !data) {
     throw new Error('Không thể cập nhật trạng thái kiểm duyệt bình luận.');
   }
-  return toReview(data as CloudReview);
+  return toReview({ ...(data as CloudReview), admin_note: adminNote.trim() });
 }
 
 export async function deleteDoctorReviewCloud(reviewId: string): Promise<void> {

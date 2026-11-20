@@ -64,6 +64,7 @@ export interface ClinicAppointment {
 
 const errorMessages: Record<string, string> = {
   SLOT_ALREADY_BOOKED: 'Khung giờ này vừa được người khác đặt. Vui lòng chọn giờ khác.',
+  OUTSIDE_DOCTOR_SHIFT: 'Bác sĩ không có ca trực trong khung giờ này. Vui lòng chọn khung giờ thuộc ca trực.',
   INVALID_BOOKING_TIME: 'Giờ khám đã qua hoặc không nằm trong lịch làm việc.',
   INVALID_BOOKING_DATE: 'Ngày khám không hợp lệ. Vui lòng chọn lại.',
   DOCTOR_NOT_FOUND: 'Bác sĩ chưa có lịch trên hệ thống trực tuyến.',

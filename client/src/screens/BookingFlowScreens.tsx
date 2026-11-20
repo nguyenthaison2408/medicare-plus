@@ -431,6 +431,7 @@ export const BookingSlotScreen: React.FC<BookingSlotScreenProps> = ({
   onBack,
   onConfirmBooking,
 }) => {
+  const { doctorSchedules } = useAppContext();
   const [consultMode, setConsultMode] = useState('clinic');
   const [selectedDayId, setSelectedDayId] = useState('d2');
   const [selectedSlot, setSelectedSlot] = useState<TimeSlotItem>(TIME_SLOTS[3]);
@@ -443,9 +444,29 @@ export const BookingSlotScreen: React.FC<BookingSlotScreenProps> = ({
   const [slotError, setSlotError] = useState('');
   const slotKey = `${doctor.id}:${currentDay.fullDate}`;
   const slotsReady = !CLOUD_MODE || loadedSlotKey === slotKey;
+
+  const [dPart, mPart, yPart] = currentDay.fullDate.split('/');
+  const isoDay = dPart && mPart && yPart ? `${yPart}-${mPart.padStart(2, '0')}-${dPart.padStart(2, '0')}` : '';
+  const dayShifts = doctorSchedules.filter(
+    (s) => s.doctorId === doctor.id && s.workDate === isoDay
+  );
+  const demoShiftAwareSlots: TimeSlotItem[] =
+    dayShifts.length === 0
+      ? TIME_SLOTS
+      : TIME_SLOTS.map((slot) => {
+          const allowed = dayShifts.some(
+            (s) =>
+              s.active &&
+              (s.shift === 'full_day' ||
+                (s.shift === 'morning' && slot.period === 'morning') ||
+                (s.shift === 'afternoon' && slot.period === 'afternoon'))
+          );
+          return allowed ? slot : { ...slot, status: 'booked' };
+        });
+
   const visibleSlots: TimeSlotItem[] = CLOUD_MODE
     ? slotsReady ? remoteSlots : TIME_SLOTS.map(slot => ({ ...slot, status: 'booked' }))
-    : TIME_SLOTS;
+    : demoShiftAwareSlots;
   const selectedSlotAvailable = visibleSlots.some(slot => slot.id === selectedSlot.id && slot.status !== 'booked');
 
   useEffect(() => {

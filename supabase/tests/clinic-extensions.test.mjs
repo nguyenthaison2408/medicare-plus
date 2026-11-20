@@ -25,6 +25,47 @@ try{
   await as(ids.b);await check('cannot transfer family ownership',async()=>denied(()=>db.query('update clinic_family_members set owner_id=$1 where id=$2',[ids.a,family.id])));
   await check('owner can edit and delete family member',async()=>{assert.equal((await db.query("update clinic_family_members set note='Owner edit' where id=$1 returning id",[family.id])).rows.length,1);assert.equal((await db.query('delete from clinic_family_members where id=$1 returning id',[family.id])).rows.length,1);});
  }
+ if(tables.includes('clinic_medicine_cabinet')){
+  const addMedicine=(name='Test medicine 500mg',stock='Còn 10 / 20 viên',expiry='HSD: 12/2027',urgent=true)=>db.query('select public.clinic_add_cabinet_medicine($1,$2,$3,$4) as medicine',[name,stock,expiry,urgent]);
+  await as(ids.a);
+  const medicine=(await addMedicine()).rows[0].medicine;
+  await check('patient can create and read own medicine',async()=>assert.equal((await db.query('select id from clinic_medicine_cabinet')).rows.length,1));
+  await check('medicine owner label comes from server profile',async()=>assert.equal(medicine.owner_label,'Test a (Bản thân)'));
+  await check('invalid cabinet medicine is rejected',async()=>assert.rejects(()=>addMedicine('x'),e=>e.code==='22023'));
+  await check('direct cabinet inserts cannot forge identity',async()=>denied(()=>db.query("insert into clinic_medicine_cabinet(owner_id,medicine_name,owner_label,stock_label,expiry_label) values($1,'Forged medicine','Forged owner','1 viên','HSD: 2027')",[ids.a])));
+  await as(ids.b);
+  await check('another patient cannot read medicine cabinet',async()=>assert.equal((await db.query('select * from clinic_medicine_cabinet')).rows.length,0));
+  await as(ids.a);
+  await check('patient cannot transfer medicine ownership',async()=>denied(()=>db.query('update clinic_medicine_cabinet set owner_id=$1 where id=$2',[ids.b,medicine.id])));
+  await check('patient cannot forge medicine owner label',async()=>denied(()=>db.query("update clinic_medicine_cabinet set owner_label='Forged owner' where id=$1",[medicine.id])));
+  await check('patient can update own medicine metadata',async()=>assert.equal((await db.query("update clinic_medicine_cabinet set stock_label='Còn 9 / 20 viên' where id=$1 returning id",[medicine.id])).rows.length,1));
+  for(const role of ['doctor','reception','admin']){await as(ids[role]);await check(role+' cannot create personal cabinet data',async()=>denied(()=>addMedicine('Staff medicine')));}
+  await as(null);await check('anonymous cabinet read denied',async()=>denied(()=>db.query('select * from clinic_medicine_cabinet')));
+
+  await db.exec('reset role');
+  const prescriptionOne=(await db.query("insert into clinic_appointments(patient_id,doctor_id,patient_name,patient_phone,starts_at,status) values($1,'doc-1','Test a','0901234567',now()-interval '2 days','COMPLETED') returning id",[ids.a])).rows[0].id;
+  const prescriptionTwo=(await db.query("insert into clinic_appointments(patient_id,doctor_id,patient_name,patient_phone,starts_at,status) values($1,'doc-1','Test a','0901234567',now()-interval '1 day','COMPLETED') returning id",[ids.a])).rows[0].id;
+  await db.query("insert into clinic_medical_records(appointment_id,diagnosis,medications,author_id) values($1,'Test diagnosis',$2,$3)",[prescriptionOne,JSON.stringify([{name:'Medicine one',dosage:'Morning'},{name:'Medicine two',dosage:'Afternoon'},{name:'Medicine three',dosage:'Evening'},{name:'Medicine four',dosage:'As needed'}]),ids.doctor]);
+  await db.query("insert into clinic_medical_records(appointment_id,diagnosis,medications,author_id) values($1,'New diagnosis',$2,$3)",[prescriptionTwo,JSON.stringify([{name:'New prescription medicine',dosage:'Morning'}]),ids.doctor]);
+  const getLog=()=>db.query('select public.clinic_get_medication_log() as log');
+  const setLog=(appointment,index,dose,taken)=>db.query('select public.clinic_set_medication_taken($1,$2,$3,$4) as log',[appointment,index,dose,taken]);
+  await check('anonymous medication log RPC denied',async()=>denied(()=>getLog()));
+  await as(ids.a);
+  await check('new daily medication log starts empty',async()=>assert.deepEqual((await getLog()).rows[0].log,{}));
+  const firstKey=`${prescriptionOne}:0:morning`,secondKey=`${prescriptionTwo}:0:morning`,fourthKey=`${prescriptionOne}:3:as-needed`;
+  await check('patient can mark a prescribed medication dose taken',async()=>assert.equal((await setLog(prescriptionOne,0,'morning',true)).rows[0].log[firstKey],true));
+  await check('fourth prescribed medicine has its own log state',async()=>assert.equal((await setLog(prescriptionOne,3,'as-needed',true)).rows[0].log[fourthKey],true));
+  await check('new prescription never inherits an older medicine state',async()=>{const log=(await setLog(prescriptionTwo,0,'morning',false)).rows[0].log;assert.equal(log[firstKey],true);assert.equal(log[secondKey],false);});
+  await check('medication dose upsert is idempotent',async()=>{await setLog(prescriptionOne,0,'morning',true);await db.exec('reset role');assert.equal((await db.query("select count(*)::int as count from clinic_medication_logs where owner_id=$1 and appointment_id=$2 and medication_index=0 and dose_key='morning'",[ids.a,prescriptionOne])).rows[0].count,1);await as(ids.a);});
+  await check('invalid medication dose key is rejected',async()=>assert.rejects(()=>setLog(prescriptionOne,0,'INVALID DOSE',true),e=>e.code==='22023'));
+  await check('unprescribed medication index is rejected',async()=>assert.rejects(()=>setLog(prescriptionOne,99,'dose-1',true),e=>e.code==='42501'));
+  await check('direct medication log writes are denied',async()=>denied(()=>db.query("insert into clinic_medication_logs(owner_id,appointment_id,medication_index,medicine_name,dose_key,log_date,taken,taken_at) values($1,$2,0,'Forged medicine','morning',current_date,true,now())",[ids.a,prescriptionOne])));
+  await as(ids.b);
+  await check('another patient cannot see medication adherence',async()=>assert.deepEqual((await getLog()).rows[0].log,{}));
+  await check('another patient cannot log medicine from someone else prescription',async()=>assert.rejects(()=>setLog(prescriptionOne,0,'morning',true),e=>e.code==='42501'));
+  await check('another patient cannot select raw medication logs',async()=>denied(()=>db.query('select * from clinic_medication_logs')));
+  await as(ids.doctor);await check('staff cannot use patient medication log RPC',async()=>denied(()=>getLog()));
+ }
  if(tables.includes('clinic_doctor_reviews')){
   await as(null);
   await check('public reviews contain no fabricated verified seeds',async()=>assert.equal((await db.query('select id from clinic_doctor_reviews')).rows.length,0));
@@ -51,15 +92,20 @@ try{
   await check('anonymous users may read verified public fields',async()=>assert.equal((await db.query('select id,doctor_id,patient_name,rating,comment,created_at from clinic_doctor_reviews')).rows.length,1));
   await check('public cannot read patient Auth identifiers',async()=>denied(()=>db.query('select patient_id from clinic_doctor_reviews')));
   await check('public cannot read appointment identifiers',async()=>denied(()=>db.query('select appointment_id from clinic_doctor_reviews')));
+  await check('anonymous cannot read private admin_note',async()=>denied(()=>db.query('select admin_note from clinic_doctor_reviews')));
   await as(ids.a);
+  await check('patient cannot read private admin_note',async()=>denied(()=>db.query('select admin_note from clinic_doctor_reviews')));
+  await check('patient cannot call admin review list RPC',async()=>denied(()=>db.query('select * from public.clinic_admin_list_reviews()')));
   await check('patient cannot hide or delete reviews',async()=>{
    assert.equal((await db.query('update clinic_doctor_reviews set is_hidden=true returning id')).rows.length,0);
    assert.equal((await db.query('delete from clinic_doctor_reviews returning id')).rows.length,0);
   });
   await as(ids.admin);
-  await check('admin can hide inappropriate review and still view it',async()=>{
+  await check('admin can hide inappropriate review and read admin_note via RPC',async()=>{
    assert.equal((await db.query("update clinic_doctor_reviews set is_hidden=true, admin_note='Spam' returning id")).rows.length,1);
-   assert.equal((await db.query('select id from clinic_doctor_reviews')).rows.length,1);
+   const list=(await db.query('select * from public.clinic_admin_list_reviews()')).rows;
+   assert.equal(list.length,1);
+   assert.equal(list[0].admin_note,'Spam');
   });
   await as(null);
   await check('hidden review is no longer visible to public',async()=>assert.equal((await db.query('select id from clinic_doctor_reviews')).rows.length,0));
@@ -73,10 +119,26 @@ try{
   await check('patient can update own extended profile fields',async()=>assert.equal((await db.query("update clinic_profiles set full_name='Updated Patient', gender='Nam', bhyt_code='DN4 79 234 82390' where id=$1 returning id",[ids.a])).rows.length,1));
   await check('patient cannot write doctor shift schedules',async()=>denied(()=>db.query("insert into clinic_doctor_schedules(doctor_id,work_date,shift,room) values('doc-1',current_date,'morning','P.302')")));
   await as(ids.admin);
-  const sch=(await db.query("insert into clinic_doctor_schedules(doctor_id,work_date,shift,room) values('doc-1',current_date,'morning','P.302') returning id")).rows[0];
+  const shiftDate=(await db.query("select ((now() at time zone 'Asia/Ho_Chi_Minh')::date + 10)::text as d")).rows[0].d;
+  const sch=(await db.query("insert into clinic_doctor_schedules(doctor_id,work_date,shift,room) values('doc-1',$1::date,'morning','P.302') returning id",[shiftDate])).rows[0];
   await check('admin can assign doctor shift schedule',async()=>assert.ok(sch.id));
   await as(null);
   await check('public can read assigned doctor schedules',async()=>assert.equal((await db.query('select id from clinic_doctor_schedules')).rows.length,1));
+  await check('slot availability marks afternoon slots unavailable when only morning shift is assigned',async()=>{
+   const slots=(await db.query("select (starts_at at time zone 'Asia/Ho_Chi_Minh')::time::text as t, is_booked from public.clinic_slot_availability('doc-1',$1::date)",[shiftDate])).rows;
+   const morning=slots.find(s=>s.t.startsWith('09:00'));
+   const afternoon=slots.find(s=>s.t.startsWith('14:00'));
+   assert.equal(morning.is_booked,false);
+   assert.equal(afternoon.is_booked,true);
+  });
+  await as(ids.a);
+  await check('booking outside assigned doctor shift is rejected',async()=>{
+   await assert.rejects(()=>db.query("select public.clinic_book_appointment('doc-1',($1 || 'T14:00:00+07:00')::timestamptz,'at_clinic','Nguyen Van A','0912345678','a@example.com','Kham dau dau')",[shiftDate]),e=>e.message.includes('OUTSIDE_DOCTOR_SHIFT'));
+  });
+  await check('booking inside assigned doctor shift succeeds',async()=>{
+   const booked=(await db.query("select public.clinic_book_appointment('doc-1',($1 || 'T09:00:00+07:00')::timestamptz,'at_clinic','Nguyen Van A','0912345678','a@example.com','Kham dau dau') as apt",[shiftDate])).rows[0].apt;
+   assert.equal(booked.doctor_id,'doc-1');
+  });
   await as(ids.admin);
   await check('admin can delete doctor shift schedule',async()=>assert.equal((await db.query('delete from clinic_doctor_schedules where id=$1 returning id',[sch.id])).rows.length,1));
  }

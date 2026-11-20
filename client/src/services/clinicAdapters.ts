@@ -31,7 +31,7 @@ export function clinicAppointmentToItem(appointment: ClinicAppointment): Appoint
 
 export function clinicPrescriptions(appointments: ClinicAppointment[]): PrescriptionDrug[] {
   return appointments.flatMap(appointment => (clinicRecord(appointment)?.medications || []).map((drug, index) => ({
-    id: `${appointment.id}-${index}`, name: drug.name,
+    id: `${appointment.id}-${index}`, appointmentId: appointment.id, medicationIndex: index, name: drug.name,
     indication: clinicRecord(appointment)?.diagnosis || '',
     quantity: 'Theo đơn bác sĩ', dosageTag: drug.dosage,
     instructionTag: clinicRecord(appointment)?.notes || 'Thực hiện theo hướng dẫn của bác sĩ.',

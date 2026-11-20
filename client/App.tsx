@@ -208,6 +208,9 @@ function AppContent() {
   };
 
   const renderCurrentScreen = () => {
+    if (CLOUD_MODE && !cloudProfile && !['login', 'register', 'splash'].includes(route)) {
+      return <Text>Đang tải tài khoản...</Text>;
+    }
     switch (route) {
       case 'splash':
         return <SplashScreen onContinue={() => navigateTo('login')} />;

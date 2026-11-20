@@ -1359,7 +1359,7 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
   onNavigate,
   onSwitchTab,
 }) => {
-  const { appointments, familyMembers, takenMap, resetAppData, patientProfile, updatePatientProfile } = useAppContext();
+  const { appointments, familyMembers, takenMap, resetAppData, patientProfile, cloudProfile, updatePatientProfile } = useAppContext();
   const [pillReminder, setPillReminder] = useState(true);
   const [aptAlert, setAptAlert] = useState(true);
   const [labAlert, setLabAlert] = useState(true);
@@ -1373,8 +1373,8 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
   const [editName, setEditName] = useState('');
   const [editPhone, setEditPhone] = useState('');
   const [editDob, setEditDob] = useState('');
-  const [editGender, setEditGender] = useState('Nam');
-  const [editBloodType, setEditBloodType] = useState('O+');
+  const [editGender, setEditGender] = useState('');
+  const [editBloodType, setEditBloodType] = useState('');
   const [editEmergency, setEditEmergency] = useState('');
   const [editBhytCode, setEditBhytCode] = useState('');
   const [editBhytHospital, setEditBhytHospital] = useState('');
@@ -1449,8 +1449,8 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
     setEditName(patientProfile.name || '');
     setEditPhone(patientProfile.phone || '');
     setEditDob(patientProfile.dob || '');
-    setEditGender(patientProfile.gender && patientProfile.gender !== 'Chưa cập nhật' ? patientProfile.gender : 'Nam');
-    setEditBloodType(patientProfile.bloodType && patientProfile.bloodType !== 'Chưa cập nhật' ? patientProfile.bloodType : 'O+');
+    setEditGender(patientProfile.gender && patientProfile.gender !== 'Chưa cập nhật' ? patientProfile.gender : '');
+    setEditBloodType(patientProfile.bloodType && patientProfile.bloodType !== 'Chưa cập nhật' ? patientProfile.bloodType : '');
     setEditEmergency(patientProfile.emergencyContact || '');
     setEditBhytCode(patientProfile.bhytCode || '');
     setEditBhytHospital(patientProfile.bhytHospital || '');
@@ -1508,6 +1508,22 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
         contentContainerStyle={styles.scrollPad}
         showsVerticalScrollIndicator={false}
       >
+        {CLOUD_MODE ? (
+          <View style={[styles.sectionCard, SHADOWS.sm]}>
+            {cloudProfile?.avatar_url ? <Image source={{uri: cloudProfile.avatar_url}} style={{width:88,height:88,borderRadius:44,marginBottom:12}} accessibilityLabel="Ảnh đại diện đã lưu" /> : null}
+            <Text style={styles.sectionCardTitle}>{patientProfile.name}</Text>
+            <Text style={styles.sectionCardSub}>Điện thoại: {patientProfile.phone || 'Chưa cập nhật'}</Text>
+            <Text style={styles.sectionCardSub}>Ngày sinh: {patientProfile.dob || 'Chưa cập nhật'}</Text>
+            <Text style={styles.sectionCardSub}>Giới tính: {patientProfile.gender || 'Chưa cập nhật'}</Text>
+            <Text style={styles.sectionCardSub}>Nhóm máu: {patientProfile.bloodType || 'Chưa cập nhật'}</Text>
+            <Text style={styles.sectionCardSub}>BHYT: {patientProfile.bhytCode || 'Chưa cập nhật'} (chưa xác minh)</Text>
+            <Text style={styles.sectionCardSub}>Liên hệ khẩn cấp: {patientProfile.emergencyContact || 'Chưa cập nhật'}</Text>
+            <AppButton title="Sửa hồ sơ" onPress={openEditProfile} />
+            <AppButton title="Đổi ảnh đại diện (web)" variant="tonal" onPress={handleQuickAvatarUpload} />
+            <AppButton title="Hồ sơ người thân" variant="outline" onPress={() => onNavigate('familyProfiles')} />
+            <AppButton title="Tủ thuốc của tôi" variant="outline" onPress={() => onNavigate('medicineCabinet')} />
+          </View>
+        ) : <>
         <ProfileHeaderCard
           profile={patientProfile}
           onEditPress={openEditProfile}
@@ -1786,6 +1802,8 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
           />
         </View>
 
+        </>}
+
         <AppButton
           title="Đăng xuất tài khoản"
           variant="dangerOutline"
@@ -1797,7 +1815,7 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
 
         <Text style={styles.versionFooter}>
           MediCare Plus Mobile App • v1.0.0 (Build 2026.11){'\n'}
-          Tiêu chuẩn an toàn dữ liệu y tế HL7/FHIR & Bộ Y Tế Việt Nam
+          {!CLOUD_MODE && 'Tiêu chuẩn an toàn dữ liệu y tế HL7/FHIR & Bộ Y Tế Việt Nam'}
         </Text>
       </ScrollView>
 

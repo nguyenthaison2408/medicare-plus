@@ -60,3 +60,9 @@ test('profile service refuses to write when authentication changed before reques
  let writes=0;const api=service('client/src/services/clinicCloud.ts',['updateClinicProfile'],{auth:{getUser:async()=>({data:{user:{id:'patient-b'}},error:null})},from:()=>{writes++;throw Error('Unexpected write');}});
  await assert.rejects(api.updateClinicProfile({full_name:'Patient A'},'patient-a'));assert.equal(writes,0);
 });
+test('opening an unknown profile does not invent gender or blood type',()=>{
+ const source=read('client/src/screens/MainTabScreens.tsx');const begin=source.indexOf('  const openEditProfile =');const end=source.indexOf('  const handleSaveProfile =',begin);let gender,blood;
+ const setters={};for(const name of ['Name','Phone','Dob','Emergency','BhytCode','BhytHospital','BhytExpiry','Avatar','Error','ProfileVisible'])setters['setEdit'+name]=()=>{};
+ const open=vm.runInNewContext(stripTypeScriptTypes(source.slice(begin,end))+';openEditProfile',{...setters,patientProfile:{name:'QA',gender:'Chưa cập nhật',bloodType:'Chưa cập nhật'},PATIENT_PROFILE:{avatar:'qa-placeholder'},setEditGender:value=>{gender=value;},setEditBloodType:value=>{blood=value;},setEditProfileVisible:()=>{}});
+ open();assert.equal(gender,'');assert.equal(blood,'');
+});

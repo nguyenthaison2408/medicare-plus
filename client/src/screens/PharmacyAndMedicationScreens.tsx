@@ -10,6 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { COLORS, GRADIENTS, LAYOUT, RADIUS, SHADOWS, SPACING, TOUCH, TYPOGRAPHY } from '../theme';
 import { useAppContext } from '../context/AppContext';
 import { sharePrescription } from '../utils/shareUtils';
+import { buildMedicationSchedule } from '../utils/medicationSchedule';
 import {
   AppHeader,
   AppButton,
@@ -41,19 +42,9 @@ export const MedicationLogScreen: React.FC<{
   } = useAppContext();
   const [toastVisible, setToastVisible] = useState(false);
   const [updatingSlot, setUpdatingSlot] = useState<string | null>(null);
-  const slotMeta = [
-    { key: 'morning', label: 'Cữ 1' },
-    { key: 'afternoon', label: 'Cữ 2' },
-    { key: 'evening', label: 'Cữ 3' },
-  ];
-  const medicationSchedule = prescriptions.slice(0, slotMeta.length).map((drug, index) => ({
-    key: slotMeta[index].key,
-    time: `${slotMeta[index].label} • Theo toa điện tử`,
-    drug: drug.name,
-    desc: [drug.dosageTag, drug.instructionTag].filter(Boolean).join(' • '),
-  }));
+  const medicationSchedule = buildMedicationSchedule(prescriptions);
   const totalDoses = medicationSchedule.length;
-  const takenCount = medicationSchedule.filter(slot => takenMap[slot.key]).length;
+  const takenCount = medicationSchedule.filter(slot => takenMap[slot.logKey]).length;
   const adherencePct = totalDoses > 0 ? Math.round((takenCount / totalDoses) * 100) : 0;
   const today = new Date();
   const monday = new Date(today);
@@ -157,9 +148,9 @@ export const MedicationLogScreen: React.FC<{
           onActionPress={onOpenPrescription}
         />
         {medicationSchedule.length > 0 ? medicationSchedule.map((slot, idx) => {
-          const isTaken = takenMap[slot.key];
+          const isTaken = takenMap[slot.logKey];
           return (
-            <AnimatedEntry key={slot.key} delay={160 + idx * 70} direction="up">
+            <AnimatedEntry key={slot.logKey} delay={160 + idx * 70} direction="up">
               <View style={[styles.card, SHADOWS.sm]}>
                 <View style={styles.rowBetween}>
                   <Text style={[styles.slotTime, { flex: 1 }]} numberOfLines={1}>
@@ -180,10 +171,15 @@ export const MedicationLogScreen: React.FC<{
                   activeScale={0.96}
                   onPress={() => {
                     if (updatingSlot) return;
-                    setUpdatingSlot(slot.key);
-                    void toggleMedicationTaken(slot.key).finally(() => setUpdatingSlot(null));
+                    setUpdatingSlot(slot.logKey);
+                    void toggleMedicationTaken({
+                      logKey: slot.logKey,
+                      appointmentId: slot.appointmentId,
+                      medicationIndex: slot.medicationIndex,
+                      doseKey: slot.doseKey,
+                    }).finally(() => setUpdatingSlot(null));
                   }}
-                  accessibilityState={{ busy: updatingSlot === slot.key }}
+                  accessibilityState={{ busy: updatingSlot === slot.logKey }}
                   style={{ marginTop: 10 }}
                 >
                   <View

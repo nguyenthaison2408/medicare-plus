@@ -102,21 +102,26 @@ revoke all on function public.clinic_add_cabinet_medicine(text, text, text, bool
 grant execute on function public.clinic_add_cabinet_medicine(text, text, text, boolean)
   to authenticated;
 
--- One row per patient, calendar day and medication time slot.
+-- One row per patient, prescription medication, dose and calendar day.
 create table public.clinic_medication_logs (
   id uuid primary key default gen_random_uuid(),
   owner_id uuid not null references public.clinic_profiles(id) on delete cascade,
+  appointment_id uuid not null references public.clinic_appointments(id) on delete cascade,
+  medication_index integer not null check (medication_index >= 0),
+  medicine_name text not null check (char_length(trim(medicine_name)) between 2 and 200),
+  dose_key text not null check (dose_key ~ '^[a-z0-9-]{1,40}$'),
   log_date date not null,
-  slot_key text not null check (slot_key in ('morning', 'afternoon', 'evening')),
   taken boolean not null default false,
   taken_at timestamptz,
   updated_at timestamptz not null default now(),
-  unique(owner_id, log_date, slot_key),
+  unique(owner_id, log_date, appointment_id, medication_index, dose_key),
   check ((taken and taken_at is not null) or (not taken and taken_at is null))
 );
 
 create index clinic_medication_logs_owner_date
   on public.clinic_medication_logs(owner_id, log_date desc);
+create index clinic_medication_logs_prescription
+  on public.clinic_medication_logs(appointment_id, medication_index);
 
 alter table public.clinic_medication_logs enable row level security;
 create policy clinic_medication_logs_owner_read
@@ -148,21 +153,25 @@ begin
     raise exception 'PATIENT_REQUIRED' using errcode = '42501';
   end if;
 
-  select coalesce(jsonb_object_agg(slot_key, taken), '{}'::jsonb)
+  select coalesce(
+      jsonb_object_agg(
+        appointment_id::text || ':' || medication_index::text || ':' || dose_key,
+        taken
+      ),
+      '{}'::jsonb
+    )
     into v_log
     from public.clinic_medication_logs
     where owner_id = v_user and log_date = v_date;
 
-  return jsonb_build_object(
-    'morning', false,
-    'afternoon', false,
-    'evening', false
-  ) || v_log;
+  return v_log;
 end;
 $$;
 
 create function public.clinic_set_medication_taken(
-  p_slot_key text,
+  p_appointment_id uuid,
+  p_medication_index integer,
+  p_dose_key text,
   p_taken boolean
 )
 returns jsonb
@@ -173,6 +182,7 @@ as $$
 declare
   v_user uuid := (select auth.uid());
   v_date date := (now() at time zone 'Asia/Ho_Chi_Minh')::date;
+  v_medicine_name text;
 begin
   if v_user is null then
     raise exception 'AUTH_REQUIRED' using errcode = '42501';
@@ -182,20 +192,39 @@ begin
   ) then
     raise exception 'PATIENT_REQUIRED' using errcode = '42501';
   end if;
-  if p_slot_key is null
-    or p_slot_key not in ('morning', 'afternoon', 'evening')
+  if p_appointment_id is null
+    or p_medication_index is null
+    or p_medication_index < 0
+    or p_dose_key is null
+    or p_dose_key !~ '^[a-z0-9-]{1,40}$'
     or p_taken is null then
     raise exception 'INVALID_MEDICATION_LOG' using errcode = '22023';
   end if;
 
+  select mr.medications -> p_medication_index ->> 'name'
+    into v_medicine_name
+    from public.clinic_appointments a
+    join public.clinic_medical_records mr
+      on mr.appointment_id = a.id
+    where a.id = p_appointment_id
+      and a.patient_id = v_user
+      and a.status = 'COMPLETED'
+      and jsonb_typeof(mr.medications) = 'array'
+      and p_medication_index < jsonb_array_length(mr.medications);
+  if v_medicine_name is null or char_length(trim(v_medicine_name)) not between 2 and 200 then
+    raise exception 'PRESCRIBED_MEDICATION_REQUIRED' using errcode = '42501';
+  end if;
+
   insert into public.clinic_medication_logs (
-    owner_id, log_date, slot_key, taken, taken_at, updated_at
+    owner_id, appointment_id, medication_index, medicine_name, dose_key,
+    log_date, taken, taken_at, updated_at
   ) values (
-    v_user, v_date, p_slot_key, p_taken,
+    v_user, p_appointment_id, p_medication_index, trim(v_medicine_name), p_dose_key,
+    v_date, p_taken,
     case when p_taken then now() else null end,
     now()
   )
-  on conflict (owner_id, log_date, slot_key) do update
+  on conflict (owner_id, log_date, appointment_id, medication_index, dose_key) do update
     set taken = excluded.taken,
         taken_at = excluded.taken_at,
         updated_at = excluded.updated_at;
@@ -205,8 +234,8 @@ end;
 $$;
 
 revoke all on function public.clinic_get_medication_log() from public, anon, authenticated;
-revoke all on function public.clinic_set_medication_taken(text, boolean) from public, anon, authenticated;
+revoke all on function public.clinic_set_medication_taken(uuid, integer, text, boolean) from public, anon, authenticated;
 grant execute on function public.clinic_get_medication_log() to authenticated;
-grant execute on function public.clinic_set_medication_taken(text, boolean) to authenticated;
+grant execute on function public.clinic_set_medication_taken(uuid, integer, text, boolean) to authenticated;
 
 commit;

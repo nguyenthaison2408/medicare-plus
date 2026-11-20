@@ -1,4 +1,4 @@
-import type { MedicineCabinetItem } from '../context/AppContext';
+import type { MedicationDoseLogRef, MedicineCabinetItem } from '../context/AppContext';
 import { CLOUD_MODE, getSupabase } from './supabaseClient';
 
 interface CloudMedicineCabinetRow {
@@ -10,11 +10,7 @@ interface CloudMedicineCabinetRow {
   urgent: boolean;
 }
 
-const EMPTY_TAKEN_MAP: Record<string, boolean> = {
-  morning: false,
-  afternoon: false,
-  evening: false,
-};
+const EMPTY_TAKEN_MAP: Record<string, boolean> = {};
 
 function toMedicine(row: CloudMedicineCabinetRow): MedicineCabinetItem {
   return {
@@ -31,11 +27,9 @@ function normalizeTakenMap(value: unknown): Record<string, boolean> {
   const row = value && typeof value === 'object'
     ? value as Record<string, unknown>
     : {};
-  return {
-    morning: row.morning === true,
-    afternoon: row.afternoon === true,
-    evening: row.evening === true,
-  };
+  return Object.fromEntries(
+    Object.entries(row).filter((entry): entry is [string, boolean] => typeof entry[1] === 'boolean')
+  );
 }
 
 export async function fetchMedicineCabinetCloud(): Promise<MedicineCabinetItem[]> {
@@ -70,12 +64,17 @@ export async function fetchMedicationLogCloud(): Promise<Record<string, boolean>
 }
 
 export async function setMedicationTakenCloud(
-  slotKey: string,
+  dose: MedicationDoseLogRef,
   taken: boolean
 ): Promise<Record<string, boolean>> {
-  if (!CLOUD_MODE) return { ...EMPTY_TAKEN_MAP, [slotKey]: taken };
+  if (!CLOUD_MODE) return { ...EMPTY_TAKEN_MAP, [dose.logKey]: taken };
+  if (!dose.appointmentId || dose.medicationIndex === undefined) {
+    throw new Error('Cữ thuốc chưa được liên kết với toa điện tử.');
+  }
   const { data, error } = await getSupabase().rpc('clinic_set_medication_taken', {
-    p_slot_key: slotKey,
+    p_appointment_id: dose.appointmentId,
+    p_medication_index: dose.medicationIndex,
+    p_dose_key: dose.doseKey,
     p_taken: taken,
   });
   if (error) throw new Error('Chưa cập nhật được cữ thuốc. Vui lòng thử lại.');

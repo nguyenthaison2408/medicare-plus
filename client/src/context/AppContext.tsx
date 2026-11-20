@@ -96,6 +96,13 @@ export interface MedicineCabinetItem {
   urgent: boolean;
 }
 
+export interface MedicationDoseLogRef {
+  logKey: string;
+  appointmentId?: string;
+  medicationIndex?: number;
+  doseKey: string;
+}
+
 export interface DoctorReviewItem {
   id: string;
   doctorId: string;
@@ -132,7 +139,7 @@ interface AppContextValue {
 
   // 2. Medication Adherence Log
   takenMap: Record<string, boolean>;
-  toggleMedicationTaken: (slotKey: string) => Promise<void>;
+  toggleMedicationTaken: (dose: MedicationDoseLogRef) => Promise<void>;
 
   // 3. Family Profiles
   familyMembers: FamilyMemberItem[];
@@ -314,9 +321,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     useState<LatestBookingTicket>(CLOUD_MODE ? { ...DEFAULT_TICKET, code: '' } : DEFAULT_TICKET);
   const selectedTicketCode = useRef<string | null>(null);
   const [takenMap, setTakenMap] = useState<Record<string, boolean>>(
-    CLOUD_MODE
-      ? { morning: false, afternoon: false, evening: false }
-      : { morning: true, afternoon: true, evening: false }
+    {}
   );
   const [familyMembers, setFamilyMembers] = useState<FamilyMemberItem[]>(
     CLOUD_MODE ? [] : INITIAL_FAMILY_MEMBERS
@@ -358,7 +363,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
           setFamilyMembers([]);
           setDoctorReviews([]);
           setCabinetMeds([]);
-          setTakenMap({ morning: false, afternoon: false, evening: false });
+          setTakenMap({});
           setCloudProfile(null);
           setDiagnosisNote('');
           setCloudSyncError('');
@@ -474,7 +479,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         setFamilyMembers(families);
         setDoctorReviews(reviews);
         setCabinetMeds([]);
-        setTakenMap({ morning: false, afternoon: false, evening: false });
+        setTakenMap({});
         setCloudSyncError('');
 
         // Medicine data is patient-only. It must never block staff profiles,
@@ -509,7 +514,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
           setFamilyMembers([]);
           setDoctorReviews([]);
           setCabinetMeds([]);
-          setTakenMap({ morning: false, afternoon: false, evening: false });
+          setTakenMap({});
           setAppointments([]); setPrescriptions([]); setCloudProfile(null); setDiagnosisNote('');
           setLatestBooking({ ...DEFAULT_TICKET, code: '' });
         }
@@ -760,16 +765,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
-  const toggleMedicationTaken = async (slotKey: string): Promise<void> => {
+  const toggleMedicationTaken = async (dose: MedicationDoseLogRef): Promise<void> => {
     if (CLOUD_MODE) {
       const expectedUser = cloudUserIdRef.current;
       if (!expectedUser) {
         Alert.alert('Nhật ký uống thuốc', 'Vui lòng đăng nhập lại.');
         return;
       }
-      const nextTaken = !takenMap[slotKey];
+      const nextTaken = !takenMap[dose.logKey];
       try {
-        const saved = await setMedicationTakenCloud(slotKey, nextTaken);
+        const saved = await setMedicationTakenCloud(dose, nextTaken);
         if (cloudUserIdRef.current !== expectedUser) return;
         setTakenMap(saved);
       } catch (error) {
@@ -780,7 +785,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
       }
       return;
     }
-    setTakenMap(prev => ({ ...prev, [slotKey]: !prev[slotKey] }));
+    setTakenMap(prev => ({ ...prev, [dose.logKey]: !prev[dose.logKey] }));
   };
 
   const addFamilyMember = async (member: {
@@ -1000,7 +1005,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     await storageService.resetAllData();
     setAppointments(INITIAL_APPOINTMENTS);
     setLatestBooking(DEFAULT_TICKET);
-    setTakenMap({ morning: true, afternoon: true, evening: false });
+    setTakenMap({});
     setFamilyMembers(INITIAL_FAMILY_MEMBERS);
     setPrescriptions(PRESCRIPTION_DRUGS);
     setDiagnosisNote(

@@ -6,6 +6,7 @@ import {
   loadClinicProfile, subscribeClinicAppointments, type ClinicProfile, type ClinicAppointment, type ClinicMedication,
 } from '../services/clinicCloud';
 import { clinicAppointmentToItem, clinicPrescriptions, clinicRecord } from '../services/clinicAdapters';
+import { fetchDoctorReviewsCloud, submitDoctorReviewCloud } from '../services/clinicReviews';
 import { fetchFamilyMembersCloud, addFamilyMemberCloud } from '../services/clinicFamily';
 import type { PatientBookingInfo } from '../utils/bookingValidation';
 import {
@@ -156,7 +157,7 @@ interface AppContextValue {
     doctorId: string;
     rating: number;
     comment: string;
-  }) => void;
+  }) => Promise<void>;
 
   // 6. Security & Privacy (PII Masking state) + Storage Persistence
   isPiiMasked: boolean;
@@ -323,7 +324,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   const [cabinetMeds, setCabinetMeds] =
     useState<MedicineCabinetItem[]>(INITIAL_CABINET_MEDS);
   const [doctorReviews, setDoctorReviews] = useState<DoctorReviewItem[]>(
-    INITIAL_DOCTOR_REVIEWS
+    CLOUD_MODE ? [] : INITIAL_DOCTOR_REVIEWS
   );
   const [isPiiMasked, setIsPiiMasked] = useState<boolean>(true);
   const [isHydrated, setIsHydrated] = useState<boolean>(CLOUD_MODE);
@@ -348,6 +349,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
           setAppointments([]);
           setPrescriptions([]);
           setFamilyMembers([]);
+          setDoctorReviews([]);
           setCloudProfile(null);
           setDiagnosisNote('');
           setCloudSyncError('');
@@ -459,7 +461,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         setDiagnosisNote(cloudAppointments.map(clinicRecord).find(Boolean)?.diagnosis || 'Chưa có chẩn đoán được bác sĩ lưu.');
         setCloudSyncError('');
         const families = await fetchFamilyMembersCloud();
-        if (mounted && request === generation) setFamilyMembers(families);
+        if (!mounted || request !== generation) return;
+        setFamilyMembers(families);
+        const reviews = await fetchDoctorReviewsCloud();
+        if (mounted && request === generation) setDoctorReviews(reviews);
       } catch (error) {
         if (mounted && request === generation) setCloudSyncError(error instanceof Error ? error.message : 'Không tải được dữ liệu trực tuyến.');
       }
@@ -474,6 +479,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
           userId = session?.user.id;
           selectedTicketCode.current = null;
           setFamilyMembers([]);
+          setDoctorReviews([]);
           setAppointments([]); setPrescriptions([]); setCloudProfile(null); setDiagnosisNote('');
           setLatestBooking({ ...DEFAULT_TICKET, code: '' });
         }
@@ -486,6 +492,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
       setTimeout(() => { if (mounted) setCloudSyncError(error instanceof Error ? error.message : 'Chưa kết nối dữ liệu.'); }, 0);
     }
     void refresh();
+    void fetchDoctorReviewsCloud().then(reviews => { if (mounted) setDoctorReviews(reviews); }).catch(error => {
+      if (mounted) setCloudSyncError(error instanceof Error ? error.message : 'Chưa tải được đánh giá.');
+    });
     return () => { mounted = false; generation++; unsubscribeAuth(); unsubscribeChanges(); };
   }, []);
 
@@ -779,11 +788,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     ]);
   };
 
-  const addDoctorReview = (review: {
+  const addDoctorReview = async (review: {
     doctorId: string;
     rating: number;
     comment: string;
-  }) => {
+  }): Promise<void> => {
+    if (CLOUD_MODE) {
+      const expectedUser = cloudUserIdRef.current;
+      if (!expectedUser) throw new Error('Vui lòng đăng nhập để đánh giá.');
+      const saved = await submitDoctorReviewCloud(review);
+      if (cloudUserIdRef.current !== expectedUser) throw new Error('Phiên đăng nhập đã thay đổi.');
+      setDoctorReviews(prev => [saved, ...prev.filter(r => r.id !== saved.id)]);
+      return;
+    }
     const words = PATIENT_PROFILE.name.trim().split(' ');
     const initials =
       words.length >= 2

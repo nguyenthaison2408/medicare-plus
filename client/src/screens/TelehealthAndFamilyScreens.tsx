@@ -1133,24 +1133,28 @@ export const PostConsultSummaryScreen: React.FC<{
   onNavigate?: (routeKey: string) => void;
   onRebookDoctor?: (doctor: DoctorItem) => void;
 }> = ({ onBack, onNavigate, onRebookDoctor }) => {
-  const { prescriptions, addDoctorReview } = useAppContext();
-  const doctor = DOCTORS[0];
+  const { prescriptions, addDoctorReview, appointments } = useAppContext();
+  const doctor = appointments.find(a => a.status === 'completed')?.doctor || DOCTORS[0];
   const [rating, setRating] = useState(5);
   const [reviewComment, setReviewComment] = useState('');
   const [reviewSubmitted, setReviewSubmitted] = useState(false);
   const [reviewToast, setReviewToast] = useState(false);
 
-  const handleSubmitReview = () => {
-    const text =
-      reviewComment.trim() ||
-      'Bác sĩ khám rất tận tâm, giải thích kỹ lưỡng và kê đơn thuốc rõ ràng.';
-    addDoctorReview({
-      doctorId: doctor.id,
-      rating,
-      comment: text,
-    });
-    setReviewSubmitted(true);
-    setReviewToast(true);
+  const [savingReview, setSavingReview] = useState(false);
+  const [reviewError, setReviewError] = useState('');
+
+  const handleSubmitReview = async () => {
+    if (savingReview || reviewSubmitted) return;
+    const text = reviewComment.trim();
+    if (text.length < 2 || text.length > 1000) {
+      setReviewError('Vui lòng nhập nhận xét từ 2 đến 1000 ký tự.'); return;
+    }
+    setSavingReview(true); setReviewError('');
+    try {
+      await addDoctorReview({ doctorId: doctor.id, rating, comment: text });
+      setReviewSubmitted(true); setReviewToast(true);
+    } catch (error) { setReviewError(error instanceof Error ? error.message : 'Chưa gửi được đánh giá.'); }
+    finally { setSavingReview(false); }
   };
 
   return (
@@ -1266,11 +1270,14 @@ export const PostConsultSummaryScreen: React.FC<{
                 onChangeText={setReviewComment}
                 leftIcon="chatbox-ellipses-outline"
               />
+              {reviewError ? <Text accessibilityRole="alert" style={{ color: COLORS.error }}>{reviewError}</Text> : null}
               <AppButton
                 title="Gửi đánh giá bác sĩ"
                 variant="primary"
                 size="sm"
                 leftIcon="send-outline"
+                loading={savingReview}
+                disabled={savingReview}
                 onPress={handleSubmitReview}
               />
             </>

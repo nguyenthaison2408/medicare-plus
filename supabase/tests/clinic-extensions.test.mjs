@@ -1,4 +1,4 @@
-﻿import assert from 'node:assert/strict';import fs from 'node:fs';import {PGlite} from '@electric-sql/pglite';
+import assert from 'node:assert/strict';import fs from 'node:fs';import {PGlite} from '@electric-sql/pglite';
 const db=await PGlite.create();let count=0;
 const ids={a:'11111111-1111-4111-8111-111111111111',b:'22222222-2222-4222-8222-222222222222',doctor:'33333333-3333-4333-8333-333333333333',reception:'44444444-4444-4444-8444-444444444444',admin:'55555555-5555-4555-8555-555555555555'};
 const check=async(name,fn)=>{await fn();console.log('PASS EXT '+(++count)+': '+name);};
@@ -24,6 +24,33 @@ try{
   await as(null);await check('anonymous family read denied',async()=>denied(()=>db.query('select * from clinic_family_members')));
   await as(ids.b);await check('cannot transfer family ownership',async()=>denied(()=>db.query('update clinic_family_members set owner_id=$1 where id=$2',[ids.a,family.id])));
   await check('owner can edit and delete family member',async()=>{assert.equal((await db.query("update clinic_family_members set note='Owner edit' where id=$1 returning id",[family.id])).rows.length,1);assert.equal((await db.query('delete from clinic_family_members where id=$1 returning id',[family.id])).rows.length,1);});
+ }
+ if(tables.includes('clinic_doctor_reviews')){
+  await as(null);
+  await check('public reviews contain no fabricated verified seeds',async()=>assert.equal((await db.query('select id from clinic_doctor_reviews')).rows.length,0));
+  const rpc=(id,rating=5,comment='Review after completed visit')=>db.query('select public.clinic_submit_doctor_review($1,$2,$3) as review',[id,rating,comment]);
+  await check('anonymous review submission denied',async()=>denied(()=>rpc(ids.a)));
+  await db.exec('reset role');
+  const fixtures={};let offset=1;
+  for(const [key,owner,status,doc] of [['confirmed',ids.a,'CONFIRMED','doc-1'],['arrived',ids.a,'CHECKED_IN','doc-1'],['cancelled',ids.a,'CANCELLED','doc-1'],['completed',ids.a,'COMPLETED','doc-3'],['other',ids.b,'COMPLETED','doc-2']]){
+   fixtures[key]=(await db.query("insert into clinic_appointments(patient_id,doctor_id,patient_name,patient_phone,starts_at,status) values($1,$2,'Test patient','0901234567',now()+($3::text||' days')::interval,$4) returning id",[owner,doc,offset++,status])).rows[0].id;
+  }
+  await as(ids.a);
+  await check('no appointment means no verified review',async()=>denied(()=>rpc(ids.a)));
+  for(const state of ['confirmed','arrived','cancelled'])await check(state+' visit cannot be reviewed',async()=>denied(()=>rpc(fixtures[state])));
+  await check('cannot review another patient visit',async()=>denied(()=>rpc(fixtures.other)));
+  await check('direct insert cannot bypass review RPC',async()=>denied(()=>db.query("insert into clinic_doctor_reviews(doctor_id,patient_name,rating,comment) values('doc-1','Forged name',5,'Forged review')")));
+  for(const rating of [0,6,null])await check('invalid rating rejected: '+rating,async()=>assert.rejects(()=>rpc(fixtures.completed,rating),e=>e.code==='22023'));
+  for(const comment of ['x','x'.repeat(1001),null])await check('invalid review comment rejected',async()=>assert.rejects(()=>rpc(fixtures.completed,5,comment),e=>e.code==='22023'));
+  await as(ids.doctor);await check('staff cannot submit a patient review',async()=>denied(()=>rpc(fixtures.completed)));
+  await as(ids.a);
+  await check('completed patient may submit with server-owned identity',async()=>{const r=(await rpc(fixtures.completed)).rows[0].review;assert.equal(r.patient_id,ids.a);assert.equal(r.patient_name,'Test a');assert.equal(r.doctor_id,'doc-3');assert.equal(r.appointment_id,fixtures.completed);});
+  await check('duplicate patient-doctor review rejected',async()=>assert.rejects(()=>rpc(fixtures.completed),e=>e.code==='23505'));
+  await check('direct review edits denied',async()=>denied(()=>db.query("update clinic_doctor_reviews set patient_name='Another person'")));
+  await as(null);
+  await check('anonymous users may read verified public fields',async()=>assert.equal((await db.query('select id,doctor_id,patient_name,rating,comment,created_at from clinic_doctor_reviews')).rows.length,1));
+  await check('public cannot read patient Auth identifiers',async()=>denied(()=>db.query('select patient_id from clinic_doctor_reviews')));
+  await check('public cannot read appointment identifiers',async()=>denied(()=>db.query('select appointment_id from clinic_doctor_reviews')));
  }
  console.log(count+' PostgreSQL extension checks passed.');
 }finally{await db.close();}

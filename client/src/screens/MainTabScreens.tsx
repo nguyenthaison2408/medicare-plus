@@ -51,8 +51,8 @@ import {
   AIChatBubble,
   AITypingIndicator,
   AIClinicalResponseCard,
-  FollowUpOptionItem,
-  FollowUpQuestionItem,
+  type FollowUpOptionItem,
+  type FollowUpQuestionItem,
   QuickPromptChips,
   ChatBottomInputBar,
   ProfileHeaderCard,
@@ -1056,20 +1056,38 @@ const analyzeMedicalSymptom = (
   rawText: string,
   allergies?: string[]
 ): Omit<AIChatThreadItem, 'id' | 'sender' | 'time'> => {
-  // 1. Phân tích an toàn Dược & Tiền sử dị ứng EHR
+  // 1. Dấu hiệu CẤP CỨU ĐỎ (Red Flag) PHẢI LUÔN CÓ ƯU TIÊN CAO NHẤT!
+  // Tuyệt đối không để câu hỏi về thuốc hay dị ứng đè bẹp triệu chứng nguy kịch!
+  const triageResult = runClinicalTriage(rawText);
+  if (triageResult.urgencyLevel === 'emergency') {
+    return {
+      clinicalCard: {
+        urgencyLevel: 'emergency',
+        analysisText: triageResult.analysisText,
+        specialtyName: triageResult.specialtyName,
+        specialtyDesc: triageResult.specialtyDesc,
+        specialtyIcon: triageResult.specialtyIcon as keyof typeof Ionicons.glyphMap,
+        doctors: triageResult.recommendedDoctors || [DOCTORS[0]],
+        followUpQuestions: triageResult.followUpQuestions,
+        homeCareAdvice: triageResult.homeCareAdvice,
+      },
+    };
+  }
+
+  // 2. Phân tích an toàn Dược & Tiền sử dị ứng EHR (chỉ khi không phải cấp cứu)
   const safety = checkEHRSafetyGuardrails(rawText, { allergies });
   if (safety.hasAlert && safety.alertMessage) {
     if (safety.alertType === 'allergy') {
-      const triage = runClinicalTriage('đau đầu');
       return {
         clinicalCard: {
-          urgencyLevel: 'soon',
+          urgencyLevel: triageResult.urgencyLevel === 'routine' ? 'soon' : triageResult.urgencyLevel,
           analysisText:
+            triageResult.analysisText ||
             'Hệ thống ghi nhận bạn đang quan tâm đến việc dùng thuốc giảm đau trong khi có tiền sử dị ứng thuốc trên hồ sơ bệnh án điện tử.',
-          specialtyName: 'Dược Lâm Sàng & Khám Nội',
-          specialtyDesc: 'Tư vấn sử dụng thuốc an toàn & kiểm soát đau',
-          specialtyIcon: 'medkit',
-          doctors: [DOCTORS[0], DOCTORS[1]],
+          specialtyName: triageResult.specialtyName || 'Dược Lâm Sàng & Khám Nội',
+          specialtyDesc: triageResult.specialtyDesc || 'Tư vấn sử dụng thuốc an toàn & kiểm soát đau',
+          specialtyIcon: (triageResult.specialtyIcon as keyof typeof Ionicons.glyphMap) || 'medkit',
+          doctors: triageResult.recommendedDoctors || [DOCTORS[0]],
           allergyWarning: safety.alertMessage,
           homeCareAdvice: [
             'Chỉ sử dụng thuốc khi có ý kiến của bác sĩ điều trị hoặc dược sĩ.',
@@ -1083,18 +1101,17 @@ const analyzeMedicalSymptom = (
     };
   }
 
-  // 2. Phân tầng cấp cứu & định hướng chuyên khoa bằng AI Triage Engine
-  const result = runClinicalTriage(rawText);
+  // 3. Phân tầng thông thường bằng AI Triage Engine
   return {
     clinicalCard: {
-      urgencyLevel: result.urgencyLevel,
-      analysisText: result.analysisText,
-      specialtyName: result.specialtyName,
-      specialtyDesc: result.specialtyDesc,
-      specialtyIcon: result.specialtyIcon as keyof typeof Ionicons.glyphMap,
-      doctors: result.recommendedDoctors || [DOCTORS[0]],
-      followUpQuestions: result.followUpQuestions,
-      homeCareAdvice: result.homeCareAdvice,
+      urgencyLevel: triageResult.urgencyLevel,
+      analysisText: triageResult.analysisText,
+      specialtyName: triageResult.specialtyName,
+      specialtyDesc: triageResult.specialtyDesc,
+      specialtyIcon: triageResult.specialtyIcon as keyof typeof Ionicons.glyphMap,
+      doctors: triageResult.recommendedDoctors || [DOCTORS[0]],
+      followUpQuestions: triageResult.followUpQuestions,
+      homeCareAdvice: triageResult.homeCareAdvice,
     },
   };
 };
@@ -1108,6 +1125,16 @@ export const AIAssistantScreen: React.FC<AIAssistantScreenProps> = ({
   const [showSampleThread, setShowSampleThread] = useState(true);
   const [isTyping, setIsTyping] = useState(false);
   const [extraMessages, setExtraMessages] = useState<AIChatThreadItem[]>([]);
+  const [currentTriageContext, setCurrentTriageContext] = useState<{
+    specialtyName: string;
+    specialtyDesc: string;
+    specialtyIcon: keyof typeof Ionicons.glyphMap;
+    urgencyLevel: 'emergency' | 'soon' | 'routine';
+    doctors: DoctorItem[];
+    homeCareAdvice?: string[];
+    remainingFollowUps: FollowUpQuestionItem[];
+    accumulatedRisk: number;
+  } | null>(null);
   const chatScrollRef = useRef<React.ComponentRef<typeof ScrollView>>(null);
 
   const getCurrentTimeStr = () => {
@@ -1133,11 +1160,24 @@ export const AIAssistantScreen: React.FC<AIAssistantScreenProps> = ({
       chatScrollRef.current?.scrollToEnd({ animated: true });
     }, 80);
 
-    const patientAllergies = ['Dị ứng nhóm NSAID (Ibuprofen)'];
+    const patientAllergies = (patientProfile as any)?.allergies || [];
     const analysisResult = analyzeMedicalSymptom(content, patientAllergies);
 
     setTimeout(() => {
       setIsTyping(false);
+      if (analysisResult.clinicalCard) {
+        setCurrentTriageContext({
+          specialtyName: analysisResult.clinicalCard.specialtyName,
+          specialtyDesc: analysisResult.clinicalCard.specialtyDesc,
+          specialtyIcon: analysisResult.clinicalCard.specialtyIcon,
+          urgencyLevel: analysisResult.clinicalCard.urgencyLevel,
+          doctors: analysisResult.clinicalCard.doctors,
+          homeCareAdvice: analysisResult.clinicalCard.homeCareAdvice,
+          remainingFollowUps: analysisResult.clinicalCard.followUpQuestions || [],
+          accumulatedRisk: 0,
+        });
+      }
+
       setExtraMessages((prev) => [
         ...prev,
         {
@@ -1147,6 +1187,90 @@ export const AIAssistantScreen: React.FC<AIAssistantScreenProps> = ({
           ...analysisResult,
         },
       ]);
+      setTimeout(() => {
+        chatScrollRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+    }, 500);
+  };
+
+  const handleSelectFollowUp = (
+    opt: FollowUpOptionItem,
+    question: FollowUpQuestionItem
+  ) => {
+    if (isTyping) return;
+    const timeStr = getCurrentTimeStr();
+    const risk = opt.riskModifier || 0;
+
+    setExtraMessages((prev) => [
+      ...prev,
+      {
+        id: `usr-${prev.length + 1}`,
+        sender: 'user',
+        text: `Trả lời: ${opt.label} (${question.question})`,
+        time: timeStr,
+      },
+    ]);
+
+    setIsTyping(true);
+    setTimeout(() => {
+      chatScrollRef.current?.scrollToEnd({ animated: true });
+    }, 80);
+
+    setTimeout(() => {
+      setIsTyping(false);
+      const prevContext = currentTriageContext;
+      const newRisk = (prevContext?.accumulatedRisk || 0) + risk;
+
+      let newUrgency = prevContext?.urgencyLevel || 'routine';
+      if (newRisk >= 3 || risk >= 3) {
+        newUrgency = 'soon';
+      }
+
+      const updatedRemaining = (prevContext?.remainingFollowUps || []).filter(
+        (q) => q.id !== question.id
+      );
+
+      const riskNote =
+        risk > 0
+          ? ` (Điểm nguy cơ lâm sàng: +${risk})`
+          : ' (Mức độ ổn định/nhẹ)';
+
+      const refinedAnalysis = `Đã ghi nhận thông tin làm rõ lâm sàng: "${opt.label}"${riskNote}. ${
+        newRisk >= 3
+          ? 'Với triệu chứng kéo dài hoặc mức độ đau gia tăng, bạn nên ưu tiên khám bác sĩ chuyên khoa sớm để chẩn đoán phân biệt và can thiệp kịp thời.'
+          : 'Triệu chứng hiện ở mức độ nhẹ/ổn định, bạn nên tiếp tục theo dõi sát tại nhà và đến khám theo lịch hẹn thông thường.'
+      }`;
+
+      setCurrentTriageContext({
+        specialtyName: prevContext?.specialtyName || 'Nội Thần Kinh',
+        specialtyDesc: prevContext?.specialtyDesc || '',
+        specialtyIcon: prevContext?.specialtyIcon || 'pulse',
+        urgencyLevel: newUrgency,
+        doctors: prevContext?.doctors || [DOCTORS[0]],
+        homeCareAdvice: prevContext?.homeCareAdvice,
+        remainingFollowUps: updatedRemaining,
+        accumulatedRisk: newRisk,
+      });
+
+      setExtraMessages((prev) => [
+        ...prev,
+        {
+          id: `ai-${prev.length + 1}`,
+          sender: 'ai',
+          time: getCurrentTimeStr(),
+          clinicalCard: {
+            urgencyLevel: newUrgency,
+            analysisText: refinedAnalysis,
+            specialtyName: prevContext?.specialtyName || 'Nội Thần Kinh',
+            specialtyDesc: prevContext?.specialtyDesc || '',
+            specialtyIcon: prevContext?.specialtyIcon || 'pulse',
+            doctors: prevContext?.doctors || [DOCTORS[0]],
+            followUpQuestions: updatedRemaining.length > 0 ? updatedRemaining : undefined,
+            homeCareAdvice: prevContext?.homeCareAdvice,
+          },
+        },
+      ]);
+
       setTimeout(() => {
         chatScrollRef.current?.scrollToEnd({ animated: true });
       }, 100);
@@ -1218,9 +1342,7 @@ export const AIAssistantScreen: React.FC<AIAssistantScreenProps> = ({
               followUpQuestions={m.clinicalCard.followUpQuestions}
               homeCareAdvice={m.clinicalCard.homeCareAdvice}
               allergyWarning={m.clinicalCard.allergyWarning}
-              onSelectFollowUp={(opt, q) =>
-                handleSend(`${q.question} -> Lựa chọn: ${opt.label}`)
-              }
+              onSelectFollowUp={handleSelectFollowUp}
               onBookDoctor={onBookDoctor}
               onEmergencyCall={() => Linking.openURL('tel:115')}
             />

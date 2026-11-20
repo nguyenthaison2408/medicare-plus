@@ -1,7 +1,7 @@
 # KIẾN TRÚC & ĐẶC TẢ HỆ THỐNG TRỢ LÝ Y TẾ AI CHO BỆNH NHÂN (MEDICARE PLUS AI PATIENT ASSISTANT)
 
 > **Dự án:** Quản trị Dự án Phần mềm - MediCare Plus (VKU SPM Capstone)  
-> **Tác giả phụ trách:** Vũ Huy Thành (`thanhvihuu2005`)  
+> **Tác giả phụ trách:** Vi Hữu Thành (`thanhvihuu2005`)  
 > **Mục tiêu:** Xây dựng hệ thống trợ lý ảo AI hỗ trợ bệnh nhân sàng lọc triệu chứng, phân luồng cấp cứu, tư vấn chuyên khoa và điều hướng đặt khám bác sĩ chuẩn xác 24/7.
 
 ---

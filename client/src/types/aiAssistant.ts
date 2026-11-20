@@ -1,5 +1,5 @@
-import { Ionicons } from '@expo/vector-icons';
-import { DoctorItem } from '../data/mockData';
+import type { Ionicons } from '@expo/vector-icons';
+import type { DoctorItem } from '../data/mockData';
 
 export type TriageUrgencyLevel = 'emergency' | 'urgent' | 'routine' | 'self_care';
 

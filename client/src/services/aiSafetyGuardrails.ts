@@ -29,7 +29,7 @@ export const checkEHRSafetyGuardrails = (
     q.includes('paracetamol');
 
   if (isAskingMedication) {
-    const allergies = ehrContext?.allergies || ['NSAID (Ibuprofen)'];
+    const allergies = ehrContext?.allergies || [];
     const hasNSAIDAllergy = allergies.some((a) =>
       a.toLowerCase().includes('nsaid') || a.toLowerCase().includes('ibuprofen')
     );

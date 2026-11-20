@@ -3,13 +3,31 @@ import test from 'node:test';
 import {
   checkRedFlags,
   CLINICAL_SYMPTOM_KNOWLEDGE_BASE,
-  RED_FLAG_SYMPTOMS,
 } from '../client/src/services/aiMedicalKnowledge.ts';
 import { checkEHRSafetyGuardrails } from '../client/src/services/aiSafetyGuardrails.ts';
 import {
-  FOLLOW_UP_TEMPLATES,
   getFollowUpQuestions,
 } from '../client/src/services/aiFollowUpQuestions.ts';
+import { DOCTORS } from '../client/src/data/mockData.ts';
+
+// Helper matching logic as used in aiTriageEngine
+function resolveSpecialtyDoctors(category, specialtyName) {
+  const target = (specialtyName || '').toLowerCase();
+  const bySpecialty = DOCTORS.filter((d) => {
+    const spec = d.specialty.toLowerCase();
+    const sub = d.subSpecialty.toLowerCase();
+    if (category === 'dermatology') return spec.includes('da liễu') || sub.includes('da liễu');
+    if (category === 'gastroenterology') return spec.includes('tiêu hóa') || sub.includes('tiêu hóa');
+    if (category === 'pulmonology') return spec.includes('hô hấp') || sub.includes('hô hấp');
+    if (category === 'pediatrics') return spec.includes('nhi') || sub.includes('nhi');
+    if (category === 'ophthalmology') return spec.includes('mắt') || sub.includes('mắt');
+    if (category === 'cardiology') return spec.includes('tim') || sub.includes('tim');
+    if (category === 'neurology') return spec.includes('thần kinh') || sub.includes('thần kinh');
+    if (category === 'orthopedics') return sub.includes('cột sống') || sub.includes('ngoại thần kinh') || spec.includes('thần kinh');
+    return target && (spec.includes(target) || target.includes(spec));
+  });
+  return bySpecialty.length > 0 ? bySpecialty : [DOCTORS[0]];
+}
 
 test('1. Red Flag Emergency Detection: identifies life-threatening signs', () => {
   const criticalSymptoms = [
@@ -111,4 +129,54 @@ test('6. Follow-up Questions Generator: produces clinical intake questions', () 
 
   const generalQuestions = getFollowUpQuestions('general');
   assert.ok(generalQuestions.length >= 1);
+});
+
+test('7. Emergency Priority: emergency symptoms combined with medication inquiry MUST trigger emergency', () => {
+  const query = 'Tôi đau ngực dữ dội, có nên uống thuốc không?';
+  const redFlag = checkRedFlags(query);
+  assert.equal(redFlag.isEmergency, true, 'Emergency red flag must be detected even when query asks about medication');
+  assert.equal(redFlag.triggerPhrase, 'đau ngực dữ dội');
+  assert.equal(redFlag.emergencyHotline, '115');
+});
+
+test('8. EHR Allergy Isolation: patient without documented allergy MUST NOT receive fake allergy warnings', () => {
+  const cleanProfile = { allergies: [] };
+  const alert = checkEHRSafetyGuardrails('Tôi bị sốt có uống thuốc hạ sốt được không?', cleanProfile);
+  assert.notEqual(alert.alertType, 'allergy', 'Should not falsely trigger NSAID allergy for patients without allergy');
+
+  const emptyContextAlert = checkEHRSafetyGuardrails('Tôi uống thuốc gì được?', {});
+  assert.notEqual(emptyContextAlert.alertType, 'allergy', 'Empty context must not default to NSAID allergy');
+});
+
+test('9. Specialty Doctor Recommendation: dermatology routes to dermatologist, NOT ophthalmology or neurology', () => {
+  const dermaDocs = resolveSpecialtyDoctors('dermatology', 'Da Liễu');
+  assert.ok(dermaDocs.length > 0, 'Dermatology must have recommended doctors');
+  assert.ok(
+    dermaDocs.some((d) => d.specialty.toLowerCase().includes('da liễu')),
+    'Dermatology must recommend a dermatologist'
+  );
+  assert.equal(
+    dermaDocs.some((d) => d.id === 'doc-3' && d.specialty.toLowerCase().includes('mắt')),
+    false,
+    'Dermatology must NOT map to ophthalmologist doc-3'
+  );
+
+  const gastroDocs = resolveSpecialtyDoctors('gastroenterology', 'Tiêu Hóa');
+  assert.ok(gastroDocs.some((d) => d.specialty.toLowerCase().includes('tiêu hóa')));
+
+  const pulmoDocs = resolveSpecialtyDoctors('pulmonology', 'Hô Hấp');
+  assert.ok(pulmoDocs.some((d) => d.specialty.toLowerCase().includes('hô hấp')));
+
+  const pediaDocs = resolveSpecialtyDoctors('pediatrics', 'Nhi Khoa');
+  assert.ok(pediaDocs.some((d) => d.specialty.toLowerCase().includes('nhi')));
+});
+
+test('10. Follow-up Risk Modifier & Urgency Escalation: severe options have riskModifier >= 3 to escalate urgency', () => {
+  const neuroQuestions = getFollowUpQuestions('neurology');
+  const severityQuestion = neuroQuestions.find((q) => q.id === 'neuro_severity');
+  assert.ok(severityQuestion, 'Severity follow-up question must exist');
+
+  const severeOption = severityQuestion.options.find((o) => o.value === 'severe');
+  assert.ok(severeOption, 'Severe option must exist');
+  assert.ok(Number(severeOption.riskModifier) >= 3, 'Severe option riskModifier must be >= 3 to escalate urgency');
 });

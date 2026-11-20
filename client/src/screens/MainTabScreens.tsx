@@ -1,6 +1,4 @@
 import React, { useState, useRef } from 'react';
-import { CLOUD_MODE } from '../services/supabaseClient';
-import { ClinicPatientRecordsScreen, ClinicPatientAppointmentsScreen, ClinicPatientProfileScreen } from './ClinicPatientScreens';
 import {
   View,
   Text,
@@ -615,13 +613,11 @@ export const EHRScreen: React.FC<EHRScreenProps> = ({
     null
   );
 
-  if (CLOUD_MODE) return <ClinicPatientRecordsScreen />;
-
   return (
     <View style={styles.screen}>
       <AppHeader
         title="Hồ sơ bệnh án điện tử"
-        subtitle="SmartClinic EHR • Hồ sơ sức khỏe cá nhân"
+        subtitle="MediCare Plus EHR • Hồ sơ sức khỏe cá nhân"
         leftIconBox="folder-open-outline"
         rightActions={[
           {
@@ -821,13 +817,11 @@ export const AppointmentsScreen: React.FC<AppointmentsScreenProps> = ({
     }
   };
 
-  if (CLOUD_MODE) return <ClinicPatientAppointmentsScreen onNavigate={onNavigate} onBookNew={onBookNew} />;
-
   return (
     <View style={styles.screen}>
       <AppHeader
         title="Lịch Khám Của Tôi"
-        subtitle="Hệ thống phòng khám SmartClinic"
+        subtitle="Hệ thống phòng khám MediCare Plus"
         leftIconBox="calendar-outline"
         rightActions={[
           {
@@ -1262,7 +1256,7 @@ export const AIAssistantScreen: React.FC<AIAssistantScreenProps> = ({
 
         <AIChatBubble
           sender="ai"
-          message={`Xin chào ${displayName}! Tôi là Trợ lý Y tế SmartClinic. Bạn đang gặp triệu chứng gì (đau đầu, tức ngực, mỏi mắt, đau lưng...)? Hãy mô tả hoặc chọn gợi ý bên dưới để tôi định hướng chuyên khoa và bác sĩ phù hợp.`}
+          message={`Xin chào ${displayName}! Tôi là Trợ lý Y tế MediCare Plus. Bạn đang gặp triệu chứng gì (đau đầu, tức ngực, mỏi mắt, đau lưng...)? Hãy mô tả hoặc chọn gợi ý bên dưới để tôi định hướng chuyên khoa và bác sĩ phù hợp.`}
           time="09:41"
         />
 
@@ -1351,8 +1345,6 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
   const [dndMode, setDndMode] = useState(true);
   const [biometric, setBiometric] = useState(true);
   const [resetToast, setResetToast] = useState(false);
-
-  if (CLOUD_MODE) return <ClinicPatientProfileScreen onLogout={onLogout} />;
 
   const upcomingCount = appointments.filter(
     (a) => a.status === 'upcoming'
@@ -1674,7 +1666,7 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
         />
 
         <Text style={styles.versionFooter}>
-          SmartClinic Mobile App • v2.4.0 (Build 2024.10){'\n'}
+          MediCare Plus Mobile App • v1.0.0 (Build 2026.11){'\n'}
           Tiêu chuẩn an toàn dữ liệu y tế HL7/FHIR & Bộ Y Tế Việt Nam
         </Text>
       </ScrollView>

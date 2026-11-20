@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "CuoiKi",
-    "slug": "CuoiKi",
+    "name": "MediCare Plus",
+    "slug": "medicare-plus",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -10,13 +10,17 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "com.medicareplus.app",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.CAMERA"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -30,6 +34,12 @@
           "barcodeScannerEnabled": true
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "838e3f57-18d2-4132-b1fc-39531145f58f"
+      }
+    },
+    "owner": "thanhvuvn"
   }
 }

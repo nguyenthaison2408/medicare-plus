@@ -331,7 +331,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   const [diagnosisNote, setDiagnosisNote] = useState<string>(
     CLOUD_MODE ? '' : 'Đau đầu căng thẳng (Tension headache) / Rối loạn vận mạch não nhẹ'
   );
-  const [doctors, setDoctors] = useState<DoctorItem[]>(DOCTORS);
+  const [doctors, setDoctors] = useState<DoctorItem[]>(CLOUD_MODE ? [] : DOCTORS);
   const [hospitals, setHospitals] = useState<HospitalItem[]>(HOSPITALS);
   const [cabinetMeds, setCabinetMeds] =
     useState<MedicineCabinetItem[]>(CLOUD_MODE ? [] : INITIAL_CABINET_MEDS);
@@ -365,6 +365,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
           setCabinetMeds([]);
           setTakenMap({});
           setCloudProfile(null);
+          setDoctors([]);
           setDiagnosisNote('');
           setCloudSyncError('');
           setLatestBooking({ ...DEFAULT_TICKET, code: '' });
@@ -1052,7 +1053,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         patientProfile: CLOUD_MODE ? {
           ...PATIENT_PROFILE, name: cloudProfile?.full_name || 'Bệnh nhân',
           patientCode: cloudProfile?.id || '', age: 0, gender: 'Chưa cập nhật', bloodType: 'Chưa cập nhật',
-          tier: 'Hồ sơ trực tuyến', emergencyContact: '', bhytCode: '', bhytHospital: '', bhytExpiry: '', vitals: [],
+          allergies: [], tier: 'Hồ sơ trực tuyến', emergencyContact: '', bhytCode: '', bhytHospital: '', bhytExpiry: '', vitals: [],
         } : PATIENT_PROFILE,
         isHydrated,
         cloudSyncError,

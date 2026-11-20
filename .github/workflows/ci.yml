@@ -35,6 +35,9 @@ jobs:
       - name: Verify PostgreSQL Migration and RLS
         run: npm run test:db
 
+      - name: Verify AI Conversation and Routing
+        run: npm run test:ai
+
       - name: Verify Staff Workflow Results
         run: npm run test:staff
 

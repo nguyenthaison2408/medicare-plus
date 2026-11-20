@@ -653,7 +653,7 @@ export const BookingPaymentScreen: React.FC<BookingPaymentScreenProps> = ({
     {
       id: 'at_clinic_bhyt' as PaymentMethodType,
       title: 'Thanh toán tại viện bằng BHYT',
-      sub: 'Xuất trình CCCD / VssID tại quầy để giảm trừ 80% - 100%',
+      sub: 'Xuất trình hồ sơ tại quầy để xác minh quyền lợi và chi phí thực tế',
       badge: 'Khuyên dùng có BHYT',
       badgeVariant: 'teal' as const,
       icon: 'business-outline' as const,
@@ -846,7 +846,7 @@ export const BookingPaymentScreen: React.FC<BookingPaymentScreenProps> = ({
         <AnimatedEntry delay={90} direction="up">
           <View style={[styles.card, SHADOWS.sm, { marginBottom: 16 }]}>
             <SectionHeader
-              title="Chi tiết viện phí"
+              title="Chi phí tham khảo"
               leftIcon="receipt-outline"
             />
 
@@ -857,11 +857,11 @@ export const BookingPaymentScreen: React.FC<BookingPaymentScreenProps> = ({
 
             <View style={styles.feeLineRow}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                <Text style={styles.feeLineLabel}>Giảm trừ BHYT:</Text>
+                <Text style={styles.feeLineLabel}>Ước tính BHYT:</Text>
                 <Badge
                   label={
                     bhytBenefit.matchedRule
-                      ? `Mã ${bhytBenefit.matchedRule.prefixCode} (${bhytBenefit.rate}%)`
+                      ? `Cấu hình ${bhytBenefit.matchedRule.prefixCode} (${bhytBenefit.rate}%)`
                       : 'Đối soát tại quầy'
                   }
                   variant="teal"
@@ -871,7 +871,7 @@ export const BookingPaymentScreen: React.FC<BookingPaymentScreenProps> = ({
                 {isAtClinic
                   ? bhytBenefit.matchedRule
                     ? `-${formatCurrency(bhytBenefit.discountAmount)}`
-                    : 'Trừ 80% - 100%'
+                    : 'Chưa xác định'
                   : 'Chờ hoàn tiền'}
               </Text>
             </View>
@@ -886,15 +886,11 @@ export const BookingPaymentScreen: React.FC<BookingPaymentScreenProps> = ({
             <View style={styles.paymentDivider} />
 
             <View style={styles.feeTotalRow}>
-              <Text style={styles.feeTotalLabel}>Tổng số tiền cần trả:</Text>
-              <Text style={styles.feeTotalVal}>
-                {isAtClinic
-                  ? bhytBenefit.matchedRule
-                    ? `${formatCurrency(bhytBenefit.finalFee)} (Tại viện)`
-                    : '0 đ (Trả tại viện)'
-                  : doctor.fee}
+              <Text style={styles.feeTotalLabel}>Phí khám niêm yết:</Text>
+              <Text style={styles.feeTotalVal}>{doctor.fee} (chưa đối soát BHYT)
               </Text>
             </View>
+            <Text style={styles.paymentInfoSub}>Ước tính theo cấu hình đúng tuyến; thẻ, tuyến và mức hưởng chưa được xác minh. Cơ sở y tế đối soát chi phí tại quầy; ứng dụng chưa thu tiền.</Text>
           </View>
         </AnimatedEntry>
 

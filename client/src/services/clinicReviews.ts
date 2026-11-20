@@ -107,9 +107,10 @@ export async function moderateDoctorReviewCloud(
 
 export async function deleteDoctorReviewCloud(reviewId: string): Promise<void> {
   if (!CLOUD_MODE) throw new Error('Chưa bật dữ liệu trực tuyến.');
-  const { error } = await getSupabase()
+  const { data, error } = await getSupabase()
     .from('clinic_doctor_reviews')
     .delete()
-    .eq('id', reviewId);
-  if (error) throw new Error('Không thể xóa bình luận trên hệ thống.');
+    .eq('id', reviewId)
+    .select('id');
+  if (error || !data?.length) throw new Error('Không thể xóa bình luận trên hệ thống.');
 }

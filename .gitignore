@@ -45,3 +45,6 @@ coverage/
 
 # Generated local review bundles
 artifacts/
+
+*.apk
+

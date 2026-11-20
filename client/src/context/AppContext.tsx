@@ -416,7 +416,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   const [diagnosisNote, setDiagnosisNote] = useState<string>(
     CLOUD_MODE ? '' : 'Đau đầu căng thẳng (Tension headache) / Rối loạn vận mạch não nhẹ'
   );
-  const [doctors, setDoctors] = useState<DoctorItem[]>(DOCTORS);
+  const [doctors, setDoctors] = useState<DoctorItem[]>(CLOUD_MODE ? [] : DOCTORS);
   const [hospitals, setHospitals] = useState<HospitalItem[]>(HOSPITALS);
   const [cabinetMeds, setCabinetMeds] =
     useState<MedicineCabinetItem[]>(CLOUD_MODE ? [] : INITIAL_CABINET_MEDS);
@@ -427,7 +427,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   const [doctorSchedules, setDoctorSchedules] = useState<DoctorScheduleItem[]>(
     CLOUD_MODE ? [] : INITIAL_DOCTOR_SCHEDULES
   );
-  const [bhytConfigs, setBhytConfigs] = useState<BhytConfigItem[]>(INITIAL_BHYT_CONFIGS);
+  const [bhytConfigs, setBhytConfigs] = useState<BhytConfigItem[]>(CLOUD_MODE ? [] : INITIAL_BHYT_CONFIGS);
   const [isPiiMasked, setIsPiiMasked] = useState<boolean>(true);
   const [isHydrated, setIsHydrated] = useState<boolean>(CLOUD_MODE);
   const hydratedRef = useRef<boolean>(CLOUD_MODE);
@@ -454,7 +454,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
           setDoctorReviews([]);
           setCabinetMeds([]);
           setTakenMap({});
+          setDoctorSchedules([]);
+          setBhytConfigs([]);
           setCloudProfile(null);
+          setDoctors([]);
           setDiagnosisNote('');
           setCloudSyncError('');
           setLatestBooking({ ...DEFAULT_TICKET, code: '' });
@@ -510,7 +513,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
             : fetchDoctorReviewsCloud()
           ).catch(() => []),
           fetchDoctorSchedulesCloud().catch(() => []),
-          fetchBhytConfigsCloud().catch(() => INITIAL_BHYT_CONFIGS),
+          fetchBhytConfigsCloud().catch(() => []),
         ]);
         if (!mounted || request !== generation) return;
         if (cloudDoctors && cloudDoctors.length > 0) {
@@ -574,7 +577,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         setFamilyMembers(families);
         setDoctorReviews(reviews);
         setDoctorSchedules(schedules);
-        if (configs.length > 0) setBhytConfigs(configs);
+        setBhytConfigs(configs);
         setCabinetMeds([]);
         setTakenMap({});
         setCloudSyncError('');
@@ -612,6 +615,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
           setDoctorReviews([]);
           setCabinetMeds([]);
           setTakenMap({});
+          setDoctorSchedules([]);
+          setBhytConfigs([]);
           setAppointments([]); setPrescriptions([]); setCloudProfile(null); setDiagnosisNote('');
           setLatestBooking({ ...DEFAULT_TICKET, code: '' });
         }
@@ -1023,7 +1028,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     adminNote = ''
   ): Promise<void> => {
     if (CLOUD_MODE) {
+      const expectedUser = cloudUserIdRef.current;
+      if (!expectedUser) throw new Error('Vui lòng đăng nhập lại.');
       const updated = await moderateDoctorReviewCloud(reviewId, isHidden, adminNote);
+      if (cloudUserIdRef.current !== expectedUser) throw new Error('Phiên đăng nhập đã thay đổi.');
       setDoctorReviews((prev) =>
         prev.map((r) => (r.id === updated.id ? updated : r))
       );
@@ -1038,7 +1046,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const deleteDoctorReview = async (reviewId: string): Promise<void> => {
     if (CLOUD_MODE) {
+      const expectedUser = cloudUserIdRef.current;
+      if (!expectedUser) throw new Error('Vui lòng đăng nhập lại.');
       await deleteDoctorReviewCloud(reviewId);
+      if (cloudUserIdRef.current !== expectedUser) throw new Error('Phiên đăng nhập đã thay đổi.');
     }
     setDoctorReviews((prev) => prev.filter((r) => r.id !== reviewId));
   };
@@ -1164,12 +1175,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     if (cleanName.length < 2) {
       throw new Error('Họ và tên cần tối thiểu 2 ký tự.');
     }
-    const cleanPhone = (updates.phone || '').replace(/\s+/g, '');
+    const cleanPhone = updates.phone === undefined ? undefined : updates.phone.replace(/\s+/g, '');
     if (cleanPhone && !/^0[35789][0-9]{8}$/.test(cleanPhone)) {
       throw new Error('Số điện thoại Việt Nam phải gồm 10 chữ số bắt đầu bằng 03, 05, 07, 08 hoặc 09.');
     }
 
     if (CLOUD_MODE) {
+      const expectedUser = cloudUserIdRef.current;
+      if (!expectedUser) throw new Error('Vui lòng đăng nhập lại.');
       const updated = await updateClinicProfile({
         full_name: cleanName,
         phone: cleanPhone,
@@ -1181,7 +1194,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         bhyt_hospital: updates.bhytHospital,
         bhyt_expiry: updates.bhytExpiry,
         avatar_url: updates.avatar,
-      });
+      }, expectedUser);
+      if (cloudUserIdRef.current !== expectedUser) throw new Error('Phiên đăng nhập đã thay đổi.');
       setCloudProfile(updated);
       return;
     }
@@ -1189,7 +1203,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     setLocalPatientProfile((prev) => ({
       ...prev,
       name: cleanName,
-      phone: cleanPhone || prev.phone,
+      phone: cleanPhone ?? prev.phone,
       dob: updates.dob !== undefined ? updates.dob.trim() : prev.dob,
       age: updates.age !== undefined ? updates.age : prev.age,
       gender: updates.gender !== undefined ? updates.gender.trim() : prev.gender,
@@ -1226,7 +1240,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
       throw new Error('Vui lòng nhập phòng khám trực.');
     }
     if (CLOUD_MODE) {
+      const expectedUser = cloudUserIdRef.current;
+      if (!expectedUser) throw new Error('Vui lòng đăng nhập lại.');
       const saved = await upsertDoctorScheduleCloud(input);
+      if (cloudUserIdRef.current !== expectedUser) throw new Error('Phiên đăng nhập đã thay đổi.');
       setDoctorSchedules((prev) => {
         const idx = prev.findIndex(
           (item) =>
@@ -1273,7 +1290,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const deleteDoctorSchedule = async (id: string) => {
     if (CLOUD_MODE) {
+      const expectedUser = cloudUserIdRef.current;
+      if (!expectedUser) throw new Error('Vui lòng đăng nhập lại.');
       await deleteDoctorScheduleCloud(id);
+      if (cloudUserIdRef.current !== expectedUser) throw new Error('Phiên đăng nhập đã thay đổi.');
     }
     setDoctorSchedules((prev) => prev.filter((item) => item.id !== id));
   };
@@ -1287,16 +1307,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     if (cleanGroup.length < 2) {
       throw new Error('Vui lòng nhập tên nhóm đối tượng BHYT.');
     }
+    if (![config.inNetworkRate, config.outNetworkRate].every(value => Number.isFinite(value) && Number.isInteger(value) && value >= 0 && value <= 100)) {
+      throw new Error('Tỷ lệ BHYT cần là số nguyên từ 0 đến 100.');
+    }
     const normalized: BhytConfigItem = {
       ...config,
       id: config.id || `bhyt-${cleanPrefix.toLowerCase()}-${Date.now()}`,
       prefixCode: cleanPrefix,
       groupName: cleanGroup,
-      inNetworkRate: Math.max(0, Math.min(100, Math.round(config.inNetworkRate))),
-      outNetworkRate: Math.max(0, Math.min(100, Math.round(config.outNetworkRate))),
+      inNetworkRate: config.inNetworkRate,
+      outNetworkRate: config.outNetworkRate,
     };
     if (CLOUD_MODE) {
+      const expectedUser = cloudUserIdRef.current;
+      if (!expectedUser) throw new Error('Vui lòng đăng nhập lại.');
       const saved = await upsertBhytConfigCloud(normalized);
+      if (cloudUserIdRef.current !== expectedUser) throw new Error('Phiên đăng nhập đã thay đổi.');
       setBhytConfigs((prev) => {
         const idx = prev.findIndex((c) => c.id === saved.id || c.prefixCode === saved.prefixCode);
         if (idx >= 0) {
@@ -1330,7 +1356,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const deleteBhytConfig = async (id: string) => {
     if (CLOUD_MODE) {
+      const expectedUser = cloudUserIdRef.current;
+      if (!expectedUser) throw new Error('Vui lòng đăng nhập lại.');
       await deleteBhytConfigCloud(id);
+      if (cloudUserIdRef.current !== expectedUser) throw new Error('Phiên đăng nhập đã thay đổi.');
     }
     setBhytConfigs((prev) => prev.filter((c) => c.id !== id));
   };
@@ -1373,6 +1402,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         bhytExpiry: cloudProfile?.bhyt_expiry || '',
         avatar: cloudProfile?.avatar_url || PATIENT_PROFILE.avatar,
         vitals: [],
+        allergies: [],
       }
     : localPatientProfile;
 

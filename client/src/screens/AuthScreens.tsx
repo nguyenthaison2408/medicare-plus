@@ -200,6 +200,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
           : 'Không thể mở trang đăng nhập Google. Vui lòng thử lại.'
       );
       setLoading(false);
+    } finally {
+      setLoading(false);
     }
   };
 

@@ -105,10 +105,11 @@ export async function loadClinicProfile(): Promise<ClinicProfile> {
   return data as ClinicProfile;
 }
 
-export async function updateClinicProfile(updates: UpdateClinicProfileInput): Promise<ClinicProfile> {
+export async function updateClinicProfile(updates: UpdateClinicProfileInput, expectedUserId?: string): Promise<ClinicProfile> {
   const { data: { user }, error: authError } = await getSupabase().auth.getUser();
   checkError(authError);
   if (!user) throw new Error(errorMessages.AUTH_REQUIRED);
+  if (expectedUserId && user.id !== expectedUserId) throw new Error('Phiên đăng nhập đã thay đổi.');
   const payload: Record<string, string> = {
     full_name: updates.full_name.trim(),
   };

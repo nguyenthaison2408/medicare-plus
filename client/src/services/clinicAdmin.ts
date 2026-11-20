@@ -99,9 +99,11 @@ export async function upsertDoctorScheduleCloud(input: {
     room: input.room.trim(),
     active: input.active ?? true,
   };
-  const { data, error } = await getSupabase()
-    .from('clinic_doctor_schedules')
-    .upsert(payload, { onConflict: 'doctor_id,work_date,shift' })
+  const table = getSupabase().from('clinic_doctor_schedules');
+  const operation = input.id
+    ? table.update(payload).eq('id', input.id)
+    : table.upsert(payload, { onConflict: 'doctor_id,work_date,shift' });
+  const { data, error } = await operation
     .select('id, doctor_id, work_date, shift, room, active')
     .single();
   if (error || !data) {
@@ -118,11 +120,13 @@ export async function upsertDoctorScheduleCloud(input: {
 }
 
 export async function deleteDoctorScheduleCloud(id: string): Promise<void> {
-  const { error } = await getSupabase()
+  const { data, error } = await getSupabase()
     .from('clinic_doctor_schedules')
     .delete()
-    .eq('id', id);
+    .eq('id', id)
+    .select('id');
   if (error) throw new Error(error.message);
+  if (!data?.length) throw new Error('Không tìm thấy lịch trực hoặc bạn không có quyền xóa.');
 }
 
 export async function fetchBhytConfigsCloud(): Promise<BhytConfigItem[]> {
@@ -169,9 +173,11 @@ export async function upsertBhytConfigCloud(input: BhytConfigItem): Promise<Bhyt
 }
 
 export async function deleteBhytConfigCloud(id: string): Promise<void> {
-  const { error } = await getSupabase()
+  const { data, error } = await getSupabase()
     .from('clinic_bhyt_configs')
     .delete()
-    .eq('id', id);
+    .eq('id', id)
+    .select('id');
   if (error) throw new Error(error.message);
+  if (!data?.length) throw new Error('Không tìm thấy cấu hình BHYT hoặc bạn không có quyền xóa.');
 }

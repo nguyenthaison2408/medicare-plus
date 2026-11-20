@@ -251,6 +251,7 @@ export interface ProfileHeaderCardProps {
   profile?: typeof PATIENT_PROFILE;
   onEditPress?: () => void;
   onQrPress?: () => void;
+  onAvatarPress?: () => void;
   style?: ViewStyle;
 }
 
@@ -258,17 +259,28 @@ export const ProfileHeaderCard: React.FC<ProfileHeaderCardProps> = ({
   profile = PATIENT_PROFILE,
   onEditPress,
   onQrPress,
+  onAvatarPress,
   style,
 }) => {
   return (
     <View style={[styles.card, SHADOWS.sm, style]}>
       <View style={styles.topRow}>
-        <View style={styles.avatarWrap}>
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={onAvatarPress || onEditPress}
+          style={styles.avatarWrap}
+          accessibilityRole="button"
+          accessibilityLabel="Đổi ảnh đại diện"
+        >
           <Image source={{ uri: profile.avatar }} style={styles.avatarLg} />
           <View style={styles.verifiedBadge}>
-            <Ionicons name="checkmark-circle" size={18} color={COLORS.secondary} />
+            <Ionicons
+              name={onAvatarPress ? 'camera' : 'checkmark-circle'}
+              size={14}
+              color={onAvatarPress ? COLORS.primary : COLORS.secondary}
+            />
           </View>
-        </View>
+        </TouchableOpacity>
         <View style={{ flex: 1, minWidth: 0, marginLeft: 12 }}>
           <View style={styles.nameRow}>
             <Text style={styles.nameLg} numberOfLines={1}>

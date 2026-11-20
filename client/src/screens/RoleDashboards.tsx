@@ -22,6 +22,11 @@ import {
   type AppointmentItem,
 } from '../data/mockData';
 import { useAppContext } from '../context/AppContext';
+import {
+  getShiftLabel,
+  type DoctorShiftType,
+  type BhytConfigItem,
+} from '../services/clinicAdmin';
 import { CLOUD_MODE } from '../services/supabaseClient';
 import { ClinicStaffScreen } from './ClinicStaffScreen';
 import {
@@ -50,7 +55,7 @@ export interface AdminDashboardScreenProps {
   onNavigate?: (routeKey: string) => void;
 }
 
-type AdminTab = 'overview' | 'doctors' | 'appointments' | 'settings' | 'reception';
+type AdminTab = 'overview' | 'doctors' | 'schedules' | 'appointments' | 'settings' | 'reception';
 
 export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({
   onLogout,
@@ -65,13 +70,48 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({
     hospitals,
     addHospital,
     familyMembers,
+    doctorSchedules,
+    saveDoctorSchedule,
+    deleteDoctorSchedule,
+    bhytConfigs,
+    saveBhytConfig,
+    toggleBhytConfig,
+    deleteBhytConfig,
+    doctorReviews,
+    moderateDoctorReview,
+    deleteDoctorReview,
   } = useAppContext();
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
+  const [docSectionTab, setDocSectionTab] = useState<'list' | 'reviews'>('list');
+  const [reviewModFilter, setReviewModFilter] = useState<'all' | 'visible' | 'hidden' | 'low'>('all');
   const [docFilter, setDocFilter] = useState('all');
   const [searchDoc, setSearchDoc] = useState('');
   const [autoSyncVssID, setAutoSyncVssID] = useState(true);
   const [autoGdtTax, setAutoGdtTax] = useState(true);
   const [adminToast, setAdminToast] = useState<string | null>(null);
+
+  // State Phân lịch trực Bác sĩ
+  const upcomingDates = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() + i);
+    const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const label = i === 0 ? 'Hôm nay' : i === 1 ? 'Ngày mai' : `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
+    return { iso, label };
+  });
+  const [schedDoctorId, setSchedDoctorId] = useState(doctors[0]?.id || 'doc-1');
+  const [schedDoctorDropdownOpen, setSchedDoctorDropdownOpen] = useState(false);
+  const [schedDate, setSchedDate] = useState(upcomingDates[0].iso);
+  const [schedShift, setSchedShift] = useState<DoctorShiftType>('morning');
+  const [schedRoom, setSchedRoom] = useState('P.302 • Tầng 3, Tòa nhà A');
+  const [schedSaving, setSchedSaving] = useState(false);
+
+  // State Cấu hình chính sách BHYT
+  const [bhytEditId, setBhytEditId] = useState<string | null>(null);
+  const [bhytPrefix, setBhytPrefix] = useState('');
+  const [bhytGroupName, setBhytGroupName] = useState('');
+  const [bhytInRate, setBhytInRate] = useState('80');
+  const [bhytOutRate, setBhytOutRate] = useState('40');
+  const [bhytSaving, setBhytSaving] = useState(false);
 
   // Biểu mẫu thêm bác sĩ
   const [showAddDoc, setShowAddDoc] = useState(false);
@@ -437,12 +477,166 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({
     </ScrollView>
   );
 
-  const renderDoctorsManagement = () => (
-    <ScrollView
-      contentContainerStyle={styles.scrollPad}
-      showsVerticalScrollIndicator={false}
-      keyboardShouldPersistTaps="handled"
-    >
+  const renderDoctorsManagement = () => {
+    const filteredModReviews = doctorReviews.filter((r) => {
+      if (reviewModFilter === 'visible') return !r.isHidden;
+      if (reviewModFilter === 'hidden') return Boolean(r.isHidden);
+      if (reviewModFilter === 'low') return r.rating <= 3;
+      return true;
+    });
+
+    return (
+      <ScrollView
+        contentContainerStyle={styles.scrollPad}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        <SegmentedControl
+          variant="box"
+          selectedKey={docSectionTab}
+          onSelect={(k) => setDocSectionTab(k as 'list' | 'reviews')}
+          options={[
+            { key: 'list', label: `Danh sách Bác sĩ (${doctors.length})` },
+            { key: 'reviews', label: `Đánh giá & Bình luận (${doctorReviews.length})` },
+          ]}
+          style={{ marginBottom: 14 }}
+        />
+
+        {docSectionTab === 'reviews' ? (
+          <View>
+            <SectionHeader
+              title="Bảng đánh giá chất lượng Bác sĩ"
+              subtitle="Tính trực tiếp từ bình luận đã xác thực lượt khám"
+              leftIcon="star-outline"
+            />
+
+            {doctors.map((d) => {
+              const allForDoc = doctorReviews.filter((r) => r.doctorId === d.id);
+              const visibleForDoc = allForDoc.filter((r) => !r.isHidden);
+              const hiddenCount = allForDoc.length - visibleForDoc.length;
+              const lowCount = visibleForDoc.filter((r) => r.rating <= 2).length;
+              const avgScore =
+                visibleForDoc.length > 0
+                  ? (visibleForDoc.reduce((s, r) => s + r.rating, 0) / visibleForDoc.length).toFixed(1)
+                  : '—';
+              return (
+                <View key={d.id} style={[styles.card, SHADOWS.sm]}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Image source={{ uri: d.avatar }} style={styles.docAvatar} />
+                    <View style={{ flex: 1, marginLeft: 12 }}>
+                      <Text style={styles.docName}>{d.name}</Text>
+                      <Text style={styles.docSub}>
+                        {d.specialty} • {d.hospital}
+                      </Text>
+                      <Text style={styles.docMeta}>
+                        Điểm TB: ★ {avgScore} • {visibleForDoc.length} hiển thị
+                        {hiddenCount > 0 ? ` • ${hiddenCount} đã ẩn` : ''}
+                      </Text>
+                    </View>
+                    <Badge
+                      label={
+                        lowCount > 0
+                          ? `Cảnh báo ${lowCount} đánh giá thấp`
+                          : visibleForDoc.length > 0
+                          ? `★ ${avgScore}/5`
+                          : 'Chưa có'
+                      }
+                      variant={lowCount > 0 ? 'danger' : visibleForDoc.length > 0 ? 'teal' : 'surface'}
+                    />
+                  </View>
+                </View>
+              );
+            })}
+
+            <SectionHeader
+              title={`Kiểm duyệt bình luận (${filteredModReviews.length})`}
+              subtitle="Ẩn hoặc xóa bình luận xấu / spam khỏi giao diện bệnh nhân"
+              leftIcon="shield-checkmark-outline"
+            />
+
+            <SegmentedControl
+              variant="chips"
+              selectedKey={reviewModFilter}
+              onSelect={(k) => setReviewModFilter(k as 'all' | 'visible' | 'hidden' | 'low')}
+              options={[
+                { key: 'all', label: `Tất cả (${doctorReviews.length})` },
+                { key: 'visible', label: `Đang hiển thị (${doctorReviews.filter((r) => !r.isHidden).length})` },
+                { key: 'hidden', label: `Đã ẩn (${doctorReviews.filter((r) => r.isHidden).length})` },
+                { key: 'low', label: `≤ 3 sao (${doctorReviews.filter((r) => r.rating <= 3).length})` },
+              ]}
+              style={{ marginBottom: 12 }}
+            />
+
+            {filteredModReviews.length === 0 ? (
+              <View style={[styles.card, SHADOWS.sm, { alignItems: 'center', paddingVertical: 24 }]}>
+                <Ionicons name="chatbubble-outline" size={32} color={COLORS.textMuted} />
+                <Text style={[styles.docSub, { marginTop: 8 }]}>
+                  Không có bình luận nào trong mục này.
+                </Text>
+              </View>
+            ) : (
+              filteredModReviews.map((rev) => {
+                const doc = doctors.find((d) => d.id === rev.doctorId);
+                return (
+                  <View key={rev.id} style={[styles.card, SHADOWS.sm]}>
+                    <View style={styles.aptRowTop}>
+                      <Badge
+                        label={`${'★'.repeat(rev.rating)} (${rev.rating}/5)`}
+                        variant={rev.rating <= 2 ? 'danger' : rev.rating <= 3 ? 'warning' : 'teal'}
+                      />
+                      <Badge
+                        label={rev.isHidden ? 'Đã ẩn khỏi bệnh nhân' : 'Đang hiển thị'}
+                        variant={rev.isHidden ? 'warning' : 'blue'}
+                        showDot
+                      />
+                    </View>
+                    <Text style={styles.docName}>{rev.authorName}</Text>
+                    <Text style={styles.docSub}>
+                      Bác sĩ: {doc?.name || rev.doctorId} • {rev.metaText}
+                    </Text>
+                    <View style={styles.symptomBox}>
+                      <Text style={styles.symptomText}>{`"${rev.comment}"`}</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
+                      <AppButton
+                        title={rev.isHidden ? 'Hiện lại bình luận' : 'Ẩn bình luận'}
+                        variant={rev.isHidden ? 'tonal' : 'outline'}
+                        size="sm"
+                        leftIcon={rev.isHidden ? 'eye-outline' : 'eye-off-outline'}
+                        fullWidth={false}
+                        style={{ flex: 1 }}
+                        onPress={async () => {
+                          await moderateDoctorReview(
+                            rev.id,
+                            !rev.isHidden,
+                            !rev.isHidden ? 'Ẩn bởi Admin' : ''
+                          );
+                          setAdminToast(
+                            !rev.isHidden
+                              ? `Đã ẩn bình luận của ${rev.authorName}.`
+                              : `Đã hiển thị lại bình luận của ${rev.authorName}.`
+                          );
+                        }}
+                      />
+                      <AppButton
+                        title="Xóa"
+                        variant="dangerOutline"
+                        size="sm"
+                        leftIcon="trash-outline"
+                        fullWidth={false}
+                        onPress={async () => {
+                          await deleteDoctorReview(rev.id);
+                          setAdminToast(`Đã xóa vĩnh viễn bình luận của ${rev.authorName}.`);
+                        }}
+                      />
+                    </View>
+                  </View>
+                );
+              })
+            )}
+          </View>
+        ) : (
+          <View>
       <AppInput
         leftIcon="search-outline"
         placeholder="Tìm bác sĩ theo tên, mã CCHN, chuyên khoa..."
@@ -650,12 +844,12 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({
                   leftIcon="calendar-outline"
                   fullWidth={false}
                   style={{ flex: 1 }}
-                  onPress={() =>
-                    Alert.alert(
-                      'Lịch trực',
-                      `Đã mở bảng phân ca trực cho ${doc.name}`
-                    )
-                  }
+                  onPress={() => {
+                    setSchedDoctorId(doc.id);
+                    setSchedDoctorDropdownOpen(false);
+                    setActiveTab('schedules');
+                    setAdminToast(`Đã chọn ${doc.name} để phân ca trực.`);
+                  }}
                 />
                 <AppButton
                   title="Cấu hình BHYT"
@@ -664,12 +858,10 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({
                   leftIcon="create-outline"
                   fullWidth={false}
                   style={{ flex: 1 }}
-                  onPress={() =>
-                    Alert.alert(
-                      'Cấu hình',
-                      `Chỉnh sửa thông tin BHYT cho ${doc.name}`
-                    )
-                  }
+                  onPress={() => {
+                    setActiveTab('settings');
+                    setAdminToast(`Đã mở cấu hình BHYT áp dụng cho ${doc.name}.`);
+                  }}
                 />
               </>
             )}
@@ -751,8 +943,11 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({
           </Text>
         </View>
       ))}
-    </ScrollView>
-  );
+          </View>
+        )}
+      </ScrollView>
+    );
+  };
 
   const renderAppointmentsManagement = () => (
     <ScrollView
@@ -804,20 +999,416 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({
     </ScrollView>
   );
 
+  const handleSaveSchedule = async () => {
+    setSchedSaving(true);
+    try {
+      await saveDoctorSchedule({
+        doctorId: schedDoctorId,
+        workDate: schedDate,
+        shift: schedShift,
+        room: schedRoom,
+        active: true,
+      });
+      const docName = doctors.find((d) => d.id === schedDoctorId)?.name || schedDoctorId;
+      setAdminToast(`Đã xếp lịch trực cho ${docName} (${schedDate}).`);
+    } catch (err) {
+      Alert.alert('Lỗi xếp lịch trực', err instanceof Error ? err.message : 'Không thể lưu ca trực.');
+    } finally {
+      setSchedSaving(false);
+    }
+  };
+
+  const renderSchedulesManagement = () => (
+    <ScrollView
+      contentContainerStyle={styles.scrollPad}
+      showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
+    >
+      <View style={[styles.card, SHADOWS.sm]}>
+        <SectionHeader
+          title="Phân ca trực Bác sĩ"
+          subtitle="Chọn bác sĩ, ngày trực, ca làm việc và phòng khám"
+          leftIcon="calendar-outline"
+        />
+
+        <Text style={styles.formFieldLabel}>Chọn bác sĩ phụ trách</Text>
+        {(() => {
+          const selectedDoc = doctors.find((d) => d.id === schedDoctorId) || doctors[0];
+          return (
+            <View style={{ marginBottom: 12 }}>
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => setSchedDoctorDropdownOpen((prev) => !prev)}
+                style={[
+                  styles.dropdownTrigger,
+                  schedDoctorDropdownOpen && styles.dropdownTriggerOpen,
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel="Chọn bác sĩ phụ trách"
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: 10 }}>
+                  {selectedDoc?.avatar ? (
+                    <Image source={{ uri: selectedDoc.avatar }} style={styles.dropdownAvatar} />
+                  ) : (
+                    <Ionicons name="person-circle-outline" size={28} color={COLORS.primary} />
+                  )}
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.dropdownSelectedTitle} numberOfLines={1}>
+                      {selectedDoc?.name || 'Chọn bác sĩ...'}
+                    </Text>
+                    {selectedDoc && (
+                      <Text style={styles.dropdownSelectedSub} numberOfLines={1}>
+                        {selectedDoc.specialty} • {selectedDoc.hospital}
+                      </Text>
+                    )}
+                  </View>
+                </View>
+                <Ionicons
+                  name={schedDoctorDropdownOpen ? 'chevron-up' : 'chevron-down'}
+                  size={18}
+                  color={COLORS.textSecondary}
+                />
+              </TouchableOpacity>
+
+              {schedDoctorDropdownOpen && (
+                <View style={[styles.dropdownMenu, SHADOWS.md]}>
+                  {doctors.map((d, idx) => {
+                    const active = schedDoctorId === d.id;
+                    return (
+                      <TouchableOpacity
+                        key={d.id}
+                        activeOpacity={0.75}
+                        onPress={() => {
+                          setSchedDoctorId(d.id);
+                          setSchedDoctorDropdownOpen(false);
+                        }}
+                        style={[
+                          styles.dropdownItem,
+                          active && styles.dropdownItemActive,
+                          idx < doctors.length - 1 && styles.dropdownItemBorder,
+                        ]}
+                      >
+                        <Image source={{ uri: d.avatar }} style={styles.dropdownAvatar} />
+                        <View style={{ flex: 1 }}>
+                          <Text
+                            style={[
+                              styles.dropdownItemTitle,
+                              active && { color: COLORS.primary, fontWeight: '700' },
+                            ]}
+                            numberOfLines={1}
+                          >
+                            {d.name}
+                          </Text>
+                          <Text style={styles.dropdownItemSub} numberOfLines={1}>
+                            {d.specialty} • {d.hospital}
+                          </Text>
+                        </View>
+                        {active && (
+                          <Ionicons name="checkmark-circle" size={18} color={COLORS.primary} />
+                        )}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              )}
+            </View>
+          );
+        })()}
+
+        <Text style={styles.formFieldLabel}>Chọn ngày trực (7 ngày tới)</Text>
+        <View style={styles.chipWrap}>
+          {upcomingDates.map((item) => {
+            const active = schedDate === item.iso;
+            return (
+              <TouchableOpacity
+                key={item.iso}
+                onPress={() => setSchedDate(item.iso)}
+                style={[styles.selectChip, active && styles.selectChipActive]}
+              >
+                <Text style={[styles.selectChipText, active && styles.selectChipTextActive]}>
+                  {item.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        <Text style={styles.formFieldLabel}>Ca trực</Text>
+        <View style={styles.chipWrap}>
+          {([
+            { id: 'morning', label: 'Ca sáng (08:00-11:30)' },
+            { id: 'afternoon', label: 'Ca chiều (13:30-17:00)' },
+            { id: 'full_day', label: 'Cả ngày (08:00-17:00)' },
+          ] as { id: DoctorShiftType; label: string }[]).map((s) => {
+            const active = schedShift === s.id;
+            return (
+              <TouchableOpacity
+                key={s.id}
+                onPress={() => setSchedShift(s.id)}
+                style={[styles.selectChip, active && styles.selectChipActive]}
+              >
+                <Text style={[styles.selectChipText, active && styles.selectChipTextActive]}>
+                  {s.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        <AppInput
+          label="Phòng khám trực"
+          leftIcon="business-outline"
+          value={schedRoom}
+          onChangeText={setSchedRoom}
+          placeholder="P.302 • Tầng 3, Tòa nhà A"
+        />
+
+        <AppButton
+          title={schedSaving ? 'Đang lưu ca trực...' : 'Lưu phân công lịch trực'}
+          variant="primary"
+          size="md"
+          leftIcon="checkmark-circle-outline"
+          loading={schedSaving}
+          onPress={handleSaveSchedule}
+        />
+      </View>
+
+      <SectionHeader
+        title={`Danh sách ca trực đã phân (${doctorSchedules.length})`}
+        subtitle="Đồng bộ trực tiếp với Cổng Bác sĩ"
+      />
+
+      {doctorSchedules.length === 0 ? (
+        <View style={[styles.card, SHADOWS.sm, { alignItems: 'center', paddingVertical: 24 }]}>
+          <Ionicons name="calendar-outline" size={32} color={COLORS.textMuted} />
+          <Text style={[styles.docSub, { marginTop: 8 }]}>
+            Chưa có ca trực nào được phân công.
+          </Text>
+        </View>
+      ) : (
+        doctorSchedules.map((sch) => {
+          const doc = doctors.find((d) => d.id === sch.doctorId);
+          return (
+            <View key={sch.id} style={[styles.card, SHADOWS.sm]}>
+              <View style={styles.aptRowTop}>
+                <Badge label={sch.workDate} variant="blue" />
+                <Badge
+                  label={getShiftLabel(sch.shift)}
+                  variant={sch.shift === 'full_day' ? 'teal' : 'surface'}
+                  showDot
+                />
+              </View>
+              <Text style={styles.docName}>{doc?.name || sch.doctorId}</Text>
+              <Text style={styles.docSub}>
+                {doc?.specialty || 'Chuyên khoa'} • {sch.room}
+              </Text>
+              <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 10 }}>
+                <AppButton
+                  title="Xóa ca trực"
+                  variant="outline"
+                  size="sm"
+                  leftIcon="trash-outline"
+                  fullWidth={false}
+                  onPress={async () => {
+                    await deleteDoctorSchedule(sch.id);
+                    setAdminToast('Đã xóa ca trực khỏi danh sách.');
+                  }}
+                />
+              </View>
+            </View>
+          );
+        })
+      )}
+    </ScrollView>
+  );
+
+  const handleSaveBhytRule = async () => {
+    setBhytSaving(true);
+    try {
+      const inRate = Number(bhytInRate);
+      const outRate = Number(bhytOutRate);
+      if (Number.isNaN(inRate) || inRate < 0 || inRate > 100 || Number.isNaN(outRate) || outRate < 0 || outRate > 100) {
+        Alert.alert('Tỷ lệ không hợp lệ', 'Mức hưởng BHYT phải nằm trong khoảng 0 đến 100%.');
+        return;
+      }
+      await saveBhytConfig({
+        id: bhytEditId || `bhyt-${bhytPrefix.trim().toLowerCase()}-${Date.now()}`,
+        prefixCode: bhytPrefix,
+        groupName: bhytGroupName,
+        inNetworkRate: inRate,
+        outNetworkRate: outRate,
+        active: true,
+      });
+      setBhytEditId(null);
+      setBhytPrefix('');
+      setBhytGroupName('');
+      setBhytInRate('80');
+      setBhytOutRate('40');
+      setAdminToast('Đã lưu chính sách mức hưởng BHYT.');
+    } catch (err) {
+      Alert.alert('Lỗi cấu hình BHYT', err instanceof Error ? err.message : 'Không thể lưu cấu hình BHYT.');
+    } finally {
+      setBhytSaving(false);
+    }
+  };
+
+  const startEditBhytRule = (cfg: BhytConfigItem) => {
+    setBhytEditId(cfg.id);
+    setBhytPrefix(cfg.prefixCode);
+    setBhytGroupName(cfg.groupName);
+    setBhytInRate(String(cfg.inNetworkRate));
+    setBhytOutRate(String(cfg.outNetworkRate));
+  };
+
   const renderAdminSettings = () => (
     <ScrollView
       contentContainerStyle={styles.scrollPad}
       showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
     >
       <View style={[styles.card, SHADOWS.sm]}>
         <SectionHeader
-          title="Cấu hình hệ thống & BHYT"
+          title="Cấu hình Chính sách & Mức hưởng BHYT"
+          subtitle="Thiết lập % giảm trừ theo đầu mã thẻ BHYT (áp dụng tự động khi bệnh nhân đặt lịch)"
+          leftIcon="shield-checkmark-outline"
+        />
+
+        {bhytConfigs.map((cfg) => (
+          <View
+            key={cfg.id}
+            style={{
+              paddingVertical: 12,
+              borderBottomWidth: 1,
+              borderBottomColor: COLORS.divider,
+            }}
+          >
+            <View style={styles.aptRowTop}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Badge label={`Mã ${cfg.prefixCode}`} variant={cfg.active ? 'teal' : 'surface'} />
+                <Text style={styles.docName}>{cfg.groupName}</Text>
+              </View>
+              <Badge
+                label={cfg.active ? 'Đang áp dụng' : 'Tạm tắt'}
+                variant={cfg.active ? 'blue' : 'warning'}
+              />
+            </View>
+            <Text style={[styles.docSub, { marginTop: 4 }]}>
+              Đúng tuyến: <Text style={{ fontWeight: '800', color: COLORS.secondary }}>{cfg.inNetworkRate}%</Text>
+              {'  •  '}
+              Trái tuyến: <Text style={{ fontWeight: '800', color: COLORS.primary }}>{cfg.outNetworkRate}%</Text>
+            </Text>
+            <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+              <AppButton
+                title="Sửa mức %"
+                variant="tonal"
+                size="sm"
+                leftIcon="create-outline"
+                fullWidth={false}
+                style={{ flex: 1 }}
+                onPress={() => startEditBhytRule(cfg)}
+              />
+              <AppButton
+                title={cfg.active ? 'Tạm tắt' : 'Kích hoạt'}
+                variant="outline"
+                size="sm"
+                fullWidth={false}
+                style={{ flex: 1 }}
+                onPress={async () => {
+                  await toggleBhytConfig(cfg.id);
+                  setAdminToast(`Đã ${cfg.active ? 'tắt' : 'bật'} chính sách mã ${cfg.prefixCode}.`);
+                }}
+              />
+              <AppButton
+                title="Xóa"
+                variant="dangerOutline"
+                size="sm"
+                fullWidth={false}
+                onPress={async () => {
+                  await deleteBhytConfig(cfg.id);
+                  setAdminToast(`Đã xóa quy tắc BHYT mã ${cfg.prefixCode}.`);
+                }}
+              />
+            </View>
+          </View>
+        ))}
+
+        <Text style={[styles.formFieldLabel, { marginTop: 14 }]}>
+          {bhytEditId ? `Đang sửa quy tắc mã ${bhytPrefix}` : 'Thêm / Cập nhật quy tắc BHYT mới'}
+        </Text>
+        <AppInput
+          label="Mã đầu thẻ BHYT (VD: TE, HT, DN, GD, CN)"
+          leftIcon="card-outline"
+          value={bhytPrefix}
+          onChangeText={setBhytPrefix}
+          placeholder="CN"
+          autoCapitalize="characters"
+        />
+        <AppInput
+          label="Nhóm đối tượng hưởng BHYT"
+          leftIcon="people-outline"
+          value={bhytGroupName}
+          onChangeText={setBhytGroupName}
+          placeholder="Hộ cận nghèo / Ưu đãi xã hội"
+        />
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+          <View style={{ flex: 1 }}>
+            <AppInput
+              label="Đúng tuyến (%)"
+              value={bhytInRate}
+              onChangeText={setBhytInRate}
+              keyboardType="numeric"
+              placeholder="80"
+            />
+          </View>
+          <View style={{ flex: 1 }}>
+            <AppInput
+              label="Trái tuyến (%)"
+              value={bhytOutRate}
+              onChangeText={setBhytOutRate}
+              keyboardType="numeric"
+              placeholder="40"
+            />
+          </View>
+        </View>
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          {bhytEditId && (
+            <AppButton
+              title="Hủy sửa"
+              variant="outline"
+              size="md"
+              fullWidth={false}
+              style={{ flex: 1 }}
+              onPress={() => {
+                setBhytEditId(null);
+                setBhytPrefix('');
+                setBhytGroupName('');
+                setBhytInRate('80');
+                setBhytOutRate('40');
+              }}
+            />
+          )}
+          <AppButton
+            title={bhytSaving ? 'Đang lưu...' : bhytEditId ? 'Cập nhật quy tắc' : 'Lưu quy tắc BHYT'}
+            variant="secondary"
+            size="md"
+            leftIcon="checkmark-circle-outline"
+            fullWidth={false}
+            style={{ flex: 1.5 }}
+            loading={bhytSaving}
+            onPress={handleSaveBhytRule}
+          />
+        </View>
+      </View>
+
+      <View style={[styles.card, SHADOWS.sm]}>
+        <SectionHeader
+          title="Cấu hình vận hành hệ thống"
           leftIcon="server-outline"
         />
         <SettingToggleRow
           icon="shield-checkmark-outline"
           title="Đồng bộ BHYT VssID"
-          description="Tự động kiểm tra thẻ BHYT và mức hưởng 80-100% khi bệnh nhân đặt lịch."
+          description="Tự động kiểm tra thẻ BHYT và mức hưởng theo cấu hình khi bệnh nhân đặt lịch."
           value={autoSyncVssID}
           onValueChange={setAutoSyncVssID}
         />
@@ -856,6 +1447,7 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({
       <View style={{ flex: 1 }}>
         {activeTab === 'overview' && renderOverview()}
         {activeTab === 'doctors' && renderDoctorsManagement()}
+        {activeTab === 'schedules' && renderSchedulesManagement()}
         {activeTab === 'appointments' && renderAppointmentsManagement()}
         {activeTab === 'settings' && renderAdminSettings()}
         {activeTab === 'reception' && <ClinicStaffScreen embedded onLogout={onLogout} />}
@@ -866,9 +1458,10 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({
         {[
           { key: 'overview', label: 'Tổng quan', icon: 'stats-chart' },
           { key: 'doctors', label: 'QL Bác sĩ', icon: 'medkit' },
-          { key: 'appointments', label: 'Điều phối lịch', icon: 'calendar' },
-          { key: 'settings', label: 'Cấu hình', icon: 'settings' },
-          ...(CLOUD_MODE ? [{ key: 'reception', label: 'Tiếp đón QR', icon: 'qr-code' }] : []),
+          { key: 'schedules', label: 'Lịch trực', icon: 'time' },
+          { key: 'appointments', label: 'Điều phối', icon: 'calendar' },
+          { key: 'settings', label: 'BHYT', icon: 'shield-checkmark' },
+          ...(CLOUD_MODE ? [{ key: 'reception', label: 'Tiếp đón', icon: 'qr-code' }] : []),
         ].map((t) => {
           const active = activeTab === t.key;
           return (
@@ -930,6 +1523,7 @@ export const DoctorDashboardScreen: React.FC<DoctorDashboardScreenProps> = ({
     completeAppointment,
     checkInAppointment,
     doctors,
+    doctorSchedules,
     prescriptions,
     addPrescriptionDrug,
     diagnosisNote,
@@ -941,6 +1535,16 @@ export const DoctorDashboardScreen: React.FC<DoctorDashboardScreenProps> = ({
   const doctor = (cloudProfile?.doctor_id && doctors.find((d) => d.id === cloudProfile.doctor_id))
     || (cloudProfile?.full_name && doctors.find((d) => d.name === cloudProfile.full_name))
     || DOCTORS[0];
+
+  const todayIso = (() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  })();
+  const mySchedules = doctorSchedules.filter((s) => s.doctorId === doctor.id && s.active);
+  const todayShift = mySchedules.find((s) => s.workDate === todayIso) || mySchedules[0];
+  const shiftBadgeText = todayShift
+    ? `${getShiftLabel(todayShift.shift).toUpperCase()} • ${todayShift.room}`
+    : 'CHƯA PHÂN CA TRỰC HÔM NAY';
 
   const [activeTab, setActiveTab] = useState<DoctorTab>('schedule');
   const [selectedPatientApt, setSelectedPatientApt] = useState<AppointmentItem | null>(null);
@@ -986,7 +1590,7 @@ export const DoctorDashboardScreen: React.FC<DoctorDashboardScreenProps> = ({
               </View>
             </View>
             <View style={{ flex: 1, marginLeft: 12 }}>
-              <Badge label="ĐANG TRỰC CA SÁNG • P.302" variant="teal" showDot />
+              <Badge label={shiftBadgeText} variant="teal" showDot />
               <Text style={[styles.heroName, { marginTop: 4 }]}>{doctor.name}</Text>
               <Text style={styles.heroEmail}>
                 {doctor.degree} • {doctor.hospital}
@@ -1726,6 +2330,103 @@ const styles = StyleSheet.create({
   roleTabLabelActive: {
     color: COLORS.primary,
     fontWeight: '700',
+  },
+  formFieldLabel: {
+    fontSize: TYPOGRAPHY.size.xs,
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+    marginBottom: 8,
+    marginTop: 8,
+  },
+  chipWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 12,
+  },
+  selectChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: RADIUS.full,
+    backgroundColor: COLORS.surfaceContainerLow,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  selectChipActive: {
+    backgroundColor: COLORS.tintBlue,
+    borderColor: COLORS.primary,
+  },
+  selectChipText: {
+    fontSize: TYPOGRAPHY.size.xs,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+  },
+  selectChipTextActive: {
+    color: COLORS.primary,
+    fontWeight: '700',
+  },
+  dropdownTrigger: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: COLORS.surfaceContainerLow,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: RADIUS.md,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  dropdownTriggerOpen: {
+    borderColor: COLORS.primary,
+    backgroundColor: COLORS.surface,
+  },
+  dropdownAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: COLORS.tintBlue,
+  },
+  dropdownSelectedTitle: {
+    fontSize: TYPOGRAPHY.size.sm,
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+  },
+  dropdownSelectedSub: {
+    fontSize: TYPOGRAPHY.size.xxs,
+    color: COLORS.textSecondary,
+    marginTop: 1,
+  },
+  dropdownMenu: {
+    marginTop: 6,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    overflow: 'hidden',
+  },
+  dropdownItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  dropdownItemActive: {
+    backgroundColor: COLORS.tintBlue,
+  },
+  dropdownItemBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.divider,
+  },
+  dropdownItemTitle: {
+    fontSize: TYPOGRAPHY.size.sm,
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+  },
+  dropdownItemSub: {
+    fontSize: TYPOGRAPHY.size.xxs,
+    color: COLORS.textSecondary,
+    marginTop: 1,
   },
 });
 

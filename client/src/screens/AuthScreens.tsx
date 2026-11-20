@@ -9,11 +9,12 @@ import {
   StyleSheet,
   Animated,
   Alert,
+  Modal,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { CLOUD_MODE } from '../services/supabaseClient';
-import { signInClinic, signUpClinic } from '../services/clinicCloud';
+import { signInClinic, signInWithGoogleClinic, signUpClinic } from '../services/clinicCloud';
 import { COLORS, GRADIENTS, RADIUS, SHADOWS, TOUCH, TYPOGRAPHY } from '../theme';
 import {
   AppButton,
@@ -181,6 +182,42 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
 
   const [emailError, setEmailError] = useState('');
   const [passwordError, setPasswordError] = useState('');
+  const [googleModalVisible, setGoogleModalVisible] = useState(false);
+  const [googleEmailInput, setGoogleEmailInput] = useState('');
+  const [googleError, setGoogleError] = useState('');
+
+  const handleGoogleLoginPress = async () => {
+    if (loading) return;
+    setEmailError('');
+    setPasswordError('');
+    setGoogleError('');
+    if (CLOUD_MODE) {
+      setLoading(true);
+      try {
+        await signInWithGoogleClinic();
+      } catch (error) {
+        setPasswordError(
+          error instanceof Error
+            ? error.message
+            : 'Không thể kết nối đăng nhập Google. Vui lòng thử lại.'
+        );
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+    setGoogleModalVisible(true);
+  };
+
+  const handleDemoGoogleSelect = (selectedGmail: string) => {
+    const clean = selectedGmail.trim().toLowerCase();
+    if (!clean || !clean.includes('@')) {
+      setGoogleError('Vui lòng nhập địa chỉ Gmail hợp lệ (VD: tenban@gmail.com).');
+      return;
+    }
+    setGoogleModalVisible(false);
+    onLoginSuccess(detectRoleFromEmail(clean), clean);
+  };
 
   const handleLoginPress = async () => {
     if (loading) return;
@@ -345,11 +382,147 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
 
           <AppButton
             title="Đăng nhập bằng Google"
-            disabled={CLOUD_MODE || loading}
+            disabled={loading}
             variant="google"
             size="lg"
-            onPress={handleLoginPress}
+            onPress={handleGoogleLoginPress}
           />
+
+          <Modal
+            visible={googleModalVisible}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setGoogleModalVisible(false)}
+          >
+            <View
+              style={{
+                flex: 1,
+                backgroundColor: 'rgba(15, 23, 42, 0.5)',
+                justifyContent: 'center',
+                padding: 20,
+              }}
+            >
+              <View
+                style={[
+                  {
+                    backgroundColor: COLORS.surface,
+                    borderRadius: RADIUS.xl,
+                    padding: 20,
+                  },
+                  SHADOWS.lg,
+                ]}
+              >
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    marginBottom: 12,
+                  }}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Ionicons name="logo-google" size={20} color="#EA4335" />
+                    <Text
+                      style={{
+                        fontSize: TYPOGRAPHY.size.lg,
+                        fontWeight: '800',
+                        color: COLORS.textPrimary,
+                      }}
+                    >
+                      Chọn tài khoản Google
+                    </Text>
+                  </View>
+                  <TouchableOpacity onPress={() => setGoogleModalVisible(false)}>
+                    <Ionicons name="close" size={22} color={COLORS.textSecondary} />
+                  </TouchableOpacity>
+                </View>
+
+                <Text
+                  style={{
+                    fontSize: TYPOGRAPHY.size.xs,
+                    color: COLORS.textSecondary,
+                    marginBottom: 14,
+                  }}
+                >
+                  Tiếp tục đăng nhập nhanh vào MediCare Plus bằng tài khoản Google của bạn:
+                </Text>
+
+                {[
+                  { name: 'Nguyễn Văn Vũ', gmail: 'nguyenvanvu@gmail.com' },
+                  { name: 'Trần Minh Anh', gmail: 'tranminhanh.vku@gmail.com' },
+                ].map((acc) => (
+                  <TouchableOpacity
+                    key={acc.gmail}
+                    activeOpacity={0.8}
+                    onPress={() => handleDemoGoogleSelect(acc.gmail)}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 12,
+                      padding: 12,
+                      borderRadius: RADIUS.md,
+                      borderWidth: 1,
+                      borderColor: COLORS.border,
+                      backgroundColor: COLORS.surfaceContainerLow,
+                      marginBottom: 8,
+                    }}
+                  >
+                    <View
+                      style={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: 18,
+                        backgroundColor: COLORS.tintBlue,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Text style={{ fontWeight: '800', color: COLORS.primary }}>
+                        {acc.name.charAt(0)}
+                      </Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text
+                        style={{
+                          fontSize: TYPOGRAPHY.size.sm,
+                          fontWeight: '700',
+                          color: COLORS.textPrimary,
+                        }}
+                      >
+                        {acc.name}
+                      </Text>
+                      <Text style={{ fontSize: TYPOGRAPHY.size.xs, color: COLORS.textSecondary }}>
+                        {acc.gmail}
+                      </Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={16} color={COLORS.textMuted} />
+                  </TouchableOpacity>
+                ))}
+
+                <View style={{ marginTop: 8 }}>
+                  <AppInput
+                    label="Hoặc nhập tài khoản Gmail khác"
+                    leftIcon="mail-outline"
+                    placeholder="tenban@gmail.com"
+                    value={googleEmailInput}
+                    onChangeText={(t) => {
+                      setGoogleEmailInput(t);
+                      if (googleError) setGoogleError('');
+                    }}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    error={googleError}
+                  />
+                  <AppButton
+                    title="Tiếp tục với Gmail này"
+                    variant="primary"
+                    size="md"
+                    onPress={() => handleDemoGoogleSelect(googleEmailInput)}
+                  />
+                </View>
+              </View>
+            </View>
+          </Modal>
 
           <View style={styles.switchAuthRow}>
             <Text style={styles.switchAuthLabel}>Chưa có tài khoản? </Text>

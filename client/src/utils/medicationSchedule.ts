@@ -14,28 +14,14 @@ export function buildMedicationSchedule(
   prescriptions: PrescriptionDrug[]
 ): MedicationScheduleItem[] {
   return prescriptions.flatMap(drug => {
-    const instruction = `${drug.dosageTag} ${drug.instructionTag}`.toLocaleLowerCase('vi-VN');
-    const doses: { key: string; label: string }[] = [];
-    if (instruction.includes('sáng')) doses.push({ key: 'morning', label: 'Cữ sáng' });
-    if (instruction.includes('trưa') || instruction.includes('chiều')) {
-      doses.push({ key: 'afternoon', label: 'Cữ chiều' });
-    }
-    if (instruction.includes('tối') || instruction.includes('đêm') || instruction.includes('trước ngủ')) {
-      doses.push({ key: 'evening', label: 'Cữ tối' });
-    }
-    if (doses.length === 0) {
-      const countMatch = drug.dosageTag.match(/(\d+)\s*(?:lần|viên)?\s*\/\s*ngày/i);
-      const dailyDoseCount = Math.min(Number(countMatch?.[1] || 1), 6);
-      if (instruction.includes('khi cần')) {
-        doses.push({ key: 'as-needed', label: 'Dùng khi cần' });
-      } else if (dailyDoseCount > 1) {
-        for (let index = 1; index <= dailyDoseCount; index += 1) {
-          doses.push({ key: `dose-${index}`, label: `Cữ ${index}` });
-        }
-      } else {
-        doses.push({ key: 'dose-1', label: 'Cữ theo toa' });
-      }
-    }
+    // Only an explicit frequency in the prescribed dosage establishes a dose
+    // count. Tablet quantities and free-form clinical notes are not schedules.
+    const frequency = drug.dosageTag.match(/(?:^|\s)([1-6])\s*lần\s*(?:\/|mỗi\s+)\s*ngày(?:$|[\s,.;(])/iu);
+    const dailyDoseCount = frequency ? Number(frequency[1]) : 1;
+    const doses = Array.from({ length: dailyDoseCount }, (_, index) => ({
+      key: `dose-${index + 1}`,
+      label: frequency ? `Cữ ${index + 1}` : 'Ghi nhận dùng thuốc theo toa',
+    }));
 
     return doses.map(dose => ({
       logKey: drug.appointmentId && drug.medicationIndex !== undefined

@@ -1,3 +1,4 @@
+import { Linking, Platform } from 'react-native';
 import type { DaySlotItem, DoctorItem, TimeSlotItem } from '../data/mockData';
 import type { PatientBookingInfo } from '../utils/bookingValidation';
 import { getSupabase } from './supabaseClient';
@@ -138,19 +139,28 @@ export async function signInClinic(email: string, password: string): Promise<Cli
 }
 
 export async function signInWithGoogleClinic(): Promise<void> {
-  const redirectTo =
-    typeof window !== 'undefined' && window.location?.origin
+  const isWeb = Platform.OS === 'web';
+  const redirectTo = isWeb
+    ? typeof window !== 'undefined' && window.location?.origin
       ? window.location.origin
-      : undefined;
-  const { error } = await getSupabase().auth.signInWithOAuth({
+      : undefined
+    : 'medicareplus://auth-callback';
+
+  const { data, error } = await getSupabase().auth.signInWithOAuth({
     provider: 'google',
-    options: redirectTo ? { redirectTo } : undefined,
+    options: {
+      ...(redirectTo ? { redirectTo } : {}),
+      ...(!isWeb ? { skipBrowserRedirect: true } : {}),
+    },
   });
   if (error) {
     if (error.message.toLowerCase().includes('provider is not enabled')) {
       throw new Error('Nhà cung cấp Google OAuth chưa được bật trong Supabase Authentication.');
     }
     checkError(error);
+  }
+  if (!isWeb && data?.url) {
+    await Linking.openURL(data.url);
   }
 }
 

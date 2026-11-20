@@ -4,7 +4,7 @@ on:
   push:
     branches: [ main, develop ]
   pull_request:
-    branches: [ main, develop ]
+    branches: [ main, develop, feat/cloud-checkin-reception, feat/cloud-emr-prescription, feat/supabase-family-profiles ]
   workflow_dispatch:
 
 permissions:
@@ -34,6 +34,9 @@ jobs:
 
       - name: Verify PostgreSQL Migration and RLS
         run: npm run test:db
+
+      - name: Verify Staff Workflow Results
+        run: npm run test:staff
 
       - name: Verify Authentication Failure Handling
         run: npm run test:auth

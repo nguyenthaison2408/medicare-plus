@@ -74,7 +74,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onContinue }) => {
           </View>
         </Animated.View>
 
-        <Text style={styles.brandName}>SmartClinic</Text>
+        <Text style={styles.brandName}>MediCare Plus</Text>
         <Badge
           label="Trợ lý y tế thông minh AI"
           variant="blue"
@@ -155,16 +155,14 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
   onGoRegister,
   onBack,
 }) => {
-  const [email, setEmail] = useState(CLOUD_MODE ? '' : 'vu.nguyen@smartclinic.vn');
-  const [password, setPassword] = useState(CLOUD_MODE ? '' : '12345678');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [remember, setRemember] = useState(true);
-  const [selectedRolePreset, setSelectedRolePreset] =
-    useState<UserRole>('patient');
 
   const detectRoleFromEmail = (rawEmail: string): UserRole => {
     const lower = rawEmail.trim().toLowerCase();
-    if (lower.includes('admin') || lower.includes('quantri')) {
+    if (lower.includes('admin') || lower.includes('quantri') || lower.includes('reception') || lower.includes('tiepdon')) {
       return 'admin';
     }
     if (
@@ -184,25 +182,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
   const [emailError, setEmailError] = useState('');
   const [passwordError, setPasswordError] = useState('');
 
-  const handleSelectPreset = (role: UserRole) => {
-    setSelectedRolePreset(role);
-    setEmailError('');
-    setPasswordError('');
-    if (role === 'admin') {
-      setEmail('admin@smartclinic.vn');
-      setPassword('admin123');
-    } else if (role === 'doctor') {
-      setEmail('bs.trang@smartclinic.vn');
-      setPassword('doctor123');
-    } else {
-      setEmail('vu.nguyen@smartclinic.vn');
-      setPassword('12345678');
-    }
-  };
-
   const handleLoginPress = async () => {
     if (loading) return;
-    if (!email.trim()) {
+    const trimmed = email.trim();
+    if (!trimmed) {
       setEmailError('Vui lòng nhập email hoặc số điện thoại');
       return;
     }
@@ -212,17 +195,37 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
     }
     setEmailError('');
     setPasswordError('');
+
+    // Mapping thông minh các bí danh email bác sĩ / quản trị để đăng nhập Supabase thuận tiện
+    let targetEmail = trimmed;
+    const lower = trimmed.toLowerCase();
+    if (lower === 'bs.trang@medicare.vn' || lower === 'bacsi.trang@medicare.vn' || lower === 'bs.trang') {
+      targetEmail = 'bacsi.trang@medicare.example.com';
+    } else if (lower === 'bs.minh@medicare.vn' || lower === 'bacsi.minh@medicare.vn' || lower === 'bs.minh') {
+      targetEmail = 'bacsi.minh@medicare.example.com';
+    } else if (lower === 'bs.duc@medicare.vn' || lower === 'bacsi.duc@medicare.vn' || lower === 'bs.duc') {
+      targetEmail = 'bacsi.duc@medicare.example.com';
+    } else if (lower === 'bs.tuan@medicare.vn' || lower === 'bacsi.tuan@medicare.vn' || lower === 'bs.tuan') {
+      targetEmail = 'bacsi.tuan@medicare.example.com';
+    } else if (lower === 'admin@medicare.vn' || lower === 'quantri@medicare.vn' || lower === 'quantri.bao@medicare.vn' || lower === 'admin') {
+      targetEmail = 'quantri.bao@medicare.example.com';
+    } else if (lower === 'reception@medicare.vn' || lower === 'tiepdon@medicare.vn' || lower === 'reception') {
+      targetEmail = 'tiepdon.phuc@medicare.example.com';
+    }
+
     if (!CLOUD_MODE) {
-      onLoginSuccess(detectRoleFromEmail(email), email);
+      onLoginSuccess(detectRoleFromEmail(trimmed), trimmed);
       return;
     }
     setLoading(true);
     try {
-      const profile = await signInClinic(email, password);
-      onLoginSuccess(profile.role === 'reception' ? 'admin' : profile.role, email);
+      const profile = await signInClinic(targetEmail, password);
+      onLoginSuccess(profile.role === 'reception' ? 'admin' : profile.role, trimmed);
     } catch (error) {
-      setPasswordError(error instanceof Error ? error.message : 'Không thể đăng nhập.');
-    } finally { setLoading(false); }
+      setPasswordError(error instanceof Error ? error.message : 'Không thể đăng nhập. Vui lòng thử lại.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -247,113 +250,13 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
             </View>
             <Text style={styles.authTitle}>Đăng nhập</Text>
             <Text style={styles.authSub}>
-              Chào mừng bạn quay trở lại với{'\n'}SmartClinic
+              Chào mừng bạn quay trở lại với{'\n'}MediCare Plus
             </Text>
           </View>
         </AnimatedEntry>
 
-        {/* Quick Role Account Switcher for Demo */}
-        {!CLOUD_MODE && <AnimatedEntry delay={90} direction="up">
-          <View style={styles.roleQuickBox}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-              <Text style={styles.roleQuickTitle}>
-                Chọn nhanh tài khoản phân quyền (Demo):
-              </Text>
-              <PulsingDot color={COLORS.secondary} size={5} />
-            </View>
-            <View style={styles.roleQuickButtons}>
-              <PressableScale
-                style={{ flex: 1 }}
-                activeScale={0.93}
-                onPress={() => handleSelectPreset('patient')}
-              >
-                <View
-                  style={[
-                    styles.roleChip,
-                    selectedRolePreset === 'patient' && styles.roleChipActive,
-                  ]}
-                >
-                  <Ionicons
-                    name="person-outline"
-                    size={14}
-                    color={
-                      selectedRolePreset === 'patient' ? '#FFFFFF' : COLORS.primary
-                    }
-                  />
-                  <Text
-                    style={[
-                      styles.roleChipText,
-                      selectedRolePreset === 'patient' && styles.roleChipTextActive,
-                    ]}
-                  >
-                    Bệnh nhân
-                  </Text>
-                </View>
-              </PressableScale>
-
-              <PressableScale
-                style={{ flex: 1 }}
-                activeScale={0.93}
-                onPress={() => handleSelectPreset('doctor')}
-              >
-                <View
-                  style={[
-                    styles.roleChip,
-                    selectedRolePreset === 'doctor' && styles.roleChipActive,
-                  ]}
-                >
-                  <Ionicons
-                    name="medkit-outline"
-                    size={14}
-                    color={
-                      selectedRolePreset === 'doctor' ? '#FFFFFF' : COLORS.secondary
-                    }
-                  />
-                  <Text
-                    style={[
-                      styles.roleChipText,
-                      selectedRolePreset === 'doctor' && styles.roleChipTextActive,
-                    ]}
-                  >
-                    Bác sĩ
-                  </Text>
-                </View>
-              </PressableScale>
-
-              <PressableScale
-                style={{ flex: 1 }}
-                activeScale={0.93}
-                onPress={() => handleSelectPreset('admin')}
-              >
-                <View
-                  style={[
-                    styles.roleChip,
-                    selectedRolePreset === 'admin' && styles.roleChipActive,
-                  ]}
-                >
-                  <Ionicons
-                    name="shield-checkmark-outline"
-                    size={14}
-                    color={
-                      selectedRolePreset === 'admin' ? '#FFFFFF' : COLORS.textPrimary
-                    }
-                  />
-                  <Text
-                    style={[
-                      styles.roleChipText,
-                      selectedRolePreset === 'admin' && styles.roleChipTextActive,
-                    ]}
-                  >
-                    Admin
-                  </Text>
-                </View>
-              </PressableScale>
-            </View>
-          </View>
-        </AnimatedEntry>}
-
         {/* Form */}
-        <AnimatedEntry delay={150} direction="up">
+        <AnimatedEntry delay={80} direction="up">
           <AppInput
             label="Email hoặc số điện thoại"
             leftIcon="at-outline"
@@ -362,7 +265,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
             onChangeText={(txt) => {
               setEmail(txt);
               if (emailError) setEmailError('');
-              setSelectedRolePreset(detectRoleFromEmail(txt));
             }}
             keyboardType="email-address"
             autoCapitalize="none"

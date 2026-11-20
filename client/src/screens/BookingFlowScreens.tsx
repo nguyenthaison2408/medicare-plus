@@ -263,7 +263,7 @@ export const DoctorDetailScreen: React.FC<DoctorDetailScreenProps> = ({
             color={COLORS.secondary}
           />
           <Text style={styles.guaranteeText}>
-            SmartClinic bảo lãnh chất lượng chuyên môn & bảo mật bệnh án
+            MediCare Plus bảo lãnh chất lượng chuyên môn & bảo mật bệnh án
           </Text>
         </View>
       </ScrollView>
@@ -824,7 +824,7 @@ export const BookingPaymentScreen: React.FC<BookingPaymentScreenProps> = ({
                 <View style={{ flex: 1, marginLeft: 12 }}>
                   <Text style={styles.qrBankName}>Vietcombank • CN Tân Bình</Text>
                   <Text style={styles.qrAccountNum}>STK: 988241029</Text>
-                  <Text style={styles.qrOwnerName}>BV SMARTCLINIC Y TẾ SỐ</Text>
+                  <Text style={styles.qrOwnerName}>BV MEDICARE PLUS Y TẾ SỐ</Text>
                   <Text style={styles.qrMemo}>Nội dung: SC241029 8892</Text>
                 </View>
               </View>

@@ -364,7 +364,7 @@ export const FamilyProfilesScreen: React.FC<{
     <View style={styles.screen}>
       <AppHeader
         title="Quản Lý Hồ Sơ Người Thân"
-        subtitle="SmartClinic Family • BHYT & lịch khám tập trung"
+        subtitle="MediCare Plus Family • BHYT & lịch khám tập trung"
         onBack={onBack}
         rightActions={[{ icon: 'person-add-outline', onPress: onAddMember }]}
       />
@@ -397,7 +397,7 @@ export const FamilyProfilesScreen: React.FC<{
           style={[styles.heroCard, SHADOWS.md]}
         >
           <View style={styles.rowBetween}>
-            <Badge label="SmartClinic AI Family Care" variant="glass" icon="sparkles" />
+            <Badge label="MediCare Plus AI Family Care" variant="glass" icon="sparkles" />
             <Text style={styles.whiteSub}>{familyMembers.length + 1} thành viên</Text>
           </View>
           <Text style={styles.whiteBody}>
@@ -600,7 +600,7 @@ export const ChildEHRDetailScreen: React.FC<{ onBack?: () => void }> = ({
                   Mũi nhắc MMR II (Sởi - Quai bị - Rubella)
                 </Text>
                 <Text style={styles.docSub}>
-                  Dự kiến: 03/11/2024 • Trung tâm Tiêm chủng Nhi đồng SmartClinic
+                  Dự kiến: 03/11/2024 • Trung tâm Tiêm chủng Nhi đồng MediCare Plus
                 </Text>
               </View>
             </View>

@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useRef } from 'r
 import { Alert } from 'react-native';
 import { CLOUD_MODE, getSupabase } from '../services/supabaseClient';
 import {
-  bookClinicAppointment, cancelClinicAppointment, listClinicAppointments,
+  bookClinicAppointment, cancelClinicAppointment, listClinicAppointments, listClinicDoctors,
   loadClinicProfile, subscribeClinicAppointments, type ClinicProfile, type ClinicAppointment,
 } from '../services/clinicCloud';
 import { clinicAppointmentToItem, clinicPrescriptions, clinicRecord } from '../services/clinicAdapters';
@@ -154,6 +154,7 @@ interface AppContextValue {
   isPiiMasked: boolean;
   togglePiiMask: () => void;
   patientProfile: typeof PATIENT_PROFILE;
+  cloudProfile: ClinicProfile | null;
   isHydrated: boolean;
   cloudSyncError: string;
   resetAppData: () => Promise<void>;
@@ -334,12 +335,97 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         const { data: { session } } = await supabase.auth.getSession();
         if (!mounted || request !== generation) return;
         if (!session) {
-          setAppointments([]); setPrescriptions([]); setCloudProfile(null); setDiagnosisNote(''); setCloudSyncError('');
+          setAppointments([]);
+          setPrescriptions([]);
+          setFamilyMembers([]);
+          setCloudProfile(null);
+          setDiagnosisNote('');
+          setCloudSyncError('');
           setLatestBooking({ ...DEFAULT_TICKET, code: '' });
+          listClinicDoctors().then(cloudDoctors => {
+            if (mounted && cloudDoctors && cloudDoctors.length > 0) {
+              setDoctors(prev =>
+                cloudDoctors.map(cd => {
+                  const existing = prev.find(p => p.id === cd.id) || DOCTORS.find(d => d.id === cd.id);
+                  if (existing) {
+                    return {
+                      ...existing,
+                      name: cd.name || existing.name,
+                      specialty: cd.specialty || existing.specialty,
+                      hospital: cd.hospital || existing.hospital,
+                    };
+                  }
+                  return {
+                    id: cd.id,
+                    name: cd.name,
+                    degree: 'Bác sĩ chuyên khoa',
+                    specialty: cd.specialty,
+                    subSpecialty: cd.specialty,
+                    hospital: cd.hospital,
+                    address: cd.hospital,
+                    experienceYears: 10,
+                    rating: 4.9,
+                    reviewCount: 50,
+                    patientCount: '1k+',
+                    responseTime: '< 15p',
+                    fee: '300.000 đ',
+                    feeNumeric: 300000,
+                    bhytSupport: 'Hỗ trợ BHYT',
+                    availableText: 'Trống hôm nay',
+                    avatar: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=300&auto=format&fit=crop&q=80',
+                    verified: true,
+                    bio: `Bác sĩ ${cd.name} chuyên khoa ${cd.specialty} tại ${cd.hospital}.`,
+                    strengths: [cd.specialty],
+                  };
+                })
+              );
+            }
+          }).catch(() => {});
           return;
         }
-        const [profile, cloudAppointments] = await Promise.all([loadClinicProfile(), listClinicAppointments()]);
+        const [profile, cloudAppointments, cloudDoctors] = await Promise.all([
+          loadClinicProfile(),
+          listClinicAppointments(),
+          listClinicDoctors().catch(() => []),
+        ]);
         if (!mounted || request !== generation) return;
+        if (cloudDoctors && cloudDoctors.length > 0) {
+          setDoctors(prev =>
+            cloudDoctors.map(cd => {
+              const existing = prev.find(p => p.id === cd.id) || DOCTORS.find(d => d.id === cd.id);
+              if (existing) {
+                return {
+                  ...existing,
+                  name: cd.name || existing.name,
+                  specialty: cd.specialty || existing.specialty,
+                  hospital: cd.hospital || existing.hospital,
+                };
+              }
+              return {
+                id: cd.id,
+                name: cd.name,
+                degree: 'Bác sĩ chuyên khoa',
+                specialty: cd.specialty,
+                subSpecialty: cd.specialty,
+                hospital: cd.hospital,
+                address: cd.hospital,
+                experienceYears: 10,
+                rating: 4.9,
+                reviewCount: 50,
+                patientCount: '1k+',
+                responseTime: '< 15p',
+                fee: '300.000 đ',
+                feeNumeric: 300000,
+                bhytSupport: 'Hỗ trợ BHYT',
+                availableText: 'Trống hôm nay',
+                avatar: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=300&auto=format&fit=crop&q=80',
+                verified: true,
+                bio: `Bác sĩ ${cd.name} chuyên khoa ${cd.specialty} tại ${cd.hospital}.`,
+                strengths: [cd.specialty],
+              };
+            })
+          );
+        }
         setCloudProfile(profile);
         setAppointments(cloudAppointments.map(clinicAppointmentToItem));
         const activeAppointments = cloudAppointments.filter(appointment => appointment.status === 'CONFIRMED' || appointment.status === 'CHECKED_IN');
@@ -792,7 +878,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     setFamilyMembers(INITIAL_FAMILY_MEMBERS);
     setPrescriptions(PRESCRIPTION_DRUGS);
     setDiagnosisNote(
-      'Đau đầu căng thẳng (Tension headache) / Rối loạn vận mạch não nhẹ'
+      CLOUD_MODE ? '' : 'Đau đầu căng thẳng (Tension headache) / Rối loạn vận mạch não nhẹ'
     );
     setCabinetMeds(INITIAL_CABINET_MEDS);
     setDoctorReviews(INITIAL_DOCTOR_REVIEWS);
@@ -830,6 +916,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         addDoctorReview,
         isPiiMasked,
         togglePiiMask,
+        cloudProfile,
         patientProfile: CLOUD_MODE ? {
           ...PATIENT_PROFILE, name: cloudProfile?.full_name || 'Bệnh nhân',
           patientCode: cloudProfile?.id || '', age: 0, gender: 'Chưa cập nhật', bloodType: 'Chưa cập nhật',

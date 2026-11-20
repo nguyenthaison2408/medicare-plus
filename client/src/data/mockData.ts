@@ -240,7 +240,7 @@ export const HOSPITALS: HospitalItem[] = [
     latitude: 10.796608,
     longitude: 106.721912,
     phone: '02836221166',
-    gateInfo: 'Sảnh chính Lobby A — Quầy Fast Check-in SmartClinic',
+    gateInfo: 'Sảnh chính Lobby A — Quầy Fast Check-in MediCare Plus',
     parkingInfo: 'Hầm B1 rộng rãi dành cho cả Ô tô & Xe máy',
     workingHours: '07:30 - 17:00 (T2 - T7) • Cấp cứu 24/7',
   },

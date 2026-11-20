@@ -17,7 +17,7 @@ export async function shareAppointmentTicket(
     : `Đã thanh toán Online (${ticket.doctor.fee})`;
 
   const message = [
-    `🏥 PHIẾU HẸN KHÁM SMARTCLINIC`,
+    `🏥 PHIẾU HẸN KHÁM MEDICARE PLUS`,
     `━━━━━━━━━━━━━━━━━━━━`,
     `• Mã phiếu hẹn: ${ticket.code}`,
     `• Số thứ tự: ${ticket.queueNumber}`,
@@ -38,7 +38,7 @@ export async function shareAppointmentTicket(
 
   try {
     await Share.share({
-      title: `Phiếu hẹn khám ${ticket.code} - SmartClinic`,
+      title: `Phiếu hẹn khám ${ticket.code} - MediCare Plus`,
       message,
     });
   } catch {
@@ -62,7 +62,7 @@ export async function sharePrescription(
     .join('\n');
 
   const message = [
-    `💊 ĐƠN THUỐC ĐIỆN TỬ SMARTCLINIC (#DT-241029-01)`,
+    `💊 ĐƠN THUỐC ĐIỆN TỬ MEDICARE PLUS (#DT-241029-01)`,
     `━━━━━━━━━━━━━━━━━━━━`,
     `• Bệnh nhân: Nguyễn Văn Vũ (#BN-882910)`,
     `• Bác sĩ kê đơn: ${doctorName}`,
@@ -71,12 +71,12 @@ export async function sharePrescription(
     `📋 DANH MỤC THUỐC (${drugs.length} loại):`,
     drugLines,
     `━━━━━━━━━━━━━━━━━━━━`,
-    `⚠️ Lưu ý: Uống thuốc đúng giờ theo lịch nhắc trên ứng dụng SmartClinic.`,
+    `⚠️ Lưu ý: Uống thuốc đúng giờ theo lịch nhắc trên ứng dụng MediCare Plus.`,
   ].join('\n');
 
   try {
     await Share.share({
-      title: 'Đơn thuốc điện tử #DT-241029-01 - SmartClinic',
+      title: 'Đơn thuốc điện tử #DT-241029-01 - MediCare Plus',
       message,
     });
   } catch {
@@ -89,7 +89,7 @@ export async function sharePrescription(
  */
 export async function shareDoctorProfile(doctor: DoctorItem): Promise<void> {
   const message = [
-    `👨‍⚕️ THÔNG TIN BÁC SĨ — SMARTCLINIC`,
+    `👨‍⚕️ THÔNG TIN BÁC SĨ — MEDICARE PLUS`,
     `• ${doctor.name} (${doctor.degree})`,
     `• Chuyên khoa: ${doctor.subSpecialty}`,
     `• Bệnh viện: ${doctor.hospital}`,
@@ -100,7 +100,7 @@ export async function shareDoctorProfile(doctor: DoctorItem): Promise<void> {
 
   try {
     await Share.share({
-      title: `Bác sĩ ${doctor.name} - SmartClinic`,
+      title: `Bác sĩ ${doctor.name} - MediCare Plus`,
       message,
     });
   } catch {

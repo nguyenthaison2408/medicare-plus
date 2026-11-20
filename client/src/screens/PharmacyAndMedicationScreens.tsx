@@ -115,7 +115,7 @@ export const MedicationLogScreen: React.FC<{
             style={[styles.heroCard, SHADOWS.sm]}
           >
             <View style={styles.rowBetween}>
-              <Badge label="Trợ lý AI SmartClinic" variant="glass" icon="sparkles" />
+              <Badge label="Trợ lý AI MediCare Plus" variant="glass" icon="sparkles" />
               <Text style={styles.whiteSub} numberOfLines={1}>
                 Toa: TS. BS. Lê Thu Trang
               </Text>

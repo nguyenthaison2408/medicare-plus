@@ -166,12 +166,16 @@ server.listen(5099, async () => {
     // Tổng kết kết quả
     console.log('\n🎉 TẤT CẢ 10/10 BÀI KIỂM THỬ ĐÃ PASS THÀNH CÔNG! (100% PASS RATE)');
 
-    server.close();
-    process.exit(0);
+    server.closeAllConnections?.();
+    server.close(() => {
+      setTimeout(() => process.exit(0), 100);
+    });
 
   } catch (error) {
     console.error('❌ Lỗi kiểm thử:', error);
-    server.close();
-    process.exit(1);
+    server.closeAllConnections?.();
+    server.close(() => {
+      setTimeout(() => process.exit(1), 100);
+    });
   }
 });

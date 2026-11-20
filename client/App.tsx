@@ -13,8 +13,8 @@ import { DOCTORS, DoctorItem } from './src/data/mockData';
 import { AppProvider, useAppContext } from './src/context/AppContext';
 import { CLOUD_MODE } from './src/services/supabaseClient';
 import { signOutClinic } from './src/services/clinicCloud';
-import type { PatientBookingInfo } from './src/utils/bookingValidation';
 import { ClinicStaffScreen } from './src/screens/ClinicStaffScreen';
+import type { PatientBookingInfo } from './src/utils/bookingValidation';
 import { BottomTabBar, MainTabKey } from './src/components';
 import {
   SplashScreen,
@@ -55,7 +55,7 @@ import {
 } from './src/screens/PharmacyAndMedicationScreens';
 
 function AppContent() {
-  const { createBooking, cloudSyncError } = useAppContext();
+  const { createBooking, cloudProfile, cloudSyncError } = useAppContext();
   const bookingInFlight = useRef(false);
   const [route, setRoute] = useState<string>('login');
   const [routeHistory, setRouteHistory] = useState<string[]>([]);
@@ -77,11 +77,6 @@ function AppContent() {
   const isTablet = width > 700;
 
   const navigateTo = (nextRoute: string) => {
-    if (CLOUD_MODE && !['home', 'records', 'appointments', 'profile', 'main', 'login', 'register',
-      'doctorDetail', 'bookingSlot', 'bookingPayment', 'bookingSuccess'].includes(nextRoute)) {
-      setActionMessage('Tính năng này chưa có trong bản thử nghiệm hiện tại.');
-      return;
-    }
     setActionMessage('');
     if (['home', 'records', 'appointments', 'ai', 'profile'].includes(nextRoute)) {
       setRoute('main');
@@ -177,7 +172,8 @@ function AppContent() {
           />
         );
       case 'adminPortal':
-        if (CLOUD_MODE) return <ClinicStaffScreen onLogout={() => { void handleLogout(); }} />;
+        if (CLOUD_MODE && !cloudProfile) return <Text>Đang tải tài khoản...</Text>;
+        if (CLOUD_MODE && cloudProfile?.role === 'reception') return <ClinicStaffScreen onLogout={() => { void handleLogout(); }} />;
         return (
           <AdminDashboardScreen
             onLogout={() => { void handleLogout(); }}
@@ -185,7 +181,6 @@ function AppContent() {
           />
         );
       case 'doctorPortal':
-        if (CLOUD_MODE) return <ClinicStaffScreen onLogout={() => { void handleLogout(); }} />;
         return (
           <DoctorDashboardScreen
             onLogout={() => { void handleLogout(); }}
@@ -418,7 +413,6 @@ function AppContent() {
     <SafeAreaView style={styles.safeRoot}>
       <StatusBar barStyle="dark-content" />
       <View style={[styles.appViewport, isTablet && styles.tabletViewport]}>
-        {CLOUD_MODE && route !== 'login' && route !== 'register' ? <Text style={{ padding: 8, color: COLORS.textSecondary }}>Bản thử nghiệm • Danh mục bác sĩ minh họa</Text> : null}
         {actionMessage ? <View style={{ padding: 12 }}><Text accessibilityRole="alert" style={{ color: COLORS.error }}>{actionMessage}</Text><Text accessibilityRole="button" onPress={() => setActionMessage('')} style={{ color: COLORS.primary, paddingTop: 8 }}>Đóng thông báo</Text></View> : null}
         {CLOUD_MODE && cloudSyncError ? <Text accessibilityRole="alert" style={{ padding: 12, color: COLORS.error }}>{cloudSyncError}</Text> : null}
         {renderCurrentScreen()}

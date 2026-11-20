@@ -3,6 +3,14 @@ import type { PatientBookingInfo } from '../utils/bookingValidation';
 import { getSupabase } from './supabaseClient';
 
 export type ClinicRole = 'patient' | 'doctor' | 'reception' | 'admin';
+export interface ClinicDoctor {
+  id: string;
+  name: string;
+  specialty: string;
+  hospital: string;
+  active: boolean;
+  created_at?: string;
+}
 export interface ClinicProfile {
   id: string;
   full_name: string;
@@ -100,6 +108,13 @@ export async function listClinicAppointments(): Promise<ClinicAppointment[]> {
     .select('*, clinic_medical_records(diagnosis, medications, notes)').order('starts_at', { ascending: false });
   checkError(error);
   return (data || []) as ClinicAppointment[];
+}
+
+export async function listClinicDoctors(): Promise<ClinicDoctor[]> {
+  const { data, error } = await getSupabase().from('clinic_doctors')
+    .select('*').eq('active', true);
+  checkError(error);
+  return (data || []) as ClinicDoctor[];
 }
 
 export function toClinicStart(day: DaySlotItem, slot: TimeSlotItem): string {

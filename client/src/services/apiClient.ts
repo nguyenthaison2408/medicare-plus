@@ -116,7 +116,7 @@ export async function apiRequest<T>(
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       Accept: 'application/json',
-      'X-Client-App': 'SmartClinic-Mobile/1.0.0',
+      'X-Client-App': 'MediCarePlus-Mobile/1.0.0',
       ...(options.headers as Record<string, string>),
     };
 

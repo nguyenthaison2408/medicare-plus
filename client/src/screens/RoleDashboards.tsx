@@ -19,8 +19,11 @@ import {
   SPECIALTIES,
   formatRelativeDate,
   getRelativeDayMeta,
+  type AppointmentItem,
 } from '../data/mockData';
 import { useAppContext } from '../context/AppContext';
+import { CLOUD_MODE } from '../services/supabaseClient';
+import { ClinicStaffScreen } from './ClinicStaffScreen';
 import {
   AppHeader,
   AppButton,
@@ -47,7 +50,7 @@ export interface AdminDashboardScreenProps {
   onNavigate?: (routeKey: string) => void;
 }
 
-type AdminTab = 'overview' | 'doctors' | 'appointments' | 'settings';
+type AdminTab = 'overview' | 'doctors' | 'appointments' | 'settings' | 'reception';
 
 export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({
   onLogout,
@@ -242,7 +245,7 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({
                   <Text style={styles.heroName}>Admin Hệ Thống</Text>
                   <Badge label="SUPER ADMIN" variant="teal" />
                 </View>
-                <Text style={styles.heroEmail}>admin@smartclinic.vn • Toàn quyền</Text>
+                <Text style={styles.heroEmail}>admin@medicare.vn • Toàn quyền</Text>
               </View>
             </View>
           </View>
@@ -774,7 +777,7 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({
               <Badge label={apt.statusBadge} variant={badgeVariant} showDot />
             </View>
             <Text style={styles.aptPatient}>
-              Bệnh nhân: Nguyễn Văn Vũ (32T • Nam)
+              Bệnh nhân: {apt.patientName ? `${apt.patientName} (${apt.patientPhone || 'SĐT: Chưa có'})` : 'Bệnh nhân'}
             </Text>
             <Text style={styles.aptDoc}>
               Bác sĩ phụ trách: {apt.doctor.name} ({apt.doctor.hospital})
@@ -841,8 +844,8 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({
   return (
     <View style={styles.screen}>
       <AppHeader
-        title="SmartClinic Admin"
-        subtitle="admin@smartclinic.vn"
+        title="MediCare Plus Admin"
+        subtitle="admin@medicare.vn"
         badgeText="ADMIN"
         leftIconBox="shield-checkmark-outline"
         rightActions={[
@@ -855,6 +858,7 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({
         {activeTab === 'doctors' && renderDoctorsManagement()}
         {activeTab === 'appointments' && renderAppointmentsManagement()}
         {activeTab === 'settings' && renderAdminSettings()}
+        {activeTab === 'reception' && <ClinicStaffScreen embedded onLogout={onLogout} />}
       </View>
 
       {/* Admin Bottom Navigation */}
@@ -864,6 +868,7 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({
           { key: 'doctors', label: 'QL Bác sĩ', icon: 'medkit' },
           { key: 'appointments', label: 'Điều phối lịch', icon: 'calendar' },
           { key: 'settings', label: 'Cấu hình', icon: 'settings' },
+          ...(CLOUD_MODE ? [{ key: 'reception', label: 'Tiếp đón QR', icon: 'qr-code' }] : []),
         ].map((t) => {
           const active = activeTab === t.key;
           return (
@@ -923,25 +928,40 @@ export const DoctorDashboardScreen: React.FC<DoctorDashboardScreenProps> = ({
   const {
     appointments,
     completeAppointment,
+    doctors,
     prescriptions,
     addPrescriptionDrug,
     diagnosisNote,
     setDiagnosisNote,
+    cloudProfile,
   } = useAppContext();
-  const doctor = DOCTORS[0]; // TS. BS. Lê Thu Trang
+
+  // Xác định bác sĩ đang làm việc từ Supabase Profile hoặc danh mục
+  const doctor = (cloudProfile?.doctor_id && doctors.find((d) => d.id === cloudProfile.doctor_id))
+    || (cloudProfile?.full_name && doctors.find((d) => d.name === cloudProfile.full_name))
+    || DOCTORS[0];
+
   const [activeTab, setActiveTab] = useState<DoctorTab>('schedule');
+  const [selectedPatientApt, setSelectedPatientApt] = useState<AppointmentItem | null>(null);
   const [newDrugName, setNewDrugName] = useState('');
   const [newDrugQty, setNewDrugQty] = useState('14 viên');
   const [newDrugDosage, setNewDrugDosage] = useState('1 viên/lần • Sáng, Tối');
   const [showAddDrugForm, setShowAddDrugForm] = useState(false);
-  const [queueStatuses, setQueueStatuses] = useState<Record<string, string>>({
-    '1': 'Đã check-in QR • Đang chờ',
-    '2': 'Chờ tới lượt',
-    '3': 'Chat trực tuyến (14:00)',
-  });
+  const [queueStatuses, setQueueStatuses] = useState<Record<string, string>>({});
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const upcomingPatientApts = appointments.filter((a) => a.status === 'upcoming');
-  const completedPatientApts = appointments.filter((a) => a.status === 'completed');
+
+  // Lọc lịch hẹn của chính bác sĩ này từ Supabase database
+  const doctorAppointments = appointments.filter(
+    (a) => !cloudProfile?.doctor_id || a.doctor.id === cloudProfile.doctor_id
+  );
+  const upcomingPatientApts = doctorAppointments.filter((a) => a.status === 'upcoming');
+  const completedPatientApts = doctorAppointments.filter((a) => a.status === 'completed');
+
+  const todayAppointments = doctorAppointments.filter(a => getAppointmentDateKey(a) === getRelativeDayMeta(0).fullDate && a.status === 'upcoming');
+
+  const activePatient = selectedPatientApt || upcomingPatientApts[0] || doctorAppointments[0] || null;
+  const activePatientName = activePatient?.patientName || 'Bệnh nhân';
+  const activePatientCode = activePatient?.code || '#BN-001';
 
   const renderSchedule = () => (
     <ScrollView
@@ -975,21 +995,21 @@ export const DoctorDashboardScreen: React.FC<DoctorDashboardScreenProps> = ({
           <View style={styles.heroMetricsStrip}>
             <View style={styles.heroMetricItem}>
               <Text style={styles.heroMetricVal}>
-                {15 + appointments.length} ca
+                {doctorAppointments.filter(a => getAppointmentDateKey(a) === getRelativeDayMeta(0).fullDate).length} ca
               </Text>
               <Text style={styles.heroMetricLabel}>Tổng lịch hôm nay</Text>
             </View>
             <View style={styles.heroDivider} />
             <View style={styles.heroMetricItem}>
               <Text style={styles.heroMetricVal}>
-                {11 + completedPatientApts.length} ca
+                {completedPatientApts.filter(a => getAppointmentDateKey(a) === getRelativeDayMeta(0).fullDate).length} ca
               </Text>
               <Text style={styles.heroMetricLabel}>Đã hoàn tất</Text>
             </View>
             <View style={styles.heroDivider} />
             <View style={styles.heroMetricItem}>
               <Text style={styles.heroMetricVal}>
-                0{4 + upcomingPatientApts.length} ca
+                {todayAppointments.length} ca
               </Text>
               <Text style={styles.heroMetricLabel}>Đang chờ khám</Text>
             </View>
@@ -999,96 +1019,81 @@ export const DoctorDashboardScreen: React.FC<DoctorDashboardScreenProps> = ({
 
       <SectionHeader
         title="Hàng đợi bệnh nhân hôm nay"
-        subtitle="Thứ 3, 29/10/2024 • Phòng 302 Tòa nhà A"
+        subtitle={`Đồng bộ trực tiếp từ cơ sở dữ liệu Supabase • ${doctor.hospital}`}
       />
 
-      {[
-        {
-          id: '1',
-          stt: 'STT #14',
-          name: 'Nguyễn Văn Vũ',
-          meta: '32 tuổi • Nam • Mã BN: #BN-882910',
-          time: '09:30 - 10:00',
-          symptom: 'Đau đầu vùng thái dương 2 ngày, chóng mặt khi nhìn màn hình máy tính.',
-          allergy: 'Cảnh báo: Dị ứng Penicillin',
-        },
-        {
-          id: '2',
-          stt: 'STT #15',
-          name: 'Trần Thị Bích',
-          meta: '45 tuổi • Nữ • Mã BN: #BN-904112',
-          time: '10:00 - 10:30',
-          symptom: 'Tái khám rối loạn tiền đình & kiểm tra kết quả chụp MRI sọ não.',
-        },
-        {
-          id: '3',
-          stt: 'CHAT #04',
-          name: 'Lê Minh Khang',
-          meta: '29 tuổi • Nam • Tư vấn Chat trực tuyến',
-          time: '14:00 - 14:30',
-          symptom: 'Mất ngủ kéo dài, căng cơ cổ vai gáy.',
-        },
-      ].map((pt, idx) => (
-        <AnimatedEntry key={pt.id} delay={100 + idx * 70} direction="up">
-          <View style={[styles.card, SHADOWS.sm]}>
-            <View style={styles.aptRowTop}>
-              <Badge label={`${pt.stt} • ${pt.time}`} variant="blue" />
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                {pt.id === '1' && <PulsingDot color={COLORS.secondary} size={6} />}
-                <Badge label={queueStatuses[pt.id]} variant="teal" showDot />
-              </View>
-            </View>
-
-            <Text style={styles.docName}>{pt.name}</Text>
-            <Text style={styles.docSub}>{pt.meta}</Text>
-
-            <View style={styles.symptomBox}>
-              <Text style={styles.symptomLabel}>Triệu chứng / Lý do khám (AI Triage):</Text>
-              <Text style={styles.symptomText}>{pt.symptom}</Text>
-            </View>
-
-            {pt.allergy && (
-              <Badge
-                label={pt.allergy}
-                variant="danger"
-                icon="warning-outline"
-                style={{ marginBottom: 10 }}
-              />
-            )}
-
-            <View style={styles.docActionRow}>
-              <AppButton
-                title={pt.id === '3' ? 'Mở phòng Chat' : 'Gọi vào khám'}
-                variant="primary"
-                size="sm"
-                leftIcon={pt.id === '3' ? 'chatbubbles-outline' : 'megaphone-outline'}
-                fullWidth={false}
-                style={{ flex: 1 }}
-                onPress={() => {
-                  if (pt.id === '3' && onNavigate) {
-                    onNavigate('teleconsult');
-                    return;
-                  }
-                  setQueueStatuses((prev) => ({
-                    ...prev,
-                    [pt.id]: 'Đang khám tại P.302',
-                  }));
-                  setToastMessage(`Đã phát loa gọi ${pt.stt} - ${pt.name} vào Phòng 302.`);
-                }}
-              />
-              <AppButton
-                title="Kê đơn thuốc"
-                variant="secondary"
-                size="sm"
-                leftIcon="create-outline"
-                fullWidth={false}
-                style={{ flex: 1 }}
-                onPress={() => setActiveTab('prescribe')}
-              />
-            </View>
+      {todayAppointments.length === 0 ? (
+        <AnimatedEntry delay={100} direction="up">
+          <View style={[styles.card, SHADOWS.sm, { alignItems: 'center', paddingVertical: 32 }]}>
+            <Ionicons name="people-outline" size={44} color={COLORS.textSecondary} />
+            <Text style={[styles.docName, { marginTop: 12, textAlign: 'center' }]}>
+              Hàng đợi hôm nay hiện đang trống
+            </Text>
+            <Text style={[styles.docSub, { textAlign: 'center', marginTop: 4, maxWidth: 320 }]}>
+              Chưa có bệnh nhân nào đặt lịch hoặc chờ khám trong ca trực này. Lịch hẹn mới từ ứng dụng sẽ tự động xuất hiện tại đây theo thời gian thực.
+            </Text>
           </View>
         </AnimatedEntry>
-      ))}
+      ) : (
+        todayAppointments.map((pt, idx) => (
+          <AnimatedEntry key={pt.id} delay={100 + idx * 70} direction="up">
+            <View style={[styles.card, SHADOWS.sm]}>
+              <View style={styles.aptRowTop}>
+                <Badge label={`STT #${idx + 1} • ${pt.timeRange || pt.dateLabel}`} variant="blue" />
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                  {pt.status === 'upcoming' && <PulsingDot color={COLORS.secondary} size={6} />}
+                  <Badge label={queueStatuses[pt.id] || pt.statusBadge} variant={pt.status === 'completed' ? 'teal' : 'blue'} showDot />
+                </View>
+              </View>
+
+              <Text style={styles.docName}>{pt.patientName || 'Bệnh nhân'}</Text>
+              <Text style={styles.docSub}>
+                SĐT: {pt.patientPhone || 'Chưa cập nhật'} • Mã phiếu: {pt.code}
+              </Text>
+
+              <View style={styles.symptomBox}>
+                <Text style={styles.symptomLabel}>Triệu chứng / Lý do khám (AI Triage):</Text>
+                <Text style={styles.symptomText}>{pt.symptoms || 'Khám và tư vấn theo chuyên khoa'}</Text>
+              </View>
+
+              <View style={styles.docActionRow}>
+                <AppButton
+                  title={pt.mode === 'video' ? 'Mở phòng Chat / Video' : 'Gọi vào khám'}
+                  variant="primary"
+                  size="sm"
+                  leftIcon={pt.mode === 'video' ? 'videocam-outline' : 'megaphone-outline'}
+                  fullWidth={false}
+                  style={{ flex: 1 }}
+                  onPress={() => {
+                    setSelectedPatientApt(pt);
+                    if (pt.mode === 'video' && onNavigate) {
+                      onNavigate('teleconsult');
+                      return;
+                    }
+                    setQueueStatuses((prev) => ({
+                      ...prev,
+                      [pt.id]: 'Đang khám tại P.302',
+                    }));
+                    setToastMessage(`Đã phát loa gọi ${pt.patientName || 'bệnh nhân'} vào Phòng 302.`);
+                  }}
+                />
+                <AppButton
+                  title="Kê đơn thuốc"
+                  variant="secondary"
+                  size="sm"
+                  leftIcon="create-outline"
+                  fullWidth={false}
+                  style={{ flex: 1 }}
+                  onPress={() => {
+                    setSelectedPatientApt(pt);
+                    setActiveTab('prescribe');
+                  }}
+                />
+              </View>
+            </View>
+          </AnimatedEntry>
+        ))
+      )}
     </ScrollView>
   );
 
@@ -1099,14 +1104,14 @@ export const DoctorDashboardScreen: React.FC<DoctorDashboardScreenProps> = ({
     >
       <SectionHeader
         title="Hồ sơ bệnh án điện tử (EHR)"
-        subtitle="Bệnh nhân đang khám: Nguyễn Văn Vũ (#BN-882910)"
+        subtitle={`Bệnh nhân đang khám: ${activePatientName} (${activePatientCode})`}
       />
       <View style={[styles.card, SHADOWS.sm]}>
         <Text style={styles.docName}>
-          {PATIENT_PROFILE.name} ({PATIENT_PROFILE.age} tuổi • {PATIENT_PROFILE.gender})
+          {activePatientName} {activePatient?.patientPhone ? `• SĐT: ${activePatient.patientPhone}` : ''}
         </Text>
         <Text style={styles.docSub}>
-          Mã BHYT: {PATIENT_PROFILE.bhytCode} • Nhóm máu: {PATIENT_PROFILE.bloodType}
+          Mã hẹn: {activePatientCode} • Phòng khám: {doctor.hospital}
         </Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
           {PATIENT_PROFILE.vitals.map((v) => (
@@ -1153,7 +1158,7 @@ export const DoctorDashboardScreen: React.FC<DoctorDashboardScreenProps> = ({
       >
         <SectionHeader
           title="Kê đơn thuốc điện tử"
-          subtitle="BN: Nguyễn Văn Vũ (#BN-882910) • Toa #DT-241029-01"
+          subtitle={`BN: ${activePatientName} (${activePatientCode})`}
         />
 
         <View style={[styles.card, SHADOWS.sm]}>
@@ -1192,7 +1197,7 @@ export const DoctorDashboardScreen: React.FC<DoctorDashboardScreenProps> = ({
               }}
             >
               <Text style={[styles.docName, { marginBottom: 8 }]}>
-                + Thêm thuốc mới vào đơn của BN. Nguyễn Văn Vũ
+                + Thêm thuốc mới vào đơn của BN. {activePatientName}
               </Text>
               <AppInput
                 label="Tên thuốc & Hàm lượng *"
@@ -1240,7 +1245,7 @@ export const DoctorDashboardScreen: React.FC<DoctorDashboardScreenProps> = ({
                     setNewDrugName('');
                     setShowAddDrugForm(false);
                     setToastMessage(
-                      `Đã thêm "${newDrugName.trim()}" vào đơn thuốc điện tử của BN. Nguyễn Văn Vũ.`
+                      `Đã thêm "${newDrugName.trim()}" vào đơn thuốc điện tử của BN. ${activePatientName}.`
                     );
                   }}
                 />
@@ -1264,11 +1269,11 @@ export const DoctorDashboardScreen: React.FC<DoctorDashboardScreenProps> = ({
             leftIcon="checkmark-circle-outline"
             style={{ marginTop: 14 }}
             onPress={() => {
-              if (upcomingPatientApts.length > 0) {
-                completeAppointment(upcomingPatientApts[0].id);
+              if (activePatient) {
+                completeAppointment(activePatient.id);
               }
               setToastMessage(
-                'Đã phát hành đơn thuốc #DT-241029-01 và đồng bộ tức thì sang Hồ sơ Bệnh án của bệnh nhân!'
+                `Đã phát hành đơn thuốc và đồng bộ tức thì sang Hồ sơ Bệnh án của ${activePatientName}!`
               );
               if (onNavigate) {
                 setTimeout(() => onNavigate('postConsultSummary'), 600);
@@ -1287,8 +1292,10 @@ export const DoctorDashboardScreen: React.FC<DoctorDashboardScreenProps> = ({
     >
       <View style={[styles.card, SHADOWS.sm]}>
         <Text style={styles.docName}>{doctor.name}</Text>
-        <Text style={styles.docSub}>Email: bs.trang@smartclinic.vn</Text>
-        <Text style={styles.docSub}>Chuyên khoa: {doctor.subSpecialty}</Text>
+        <Text style={styles.docSub}>
+          Chức vụ: {doctor.degree}
+        </Text>
+        <Text style={styles.docSub}>Chuyên khoa: {doctor.subSpecialty || doctor.specialty}</Text>
         <Text style={styles.docSub}>Đơn vị: {doctor.hospital}</Text>
       </View>
 
@@ -1323,8 +1330,9 @@ export const DoctorDashboardScreen: React.FC<DoctorDashboardScreenProps> = ({
 
       <View style={{ flex: 1 }}>
         {activeTab === 'schedule' && renderSchedule()}
-        {activeTab === 'patients' && renderPatientsEHR()}
-        {activeTab === 'prescribe' && renderPrescribe()}
+        {(activeTab === 'patients' || activeTab === 'prescribe') && (CLOUD_MODE
+          ? <ClinicStaffScreen key={selectedPatientApt?.id || 'queue'} embedded onLogout={onLogout} initialAppointmentId={selectedPatientApt?.id} />
+          : activeTab === 'patients' ? renderPatientsEHR() : renderPrescribe())}
         {activeTab === 'profile' && renderDoctorProfile()}
       </View>
 

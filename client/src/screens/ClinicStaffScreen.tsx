@@ -9,7 +9,7 @@ import {
   type ClinicAppointment, type ClinicProfile,
 } from '../services/clinicCloud';
 
-export function ClinicStaffScreen({ onLogout }: { onLogout: () => void }) {
+export function ClinicStaffScreen({ onLogout, embedded = false, initialAppointmentId }: { onLogout: () => void; embedded?: boolean; initialAppointmentId?: string }) {
   const [profile, setProfile] = useState<ClinicProfile | null>(null);
   const [appointments, setAppointments] = useState<ClinicAppointment[]>([]);
   const [bookingCode, setBookingCode] = useState('');
@@ -34,12 +34,16 @@ export function ClinicStaffScreen({ onLogout }: { onLogout: () => void }) {
     void loadClinicProfile().then(data => { if (mounted) setProfile(data); }).catch(error => {
       if (mounted) setError(error instanceof Error ? error.message : 'Không tải được tài khoản.');
     });
-    void listClinicAppointments().then(data => { if (mounted) setAppointments(data); }).catch(error => {
+    void listClinicAppointments().then(data => { if (mounted) {
+        setAppointments(data);
+        const initial = data.find(a => a.id === initialAppointmentId && a.status === 'CHECKED_IN');
+        if (initial) setSelected(initial);
+      } }).catch(error => {
       if (mounted) setError(error instanceof Error ? error.message : 'Không tải được lịch khám.');
     });
     const unsubscribe = subscribeClinicAppointments(() => { void refresh(); });
     return () => { mounted = false; unsubscribe(); };
-  }, [refresh]);
+  }, [refresh, initialAppointmentId]);
 
   const perform = async (action: () => Promise<void>) => {
     if (busy) return;
@@ -53,7 +57,7 @@ export function ClinicStaffScreen({ onLogout }: { onLogout: () => void }) {
   const completed = appointments.filter(a => a.status === 'COMPLETED');
 
   return <View style={styles.screen}>
-    <AppHeader title={profile?.role === 'doctor' ? 'Bàn khám bác sĩ' : 'Tiếp đón và quản lý lịch khám'} />
+    {!embedded && <AppHeader title={profile?.role === 'doctor' ? 'Bàn khám bác sĩ' : 'Tiếp đón và quản lý lịch khám'} />}
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <Text style={styles.title}>{profile?.full_name || 'Đang tải tài khoản...'}</Text>
       <Text style={styles.body}>Chờ khám: {pending.length} · Hoàn thành: {completed.length}</Text>
@@ -115,7 +119,7 @@ export function ClinicStaffScreen({ onLogout }: { onLogout: () => void }) {
         <AppButton title="Đóng bệnh án đang nhập" variant="outline" onPress={() => setSelected(null)} />
       </View> : null}
       {!pending.length ? <Text style={styles.body}>Chưa có lịch hẹn đang chờ khám.</Text> : null}
-      <AppButton title="Đăng xuất" variant="outline" onPress={onLogout} />
+      {!embedded && <AppButton title="Đăng xuất" variant="outline" onPress={onLogout} />}
     </ScrollView>
   </View>;
 }

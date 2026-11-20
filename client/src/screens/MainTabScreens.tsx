@@ -25,6 +25,8 @@ import {
   HospitalItem,
 } from '../data/mockData';
 import { useAppContext } from '../context/AppContext';
+import { CLOUD_MODE } from '../services/supabaseClient';
+import { ClinicPatientRecordsScreen, ClinicPatientProfileScreen } from './ClinicPatientScreens';
 import {
   HomeGreetingHeader,
   SearchBar,
@@ -612,6 +614,8 @@ export const EHRScreen: React.FC<EHRScreenProps> = ({
   const [toastInfo, setToastInfo] = useState<{ title: string; msg: string } | null>(
     null
   );
+
+  if (CLOUD_MODE) return <ClinicPatientRecordsScreen />;
 
   return (
     <View style={styles.screen}>
@@ -1352,6 +1356,8 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
   const totalDoses = Object.keys(takenMap).length || 3;
   const takenCount = Object.values(takenMap).filter(Boolean).length;
   const adherencePct = Math.round((takenCount / totalDoses) * 100);
+
+  if (CLOUD_MODE) return <ClinicPatientProfileScreen onLogout={onLogout} />;
 
   return (
     <View style={styles.screen}>

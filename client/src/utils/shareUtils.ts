@@ -64,7 +64,7 @@ export async function sharePrescription(
   const message = [
     `💊 ĐƠN THUỐC ĐIỆN TỬ MEDICARE PLUS (#DT-241029-01)`,
     `━━━━━━━━━━━━━━━━━━━━`,
-    `• Bệnh nhân: Nguyễn Văn Vũ (#BN-882910)`,
+    `• Bệnh nhân: Vi Hữu Thành (#BN-882910)`,
     `• Bác sĩ kê đơn: ${doctorName}`,
     `• Chẩn đoán: ${diagnosisNote}`,
     `━━━━━━━━━━━━━━━━━━━━`,

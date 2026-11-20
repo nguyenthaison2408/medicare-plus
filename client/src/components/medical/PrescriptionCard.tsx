@@ -233,22 +233,32 @@ export const MedicalHistoryTimeline: React.FC<MedicalHistoryTimelineProps> = ({
   const items = [
     {
       date: formatRelativeDate(-2),
-      tag: 'Lần khám mới nhất',
-      title: 'Khám Chuyên khoa Thần kinh',
-      doctor: 'Bác sĩ: TS. BS. Lê Thu Trang',
-      summaryLabel: 'Chẩn đoán & kết luận của bác sĩ:',
+      tag: 'Tái khám hoàn thành',
+      title: 'Tái khám Chuyên khoa Thần kinh (Đau đầu Migraine)',
+      doctor: 'Bác sĩ: TS. BS. Lê Thu Trang • BV Đại học Y Dược TP.HCM',
+      summaryLabel: 'Kết quả tái khám & Đánh giá đáp ứng:',
       summaryValue:
-        'Đau đầu căng thẳng (Tension headache) / Rối loạn vận mạch não nhẹ',
+        'Đáp ứng tốt phác đồ điều trị, tần suất đau nửa đầu giảm 70%, ngủ sâu giấc hơn. Duy trì Sibelium 5mg (buổi tối) và Tanakan 80mg.',
       active: true,
     },
     {
-      date: formatRelativeDate(-45),
-      tag: 'Hoàn thành',
-      title: 'Khám Mắt tổng quát & Đo khúc xạ',
-      doctor: 'Bác sĩ: ThS. BS. Nguyễn Minh Đức',
-      summaryLabel: 'Kết quả:',
+      date: formatRelativeDate(-16),
+      tag: 'Khám ban đầu',
+      title: 'Khám Chuyên khoa Thần kinh (Đau đầu cấp)',
+      doctor: 'Bác sĩ: TS. BS. Lê Thu Trang • BV Đại học Y Dược TP.HCM',
+      summaryLabel: 'Chẩn đoán xác định ban đầu:',
       summaryValue:
-        'Cận thị MP: -1.75 D / MT: -1.50 D, Đáy mắt bình thường',
+        'Hội chứng đau nửa đầu Migraine không có tiền triệu / Rối loạn vận mạch não do căng thẳng. Đã chỉ định chụp MRI não và kê đơn đợt 1.',
+      active: false,
+    },
+    {
+      date: formatRelativeDate(-60),
+      tag: 'Kiểm tra định kỳ',
+      title: 'Khám Nội tổng quát & Sức khỏe định kỳ',
+      doctor: 'Bác sĩ: BS. CKII. Nguyễn Văn Minh • BV Đại học Y Dược TP.HCM',
+      summaryLabel: 'Kết luận tổng quát:',
+      summaryValue:
+        'Thể trạng tốt, huyết áp 118/78 mmHg, tim phổi bình thường, tư vấn duy trì vận động thể thao và tránh thức khuya.',
       active: false,
     },
   ];

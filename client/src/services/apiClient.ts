@@ -211,7 +211,7 @@ export const authService = {
           ? 'Quản trị viên Hệ thống'
           : params.role === 'doctor'
           ? 'TS. BS. Lê Thu Trang'
-          : 'Nguyễn Văn Vũ',
+          : 'Vi Hữu Thành',
       issuedAt: Date.now(),
     };
 

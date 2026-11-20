@@ -187,25 +187,33 @@ const INITIAL_CABINET_MEDS: MedicineCabinetItem[] = [
   {
     id: 'cab-1',
     name: 'Sibelium 5mg (Flunarizine)',
-    owner: 'Nguyễn Văn Vũ (Bản thân)',
+    owner: 'Vi Hữu Thành (Bản thân)',
     stock: 'Còn 4 / 30 viên',
     exp: 'HSD: 12/2026',
     urgent: true,
   },
   {
     id: 'cab-2',
-    name: 'Ginkgo Biloba 80mg',
-    owner: 'Nguyễn Văn Vũ (Bản thân)',
+    name: 'Ginkgo Biloba (Tanakan) 80mg',
+    owner: 'Vi Hữu Thành (Bản thân)',
     stock: 'Còn 18 / 30 viên',
     exp: 'HSD: 08/2026',
     urgent: false,
   },
   {
     id: 'cab-3',
-    name: 'Amlodipine 5mg (Thuốc Huyết áp)',
-    owner: 'Bà Trần Thị Lan (Mẹ • 62T)',
-    stock: 'Còn 22 / 30 viên',
-    exp: 'HSD: 05/2027',
+    name: 'Paracetamol 500mg (Panadol Extra)',
+    owner: 'Vi Hữu Thành (Bản thân)',
+    stock: 'Còn 12 / 20 viên',
+    exp: 'HSD: 10/2027',
+    urgent: false,
+  },
+  {
+    id: 'cab-4',
+    name: 'Magne B6 Corbiere',
+    owner: 'Vi Hữu Thành (Bản thân)',
+    stock: 'Còn 20 / 30 viên',
+    exp: 'HSD: 03/2027',
     urgent: false,
   },
 ];
@@ -272,23 +280,11 @@ const INITIAL_FAMILY_MEMBERS: FamilyMemberItem[] = [
 const INITIAL_APPOINTMENTS: AppointmentItem[] = [
   ...APPOINTMENTS,
   {
-    id: 'apt-completed-1',
-    code: '#KB-241028-9982',
-    doctor: DOCTORS[0],
-    dateLabel: 'Đã khám • 28/10/2024',
-    timeRange: '09:00 - 09:30, 28/10/2024',
-    queueNumber: 'STT #08',
-    room: 'Phòng 302, Tầng 3, Tòa nhà A',
-    status: 'completed',
-    mode: 'clinic',
-    statusBadge: 'Đã có kết quả',
-  },
-  {
     id: 'apt-cancelled-1',
     code: '#SC-241010-3310',
     doctor: DOCTORS[1],
-    dateLabel: 'Đã hủy • 10/10/2024',
-    timeRange: '15:00 - 15:30, 10/10/2024',
+    dateLabel: `Đã hủy • ${formatRelativeDate(-40)}`,
+    timeRange: '15:00 - 15:30',
     queueNumber: 'STT #21',
     room: 'Phòng 205, Khoa Tim mạch',
     status: 'cancelled',
@@ -298,16 +294,28 @@ const INITIAL_APPOINTMENTS: AppointmentItem[] = [
 ];
 
 const DEFAULT_TICKET: LatestBookingTicket = {
-  code: '#SC-241029-8892',
+  code: '#TK-241118-8829',
   doctor: DOCTORS[0],
-  dayLabel: 'Thứ 3',
-  fullDate: '29/10/2024',
-  timeRange: '09:30 - 10:00',
+  dayLabel: 'Thứ 2',
+  fullDate: formatRelativeDate(-2),
+  timeRange: '14:30 - 15:00',
   room: 'P.302 • Tầng 3, Tòa nhà A',
-  queueNumber: 'STT #14',
+  queueNumber: 'STT #05',
   consultMode: 'clinic',
   paymentMethod: 'at_clinic_bhyt',
-  patientName: PATIENT_PROFILE.name,
+  patientName: 'Vi Hữu Thành',
+  patientPhone: '0989882133',
+  patientEmail: 'thanhvihuu@gmail.com',
+  symptoms: 'Tái khám theo dõi đau nửa đầu Migraine',
+};
+
+const INITIAL_TAKEN_MAP: Record<string, boolean> = {
+  'apt-completed-recheck:0:dose-1': true,
+  'rx-1:dose-1': true,
+  'apt-completed-recheck:1:dose-1': true,
+  'rx-2:dose-1': true,
+  'apt-completed-recheck:3:dose-1': true,
+  'rx-4:dose-1': true,
 };
 
 const AppContext = createContext<AppContextValue | undefined>(undefined);
@@ -321,7 +329,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     useState<LatestBookingTicket>(CLOUD_MODE ? { ...DEFAULT_TICKET, code: '' } : DEFAULT_TICKET);
   const selectedTicketCode = useRef<string | null>(null);
   const [takenMap, setTakenMap] = useState<Record<string, boolean>>(
-    {}
+    CLOUD_MODE ? {} : INITIAL_TAKEN_MAP
   );
   const [familyMembers, setFamilyMembers] = useState<FamilyMemberItem[]>(
     CLOUD_MODE ? [] : INITIAL_FAMILY_MEMBERS

@@ -382,10 +382,10 @@ export const FamilyProfilesScreen: React.FC<{
             />
             <View style={{ flex: 1, minWidth: 0, marginLeft: 12 }}>
               <Text style={styles.docName} numberOfLines={1}>
-                Nguyễn Văn Vũ (Bản thân)
+                Vi Hữu Thành (Bản thân)
               </Text>
               <Text style={styles.docSub} numberOfLines={1}>
-                32 tuổi • #BN-882910 • Nhóm máu O+
+                21 tuổi • #BN-882910 • Nhóm máu O+
               </Text>
             </View>
           </View>
@@ -716,7 +716,7 @@ export const AddEditFamilyMemberScreen: React.FC<{ onBack?: () => void }> = ({
     >
       <AppHeader
         title="Thêm Hồ Sơ Người Thân"
-        subtitle="Chủ tài khoản bảo trợ: Nguyễn Văn Vũ"
+        subtitle="Chủ tài khoản bảo trợ: Vi Hữu Thành"
         onBack={onBack}
       />
       <ScrollView
@@ -987,7 +987,7 @@ export const TeleconsultationScreen: React.FC<{
           <View style={[styles.card, SHADOWS.sm, { paddingVertical: 10 }]}>
             <View style={[styles.rowBetween, { marginBottom: 8 }]}>
               <Text style={[styles.docSub, { flex: 1 }]} numberOfLines={1}>
-                Ca tư vấn #SC-241029-8892 • BN: Nguyễn Văn Vũ
+                Ca tư vấn #SC-241029-8892 • BN: Vi Hữu Thành
               </Text>
               <Badge label="Đang tư vấn" variant="teal" showDot />
             </View>
@@ -1333,7 +1333,7 @@ export const LabAndImagingResultsScreen: React.FC<{
             showDot
           />
           <Text style={[styles.docName, { marginTop: 8 }]}>
-            Nguyễn Văn Vũ (32 tuổi • Nam • #BN-882910)
+            Vi Hữu Thành (21 tuổi • Nam • #BN-882910)
           </Text>
           <Text style={styles.docSub}>
             Bác sĩ chỉ định: TS. BS. Lê Thu Trang (Nội Thần Kinh)

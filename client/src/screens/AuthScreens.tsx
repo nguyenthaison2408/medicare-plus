@@ -387,10 +387,10 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
   onRegisterSuccess,
   onGoLogin,
 }) => {
-  const [fullName, setFullName] = useState(CLOUD_MODE ? '' : 'Nguyễn Văn Vũ');
-  const [email, setEmail] = useState(CLOUD_MODE ? '' : 'vu.nguyen@smartclinic.vn');
-  const [phone, setPhone] = useState(CLOUD_MODE ? '' : '0912345678');
-  const [dob, setDob] = useState(CLOUD_MODE ? '' : '15/08/1992');
+  const [fullName, setFullName] = useState(CLOUD_MODE ? '' : 'Vi Hữu Thành');
+  const [email, setEmail] = useState(CLOUD_MODE ? '' : 'thanhvihuu@gmail.com');
+  const [phone, setPhone] = useState(CLOUD_MODE ? '' : '0989882133');
+  const [dob, setDob] = useState(CLOUD_MODE ? '' : '20/10/2005');
   const [gender, setGender] = useState('nam');
   const [password, setPassword] = useState(CLOUD_MODE ? '' : 'Smart123456');
   const [confirmPassword, setConfirmPassword] = useState(CLOUD_MODE ? '' : 'Smart123456');

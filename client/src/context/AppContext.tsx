@@ -8,6 +8,11 @@ import {
 import { clinicAppointmentToItem, clinicPrescriptions, clinicRecord } from '../services/clinicAdapters';
 import { fetchDoctorReviewsCloud, submitDoctorReviewCloud } from '../services/clinicReviews';
 import { fetchFamilyMembersCloud, addFamilyMemberCloud } from '../services/clinicFamily';
+import {
+  addMedicineCabinetCloud,
+  fetchMedicationDataForRole,
+  setMedicationTakenCloud,
+} from '../services/clinicMedicine';
 import type { PatientBookingInfo } from '../utils/bookingValidation';
 import {
   APPOINTMENTS,
@@ -91,6 +96,13 @@ export interface MedicineCabinetItem {
   urgent: boolean;
 }
 
+export interface MedicationDoseLogRef {
+  logKey: string;
+  appointmentId?: string;
+  medicationIndex?: number;
+  doseKey: string;
+}
+
 export interface DoctorReviewItem {
   id: string;
   doctorId: string;
@@ -127,7 +139,7 @@ interface AppContextValue {
 
   // 2. Medication Adherence Log
   takenMap: Record<string, boolean>;
-  toggleMedicationTaken: (slotKey: string) => void;
+  toggleMedicationTaken: (dose: MedicationDoseLogRef) => Promise<void>;
 
   // 3. Family Profiles
   familyMembers: FamilyMemberItem[];
@@ -151,7 +163,9 @@ interface AppContextValue {
 
   // 5. Medicine Cabinet & Doctor Reviews
   cabinetMeds: MedicineCabinetItem[];
-  addCabinetMedicine: (med: Omit<MedicineCabinetItem, 'id'>) => void;
+  addCabinetMedicine: (
+    med: Omit<MedicineCabinetItem, 'id' | 'owner'>
+  ) => Promise<void>;
   doctorReviews: DoctorReviewItem[];
   addDoctorReview: (review: {
     doctorId: string;
@@ -306,11 +320,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   const [latestBooking, setLatestBooking] =
     useState<LatestBookingTicket>(CLOUD_MODE ? { ...DEFAULT_TICKET, code: '' } : DEFAULT_TICKET);
   const selectedTicketCode = useRef<string | null>(null);
-  const [takenMap, setTakenMap] = useState<Record<string, boolean>>({
-    morning: true,
-    afternoon: true,
-    evening: false,
-  });
+  const [takenMap, setTakenMap] = useState<Record<string, boolean>>(
+    {}
+  );
   const [familyMembers, setFamilyMembers] = useState<FamilyMemberItem[]>(
     CLOUD_MODE ? [] : INITIAL_FAMILY_MEMBERS
   );
@@ -322,7 +334,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   const [doctors, setDoctors] = useState<DoctorItem[]>(DOCTORS);
   const [hospitals, setHospitals] = useState<HospitalItem[]>(HOSPITALS);
   const [cabinetMeds, setCabinetMeds] =
-    useState<MedicineCabinetItem[]>(INITIAL_CABINET_MEDS);
+    useState<MedicineCabinetItem[]>(CLOUD_MODE ? [] : INITIAL_CABINET_MEDS);
   const [doctorReviews, setDoctorReviews] = useState<DoctorReviewItem[]>(
     CLOUD_MODE ? [] : INITIAL_DOCTOR_REVIEWS
   );
@@ -350,6 +362,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
           setPrescriptions([]);
           setFamilyMembers([]);
           setDoctorReviews([]);
+          setCabinetMeds([]);
+          setTakenMap({});
           setCloudProfile(null);
           setDiagnosisNote('');
           setCloudSyncError('');
@@ -395,10 +409,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
           }).catch(() => {});
           return;
         }
-        const [profile, cloudAppointments, cloudDoctors] = await Promise.all([
-          loadClinicProfile(),
+        const profile = await loadClinicProfile();
+        if (!mounted || request !== generation) return;
+        const [cloudAppointments, cloudDoctors, families, reviews] = await Promise.all([
           listClinicAppointments(),
           listClinicDoctors().catch(() => []),
+          fetchFamilyMembersCloud(),
+          fetchDoctorReviewsCloud(),
         ]);
         if (!mounted || request !== generation) return;
         if (cloudDoctors && cloudDoctors.length > 0) {
@@ -459,12 +476,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         } else { setLatestBooking({ ...DEFAULT_TICKET, code: '' }); }
         setPrescriptions(clinicPrescriptions(cloudAppointments));
         setDiagnosisNote(cloudAppointments.map(clinicRecord).find(Boolean)?.diagnosis || 'Chưa có chẩn đoán được bác sĩ lưu.');
-        setCloudSyncError('');
-        const families = await fetchFamilyMembersCloud();
-        if (!mounted || request !== generation) return;
         setFamilyMembers(families);
-        const reviews = await fetchDoctorReviewsCloud();
-        if (mounted && request === generation) setDoctorReviews(reviews);
+        setDoctorReviews(reviews);
+        setCabinetMeds([]);
+        setTakenMap({});
+        setCloudSyncError('');
+
+        // Medicine data is patient-only. It must never block staff profiles,
+        // appointments or the rest of the portal from loading.
+        try {
+          const medicationData = await fetchMedicationDataForRole(profile.role);
+          if (!mounted || request !== generation) return;
+          setCabinetMeds(medicationData.medicines);
+          setTakenMap(medicationData.takenMap);
+        } catch (error) {
+          if (mounted && request === generation) {
+            setCloudSyncError(
+              error instanceof Error
+                ? error.message
+                : 'Không tải được dữ liệu thuốc trực tuyến.'
+            );
+          }
+        }
       } catch (error) {
         if (mounted && request === generation) setCloudSyncError(error instanceof Error ? error.message : 'Không tải được dữ liệu trực tuyến.');
       }
@@ -480,6 +513,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
           selectedTicketCode.current = null;
           setFamilyMembers([]);
           setDoctorReviews([]);
+          setCabinetMeds([]);
+          setTakenMap({});
           setAppointments([]); setPrescriptions([]); setCloudProfile(null); setDiagnosisNote('');
           setLatestBooking({ ...DEFAULT_TICKET, code: '' });
         }
@@ -730,11 +765,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
-  const toggleMedicationTaken = (slotKey: string) => {
-    setTakenMap((prev) => ({
-      ...prev,
-      [slotKey]: !prev[slotKey],
-    }));
+  const toggleMedicationTaken = async (dose: MedicationDoseLogRef): Promise<void> => {
+    if (CLOUD_MODE) {
+      const expectedUser = cloudUserIdRef.current;
+      if (!expectedUser) {
+        Alert.alert('Nhật ký uống thuốc', 'Vui lòng đăng nhập lại.');
+        return;
+      }
+      const nextTaken = !takenMap[dose.logKey];
+      try {
+        const saved = await setMedicationTakenCloud(dose, nextTaken);
+        if (cloudUserIdRef.current !== expectedUser) return;
+        setTakenMap(saved);
+      } catch (error) {
+        Alert.alert(
+          'Nhật ký uống thuốc',
+          error instanceof Error ? error.message : 'Không thể cập nhật cữ thuốc.'
+        );
+      }
+      return;
+    }
+    setTakenMap(prev => ({ ...prev, [dose.logKey]: !prev[dose.logKey] }));
   };
 
   const addFamilyMember = async (member: {
@@ -778,10 +829,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     ehrService.syncPrescriptionDrug(newDrug, diagnosisNote);
   };
 
-  const addCabinetMedicine = (med: Omit<MedicineCabinetItem, 'id'>) => {
+  const addCabinetMedicine = async (
+    med: Omit<MedicineCabinetItem, 'id' | 'owner'>
+  ): Promise<void> => {
+    if (CLOUD_MODE) {
+      const expectedUser = cloudUserIdRef.current;
+      if (!expectedUser) throw new Error('Vui lòng đăng nhập lại trước khi thêm thuốc.');
+      const saved = await addMedicineCabinetCloud(med);
+      if (cloudUserIdRef.current !== expectedUser) {
+        throw new Error('Phiên đăng nhập đã thay đổi. Vui lòng tải lại Tủ thuốc.');
+      }
+      setCabinetMeds(prev => [saved, ...prev]);
+      return;
+    }
     setCabinetMeds((prev) => [
       {
         ...med,
+        owner: `${PATIENT_PROFILE.name} (Bản thân)`,
         id: `cab-${prev.length + 1}`,
       },
       ...prev,
@@ -941,7 +1005,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     await storageService.resetAllData();
     setAppointments(INITIAL_APPOINTMENTS);
     setLatestBooking(DEFAULT_TICKET);
-    setTakenMap({ morning: true, afternoon: true, evening: false });
+    setTakenMap({});
     setFamilyMembers(INITIAL_FAMILY_MEMBERS);
     setPrescriptions(PRESCRIPTION_DRUGS);
     setDiagnosisNote(

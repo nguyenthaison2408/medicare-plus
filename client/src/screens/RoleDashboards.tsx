@@ -1275,9 +1275,20 @@ export const DoctorDashboardScreen: React.FC<DoctorDashboardScreenProps> = ({
             size="lg"
             leftIcon="checkmark-circle-outline"
             style={{ marginTop: 14 }}
-            onPress={() => {
+            onPress={async () => {
+              if (!activePatient) return;
               if (activePatient) {
-                completeAppointment(activePatient.id);
+                const meds = prescriptions.map((p) => ({
+                  name: p.name,
+                  dosage: `${p.quantity} - ${p.dosageTag} (${p.instructionTag})`,
+                }));
+                const success = await completeAppointment(
+                  activePatient.id,
+                  diagnosisNote || 'Khám và tư vấn chuyên khoa',
+                  meds,
+                  ''
+                );
+                if (!success) return;
               }
               setToastMessage(
                 `Đã phát hành đơn thuốc và đồng bộ tức thì sang Hồ sơ Bệnh án của ${activePatientName}!`
@@ -1338,7 +1349,7 @@ export const DoctorDashboardScreen: React.FC<DoctorDashboardScreenProps> = ({
       <View style={{ flex: 1 }}>
         {activeTab === 'schedule' && renderSchedule()}
         {(activeTab === 'patients' || activeTab === 'prescribe') && (CLOUD_MODE
-          ? <ClinicStaffScreen key={selectedPatientApt?.id || 'queue'} embedded onLogout={onLogout} initialAppointmentId={selectedPatientApt?.id} />
+          ? <ClinicStaffScreen key={selectedPatientApt?.id || 'queue'} embedded onLogout={onLogout} onComplete={completeAppointment} initialAppointmentId={selectedPatientApt?.id} />
           : activeTab === 'patients' ? renderPatientsEHR() : renderPrescribe())}
         {activeTab === 'profile' && renderDoctorProfile()}
       </View>

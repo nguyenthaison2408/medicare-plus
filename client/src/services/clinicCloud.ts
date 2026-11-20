@@ -17,6 +17,27 @@ export interface ClinicProfile {
   phone: string;
   role: ClinicRole;
   doctor_id: string | null;
+  gender?: string;
+  dob?: string;
+  blood_type?: string;
+  emergency_contact?: string;
+  bhyt_code?: string;
+  bhyt_hospital?: string;
+  bhyt_expiry?: string;
+  avatar_url?: string;
+}
+
+export interface UpdateClinicProfileInput {
+  full_name: string;
+  phone?: string;
+  gender?: string;
+  dob?: string;
+  blood_type?: string;
+  emergency_contact?: string;
+  bhyt_code?: string;
+  bhyt_hospital?: string;
+  bhyt_expiry?: string;
+  avatar_url?: string;
 }
 export interface ClinicMedication { name: string; dosage: string }
 export interface ClinicMedicalRecord {
@@ -82,11 +103,55 @@ export async function loadClinicProfile(): Promise<ClinicProfile> {
   return data as ClinicProfile;
 }
 
+export async function updateClinicProfile(updates: UpdateClinicProfileInput): Promise<ClinicProfile> {
+  const { data: { user }, error: authError } = await getSupabase().auth.getUser();
+  checkError(authError);
+  if (!user) throw new Error(errorMessages.AUTH_REQUIRED);
+  const payload: Record<string, string> = {
+    full_name: updates.full_name.trim(),
+  };
+  if (updates.phone !== undefined) payload.phone = updates.phone.replace(/\s+/g, '');
+  if (updates.gender !== undefined) payload.gender = updates.gender.trim();
+  if (updates.dob !== undefined) payload.dob = updates.dob.trim();
+  if (updates.blood_type !== undefined) payload.blood_type = updates.blood_type.trim();
+  if (updates.emergency_contact !== undefined) payload.emergency_contact = updates.emergency_contact.trim();
+  if (updates.bhyt_code !== undefined) payload.bhyt_code = updates.bhyt_code.trim().toUpperCase();
+  if (updates.bhyt_hospital !== undefined) payload.bhyt_hospital = updates.bhyt_hospital.trim();
+  if (updates.bhyt_expiry !== undefined) payload.bhyt_expiry = updates.bhyt_expiry.trim();
+  if (updates.avatar_url !== undefined) payload.avatar_url = updates.avatar_url.trim();
+
+  const { data, error } = await getSupabase()
+    .from('clinic_profiles')
+    .update(payload)
+    .eq('id', user.id)
+    .select('*')
+    .single();
+  checkError(error);
+  return data as ClinicProfile;
+}
+
 export async function signInClinic(email: string, password: string): Promise<ClinicProfile> {
   const { error } = await getSupabase().auth.signInWithPassword({ email: email.trim(), password });
   checkError(error);
   try { return await loadClinicProfile(); }
   catch (error) { await getSupabase().auth.signOut(); throw error; }
+}
+
+export async function signInWithGoogleClinic(): Promise<void> {
+  const redirectTo =
+    typeof window !== 'undefined' && window.location?.origin
+      ? window.location.origin
+      : undefined;
+  const { error } = await getSupabase().auth.signInWithOAuth({
+    provider: 'google',
+    options: redirectTo ? { redirectTo } : undefined,
+  });
+  if (error) {
+    if (error.message.toLowerCase().includes('provider is not enabled')) {
+      throw new Error('Nhà cung cấp Google OAuth chưa được bật trong Supabase Authentication.');
+    }
+    checkError(error);
+  }
 }
 
 export async function signUpClinic(params: { email: string; password: string; fullName: string; phone: string }): Promise<boolean> {

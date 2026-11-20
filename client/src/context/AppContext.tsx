@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useRef } from 'r
 import { Alert } from 'react-native';
 import { CLOUD_MODE, getSupabase } from '../services/supabaseClient';
 import {
-  bookClinicAppointment, cancelClinicAppointment, completeClinicAppointment, listClinicAppointments, listClinicDoctors,
+  bookClinicAppointment, cancelClinicAppointment, checkInClinic, completeClinicAppointment, listClinicAppointments, listClinicDoctors,
   loadClinicProfile, subscribeClinicAppointments, type ClinicProfile, type ClinicAppointment, type ClinicMedication,
 } from '../services/clinicCloud';
 import { clinicAppointmentToItem, clinicPrescriptions, clinicRecord } from '../services/clinicAdapters';
@@ -120,6 +120,8 @@ interface AppContextValue {
     medications?: ClinicMedication[],
     notes?: string
   ) => Promise<boolean>;
+
+  checkInAppointment: (appointmentId: string, bookingCode?: string) => Promise<boolean>;
 
   // 2. Medication Adherence Log
   takenMap: Record<string, boolean>;
@@ -671,50 +673,43 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const completeAppointment = async (
-    appointmentId: string,
-    diagnosis?: string,
-    medications?: ClinicMedication[],
-    notes?: string
+    appointmentId: string, diagnosis?: string, medications?: ClinicMedication[], notes?: string
   ): Promise<boolean> => {
     try {
       if (CLOUD_MODE) {
-        await completeClinicAppointment(
-          appointmentId,
-          diagnosis || 'Khám và tư vấn chuyên khoa định kỳ',
-          medications || [],
-          notes || 'Tái khám khi có dấu hiệu bất thường.'
-        );
+        if (!diagnosis?.trim() || diagnosis.trim().length < 2) throw new Error('Vui lòng nhập chẩn đoán sau khi khám.');
+        await completeClinicAppointment(appointmentId, diagnosis, medications || [], notes || '');
+        const rows = await listClinicAppointments();
+        setAppointments(rows.map(clinicAppointmentToItem));
+        setPrescriptions(clinicPrescriptions(rows));
+      } else {
+        setAppointments(prev => prev.map(a => a.id === appointmentId
+          ? { ...a, status: 'completed', statusBadge: 'Đã hoàn tất khám' } : a));
       }
-
-      setAppointments((prev) =>
-        prev.map((apt) =>
-          apt.id === appointmentId
-            ? {
-                ...apt,
-                status: 'completed' as const,
-                statusBadge: 'Đã hoàn tất khám',
-              }
-            : apt
-        )
-      );
-
-      // Nếu có đơn thuốc, tự động đẩy vào danh sách đơn thuốc của bệnh nhân
-      if (medications && medications.length > 0) {
-        medications.forEach((med) => {
-          addPrescriptionDrug({
-            name: med.name,
-            indication: diagnosis || 'Đơn thuốc điều trị sau khám',
-            quantity: 'Theo đơn',
-            dosageTag: med.dosage,
-            instructionTag: 'Uống theo chỉ dẫn bác sĩ',
-          });
-        });
-      }
-
       return true;
-    } catch (err: any) {
-      console.warn('Lỗi khi lưu bệnh án điện tử:', err);
-      Alert.alert('Bệnh án điện tử', err?.message || 'Không thể lưu đơn thuốc lên máy chủ.');
+    } catch (error) {
+      Alert.alert('Bệnh án điện tử', error instanceof Error ? error.message : 'Không thể lưu bệnh án. Vui lòng tải lại lịch khám.');
+      return false;
+    }
+  };
+
+  const checkInAppointment = async (appointmentId: string, bookingCode?: string): Promise<boolean> => {
+    try {
+      const target = appointments.find(a => a.id === appointmentId);
+      if (!target || (bookingCode && bookingCode !== target.code) || target.status !== 'upcoming') {
+        throw new Error('Phiếu hẹn không hợp lệ hoặc không còn chờ khám.');
+      }
+      if (CLOUD_MODE) {
+        if (!target.code) throw new Error('Phiếu hẹn chưa có mã tiếp đón.');
+        await checkInClinic(target.code);
+        const rows = await listClinicAppointments();
+        setAppointments(rows.map(clinicAppointmentToItem));
+      } else {
+        setAppointments(prev => prev.map(a => a.id === appointmentId ? { ...a, statusBadge: 'Đã có mặt' } : a));
+      }
+      return true;
+    } catch (error) {
+      Alert.alert('Tiếp đón bệnh nhân', error instanceof Error ? error.message : 'Không thể tiếp đón. Vui lòng tải lại lịch khám.');
       return false;
     }
   };
@@ -936,6 +931,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         createBooking,
         cancelAppointment,
         completeAppointment,
+        checkInAppointment,
         takenMap,
         toggleMedicationTaken,
         familyMembers,

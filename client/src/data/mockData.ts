@@ -84,6 +84,8 @@ export interface AppointmentItem {
 
 export interface PrescriptionDrug {
   id: string;
+  appointmentId?: string;
+  medicationIndex?: number;
   name: string;
   indication: string;
   quantity: string;

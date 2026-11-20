@@ -683,29 +683,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const checkInAppointment = async (appointmentId: string, bookingCode?: string): Promise<boolean> => {
     try {
-      const targetApt = appointments.find((a) => a.id === appointmentId || a.code === bookingCode);
-      const code = bookingCode || targetApt?.code;
-
-      if (CLOUD_MODE && code) {
-        await checkInClinic(code);
+      const target = appointments.find(a => a.id === appointmentId);
+      if (!target || (bookingCode && bookingCode !== target.code) || target.status !== 'upcoming') {
+        throw new Error('Phiếu hẹn không hợp lệ hoặc không còn chờ khám.');
       }
-
-      setAppointments((prev) =>
-        prev.map((apt) =>
-          apt.id === appointmentId || (code && apt.code === code)
-            ? {
-                ...apt,
-                status: 'upcoming' as const,
-                statusBadge: 'Đang khám tại phòng',
-                queueNumber: 'ĐANG KHÁM (P.302)',
-              }
-            : apt
-        )
-      );
+      if (CLOUD_MODE) {
+        if (!target.code) throw new Error('Phiếu hẹn chưa có mã tiếp đón.');
+        await checkInClinic(target.code);
+        const rows = await listClinicAppointments();
+        setAppointments(rows.map(clinicAppointmentToItem));
+      } else {
+        setAppointments(prev => prev.map(a => a.id === appointmentId ? { ...a, statusBadge: 'Đã có mặt' } : a));
+      }
       return true;
-    } catch (err: any) {
-      console.warn('Lỗi khi tiếp đón bệnh nhân:', err);
-      Alert.alert('Tiếp đón bệnh nhân', err?.message || 'Không thể cập nhật trạng thái tiếp đón vào hệ thống.');
+    } catch (error) {
+      Alert.alert('Tiếp đón bệnh nhân', error instanceof Error ? error.message : 'Không thể tiếp đón. Vui lòng tải lại lịch khám.');
       return false;
     }
   };

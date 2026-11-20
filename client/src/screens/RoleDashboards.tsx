@@ -948,6 +948,7 @@ export const DoctorDashboardScreen: React.FC<DoctorDashboardScreenProps> = ({
   const [newDrugQty, setNewDrugQty] = useState('14 viên');
   const [newDrugDosage, setNewDrugDosage] = useState('1 viên/lần • Sáng, Tối');
   const [showAddDrugForm, setShowAddDrugForm] = useState(false);
+  const [checkingId, setCheckingId] = useState<string | null>(null);
   const [queueStatuses, setQueueStatuses] = useState<Record<string, string>>({});
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -1065,20 +1066,22 @@ export const DoctorDashboardScreen: React.FC<DoctorDashboardScreenProps> = ({
                   leftIcon={pt.mode === 'video' ? 'videocam-outline' : 'megaphone-outline'}
                   fullWidth={false}
                   style={{ flex: 1 }}
+                  loading={checkingId === pt.id}
+                  disabled={checkingId !== null}
                   onPress={async () => {
+                    if (checkingId) return;
                     setSelectedPatientApt(pt);
                     if (pt.mode === 'video' && onNavigate) {
                       onNavigate('teleconsult');
                       return;
                     }
-                    if (checkInAppointment) {
-                      await checkInAppointment(pt.id, pt.code);
-                    }
-                    setQueueStatuses((prev) => ({
-                      ...prev,
-                      [pt.id]: 'Đang khám tại P.302',
-                    }));
-                    setToastMessage(`Đã gọi & tiếp đón ${pt.patientName || 'bệnh nhân'} vào Phòng 302.`);
+                    setCheckingId(pt.id);
+                    try {
+                      const success = await checkInAppointment(pt.id, pt.code);
+                      if (!success) return;
+                      setQueueStatuses(prev => ({ ...prev, [pt.id]: 'Đã có mặt' }));
+                      setToastMessage(`Đã tiếp đón ${pt.patientName || 'bệnh nhân'}.`);
+                    } finally { setCheckingId(null); }
                   }}
                 />
                 <AppButton

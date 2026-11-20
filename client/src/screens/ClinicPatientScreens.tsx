@@ -1,5 +1,5 @@
 import React, {useCallback, useEffect, useState} from 'react';
-import {ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
+import {ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View} from 'react-native';
 import {COLORS} from '../theme';
 import {DOCTORS} from '../data/mockData';
 import type {DoctorItem,TimeSlotItem} from '../data/mockData';
@@ -41,6 +41,39 @@ function Status({loading,error}:{loading:boolean;error:string}) {
   return <>{loading?<ActivityIndicator/>:null}{error?<Text accessibilityRole="alert" style={styles.error}>{error}</Text>:null}</>;
 }
 
+function CompletedVisitReview({doctorId}:{doctorId:string}) {
+  const {addDoctorReview}=useAppContext();
+  const [rating,setRating]=useState(5);
+  const [comment,setComment]=useState('');
+  const [busy,setBusy]=useState(false);
+  const [submitted,setSubmitted]=useState(false);
+  const [error,setError]=useState('');
+  const submit=async()=>{
+    if(busy||submitted)return;
+    const text=comment.trim();
+    if(text.length<2||text.length>1000){setError('Vui lòng nhập nhận xét từ 2 đến 1000 ký tự.');return;}
+    setBusy(true);setError('');
+    try{await addDoctorReview({doctorId,rating,comment:text});setSubmitted(true);}
+    catch(cause){setError(cause instanceof Error?cause.message:'Chưa gửi được đánh giá.');}
+    finally{setBusy(false);}
+  };
+  return <View style={{gap:8,marginTop:12}}>
+    <Text style={styles.title}>Đánh giá chất lượng khám</Text>
+    {submitted?<Text accessibilityRole="alert">Đã gửi đánh giá sau khám.</Text>:<>
+      <View style={{flexDirection:'row',gap:8}}>{[1,2,3,4,5].map(value=><TouchableOpacity key={value}
+        accessibilityRole="button" accessibilityLabel={`${value} sao`} accessibilityState={{selected:rating===value}}
+        disabled={busy} onPress={()=>setRating(value)} style={{padding:10}}>
+        <Text style={{fontSize:22,color:COLORS.primary}}>{value<=rating?'★':'☆'}</Text>
+      </TouchableOpacity>)}</View>
+      <TextInput accessibilityLabel="Nhận xét sau khám" placeholder="Nhập nhận xét sau khám"
+        value={comment} onChangeText={setComment} editable={!busy} multiline maxLength={1000}
+        style={{borderWidth:1,borderColor:COLORS.outlineVariant,borderRadius:10,padding:12,minHeight:80,color:COLORS.textPrimary}}/>
+      {error?<Text accessibilityRole="alert" style={styles.error}>{error}</Text>:null}
+      <Action label={busy?'Đang gửi đánh giá…':'Gửi đánh giá'} disabled={busy} onPress={()=>{void submit();}}/>
+    </>}
+  </View>;
+}
+
 export function ClinicPatientRecordsScreen() {
   const {rows,loading,error,refresh}=useClinicData();
   const records=rows.filter(row=>clinicRecord(row));
@@ -49,12 +82,13 @@ export function ClinicPatientRecordsScreen() {
     <Status loading={loading} error={error}/>
     <Action label="Tải lại bệnh án" onPress={()=>{void refresh();}}/>
     {!loading&&!records.length?<Text style={styles.copy}>Chưa có bệnh án được bác sĩ lưu.</Text>:null}
-    {records.map(row=>{const record=clinicRecord(row)!;return <View key={row.id} style={styles.card}>
+    {records.map((row,index)=>{const record=clinicRecord(row)!;return <View key={row.id} style={styles.card}>
       <Text style={styles.title}>{doctorName(row)}</Text><Text>{dateLabel(row)}</Text>
       <Text style={styles.copy}>Chẩn đoán: {record.diagnosis}</Text>
       {record.medications.length?<Text style={styles.title}>Đơn thuốc</Text>:null}
       {record.medications.map((drug,index)=><Text key={index} style={styles.copy}>{drug.name} — {drug.dosage}</Text>)}
       {record.notes?<Text style={styles.copy}>Ghi chú: {record.notes}</Text>:null}
+      {row.status==='COMPLETED'&&!records.slice(0,index).some(previous=>previous.doctor_id===row.doctor_id)?<CompletedVisitReview doctorId={row.doctor_id}/>:null}
     </View>;})}
   </ScrollView>;
 }

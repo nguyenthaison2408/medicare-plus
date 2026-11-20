@@ -13,6 +13,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import QRCode from 'react-native-qrcode-svg';
 import { CLOUD_MODE } from '../services/supabaseClient';
+import { ClinicPatientRecordsScreen } from './ClinicPatientScreens';
 import { COLORS, GRADIENTS, LAYOUT, RADIUS, SHADOWS, SPACING, TYPOGRAPHY } from '../theme';
 import {
   DOCTORS,
@@ -358,13 +359,14 @@ export const FamilyProfilesScreen: React.FC<{
   onNavigate?: (routeKey: string) => void;
   onBookForMember?: (member: FamilyMemberItem) => void;
 }> = ({ onBack, onSelectChild, onAddMember, onNavigate, onBookForMember }) => {
-  const { familyMembers } = useAppContext();
+  const { familyMembers, patientProfile, cloudProfile } = useAppContext();
+  const [familyNotice, setFamilyNotice] = useState('');
 
   return (
     <View style={styles.screen}>
       <AppHeader
         title="Quản Lý Hồ Sơ Người Thân"
-        subtitle="MediCare Plus Family • BHYT & lịch khám tập trung"
+        subtitle={CLOUD_MODE ? 'Thông tin người thân của bạn' : 'MediCare Plus Family • BHYT & lịch khám tập trung'}
         onBack={onBack}
         rightActions={[{ icon: 'person-add-outline', onPress: onAddMember }]}
       />
@@ -373,7 +375,7 @@ export const FamilyProfilesScreen: React.FC<{
         <View style={[styles.card, SHADOWS.sm]}>
           <View style={styles.rowBetween}>
             <Badge label="Chủ hộ • Đang xem" variant="primarySolid" />
-            <Badge label="Đã đồng bộ VssID" variant="teal" />
+            <Badge label={CLOUD_MODE ? 'Hồ sơ trực tuyến' : 'Đã đồng bộ VssID'} variant="teal" />
           </View>
           <View style={[styles.docRow, { marginTop: 10 }]}>
             <Image
@@ -382,10 +384,10 @@ export const FamilyProfilesScreen: React.FC<{
             />
             <View style={{ flex: 1, minWidth: 0, marginLeft: 12 }}>
               <Text style={styles.docName} numberOfLines={1}>
-                Nguyễn Văn Vũ (Bản thân)
+                {patientProfile.name} (Bản thân)
               </Text>
               <Text style={styles.docSub} numberOfLines={1}>
-                32 tuổi • #BN-882910 • Nhóm máu O+
+                {CLOUD_MODE ? `Điện thoại: ${cloudProfile?.phone || 'Chưa cập nhật'}` : `${patientProfile.age} tuổi • ${patientProfile.patientCode} • Nhóm máu ${patientProfile.bloodType}`}
               </Text>
             </View>
           </View>
@@ -397,16 +399,13 @@ export const FamilyProfilesScreen: React.FC<{
           style={[styles.heroCard, SHADOWS.md]}
         >
           <View style={styles.rowBetween}>
-            <Badge label="MediCare Plus AI Family Care" variant="glass" icon="sparkles" />
+            <Badge label={CLOUD_MODE ? 'Thông tin gia đình' : 'MediCare Plus AI Family Care'} variant="glass" icon="people-outline" />
             <Text style={styles.whiteSub}>{familyMembers.length + 1} thành viên</Text>
           </View>
           <Text style={styles.whiteBody}>
-            Nhắc nhở y tế: <Text style={{ fontWeight: '800' }}>Bé Bảo Nam</Text>{' '}
-            có lịch tiêm nhắc Sởi - Quai bị - Rubella trong 5 ngày tới. Mẹ{' '}
-            <Text style={{ fontWeight: '800' }}>Trần Thị Lan</Text> cần đo huyết
-            áp định kỳ sáng mai (07:30).
+            {CLOUD_MODE ? 'Các hồ sơ dưới đây được lưu cho tài khoản của bạn. Chưa có lịch nhắc khám riêng cho người thân.' : 'Nhắc nhở minh họa: Bé Bảo Nam có lịch tiêm trong 5 ngày tới. Mẹ Trần Thị Lan cần đo huyết áp định kỳ sáng mai.'}
           </Text>
-          <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
+          {!CLOUD_MODE && <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
             <AppButton
               title="Nhắc huyết áp"
               variant="white"
@@ -429,21 +428,22 @@ export const FamilyProfilesScreen: React.FC<{
                 }
               }}
             />
-          </View>
+          </View>}
         </LinearGradient>
 
         <SectionHeader
           title={`Hồ Sơ Thành Viên (${familyMembers.length} thành viên phụ)`}
-          subtitle="Đồng bộ thời gian thực"
+          subtitle={CLOUD_MODE ? 'Hồ sơ đã lưu trực tuyến' : 'Đồng bộ thời gian thực'}
           actionText="+ Thêm mới"
           onActionPress={onAddMember}
         />
 
-        {familyMembers.map((mem) => (
+        {familyNotice ? <Text accessibilityRole="alert" style={{ color: COLORS.textSecondary }}>{familyNotice}</Text> : null}
+          {familyMembers.map((mem) => (
           <View key={mem.id} style={[styles.card, SHADOWS.sm]}>
             <TouchableOpacity
               activeOpacity={0.85}
-              onPress={onSelectChild}
+              onPress={CLOUD_MODE ? () => setFamilyNotice(`Chưa có bệnh án riêng của ${mem.name}.`) : onSelectChild}
               accessibilityRole="button"
               accessibilityLabel={`Hồ sơ ${mem.name}, ${mem.relation}`}
             >
@@ -482,7 +482,9 @@ export const FamilyProfilesScreen: React.FC<{
                 size="sm"
                 leftIcon="calendar-outline"
                 onPress={() => {
-                  if (onBookForMember) {
+                  if (CLOUD_MODE) {
+                    setFamilyNotice('Đặt lịch trực tuyến hiện chỉ hỗ trợ chủ tài khoản. Chưa hỗ trợ đặt khám cho người thân.');
+                  } else if (onBookForMember) {
                     onBookForMember(mem);
                   } else {
                     onNavigate?.('bookingSlot');
@@ -664,12 +666,12 @@ export const ChildEHRDetailScreen: React.FC<{ onBack?: () => void }> = ({
 export const AddEditFamilyMemberScreen: React.FC<{ onBack?: () => void }> = ({
   onBack,
 }) => {
-  const { addFamilyMember } = useAppContext();
-  const [name, setName] = useState('NGUYỄN BẢO ANH');
-  const [dob, setDob] = useState('18/06/2019');
+  const { addFamilyMember, patientProfile } = useAppContext();
+  const [name, setName] = useState(CLOUD_MODE ? '' : 'NGUYỄN BẢO ANH');
+  const [dob, setDob] = useState(CLOUD_MODE ? '' : '18/06/2019');
   const [relation, setRelation] = useState('Con cái');
   const [showRelationDropdown, setShowRelationDropdown] = useState(false);
-  const [bhyt, setBhyt] = useState('TE1 79 234 99102');
+  const [bhyt, setBhyt] = useState(CLOUD_MODE ? '' : 'TE1 79 234 99102');
   const [nameError, setNameError] = useState('');
   const [dobError, setDobError] = useState('');
 
@@ -716,7 +718,7 @@ export const AddEditFamilyMemberScreen: React.FC<{ onBack?: () => void }> = ({
     >
       <AppHeader
         title="Thêm Hồ Sơ Người Thân"
-        subtitle="Chủ tài khoản bảo trợ: Nguyễn Văn Vũ"
+        subtitle={`Chủ tài khoản bảo trợ: ${patientProfile.name}`}
         onBack={onBack}
       />
       <ScrollView
@@ -1156,6 +1158,11 @@ export const PostConsultSummaryScreen: React.FC<{
     } catch (error) { setReviewError(error instanceof Error ? error.message : 'Chưa gửi được đánh giá.'); }
     finally { setSavingReview(false); }
   };
+
+  if (CLOUD_MODE) return <View style={styles.screen}>
+    <AppHeader title="Kết quả khám đã lưu" onBack={onBack} />
+    <ClinicPatientRecordsScreen />
+  </View>;
 
   return (
     <View style={styles.screen}>

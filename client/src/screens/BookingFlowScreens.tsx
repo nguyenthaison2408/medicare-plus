@@ -51,12 +51,14 @@ export interface DoctorDetailScreenProps {
   doctor: DoctorItem;
   onBack: () => void;
   onBookSlot: (doctor: DoctorItem) => void;
+  onOpenChat?: (doctor: DoctorItem) => void;
 }
 
 export const DoctorDetailScreen: React.FC<DoctorDetailScreenProps> = ({
   doctor,
   onBack,
   onBookSlot,
+  onOpenChat,
 }) => {
   const { doctorReviews, hospitals, appointments, addDoctorReview } = useAppContext();
   const [selectedDay, setSelectedDay] = useState('d2');
@@ -396,6 +398,18 @@ export const DoctorDetailScreen: React.FC<DoctorDetailScreenProps> = ({
             MediCare Plus bảo lãnh chất lượng chuyên môn & bảo mật bệnh án
           </Text>
         </View>
+
+        {onOpenChat ? (
+          <View style={{ marginTop: 12 }}>
+            <AppButton
+              title={`Chat tư vấn trực tuyến với ${doctor.name}`}
+              variant="tonal"
+              size="md"
+              leftIcon="chatbubbles-outline"
+              onPress={() => onOpenChat(doctor)}
+            />
+          </View>
+        ) : null}
       </ScrollView>
 
       <StickyBottomBar
@@ -507,7 +521,7 @@ export const BookingSlotScreen: React.FC<BookingSlotScreenProps> = ({
         <SegmentedControl
           variant="box"
           selectedKey={consultMode}
-          onSelect={(mode) => { if (!CLOUD_MODE || mode === 'clinic') setConsultMode(mode); }}
+          onSelect={setConsultMode}
           options={[
             {
               key: 'clinic',
@@ -601,6 +615,8 @@ export interface BookingPaymentScreenProps {
   patient?: {
     name: string;
     meta: string;
+    bhytCode?: string;
+    phone?: string;
   };
   onBack: () => void;
   onPaymentSuccess: (
@@ -618,13 +634,16 @@ export const BookingPaymentScreen: React.FC<BookingPaymentScreenProps> = ({
   onBack,
   onPaymentSuccess,
 }) => {
-  const { patientProfile, bhytConfigs } = useAppContext();
+  const { patientProfile, bhytConfigs, familyMembers } = useAppContext();
   const [selectedMethod, setSelectedMethod] =
     useState<PaymentMethodType>('at_clinic_bhyt');
   const [submitting, setSubmitting] = useState(false);
+  const [activeBhytCode, setActiveBhytCode] = useState<string>(
+    patient?.bhytCode ?? patientProfile.bhytCode ?? ''
+  );
   const [patientInfo, setPatientInfo] = useState<PatientBookingInfo>({
     fullName: patient?.name || patientProfile.name,
-    phone: patientProfile.phone || '',
+    phone: patient?.phone || patientProfile.phone || '',
     email: '',
     symptoms: '',
   });
@@ -635,7 +654,7 @@ export const BookingPaymentScreen: React.FC<BookingPaymentScreenProps> = ({
   const isAtClinic = selectedMethod === 'at_clinic_bhyt';
   const bhytBenefit = calculateBhytBenefit(
     doctor.feeNumeric,
-    patientProfile.bhytCode,
+    activeBhytCode,
     bhytConfigs,
     true
   );
@@ -705,6 +724,88 @@ export const BookingPaymentScreen: React.FC<BookingPaymentScreenProps> = ({
             <Text style={styles.patientFormHint}>
               Các trường có dấu * là bắt buộc. Thông tin này được dùng để liên hệ và hỗ trợ bác sĩ chuẩn bị cho buổi khám.
             </Text>
+            {familyMembers.length > 0 ? (
+              <View style={{ marginBottom: 12 }}>
+                <Text style={[styles.patientFormHint, { fontWeight: '700', marginBottom: 6 }]}>
+                  Chọn hồ sơ người khám (Tự động điền & tính BHYT):
+                </Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  <View style={{ flexDirection: 'row', gap: 8 }}>
+                    <TouchableOpacity
+                      onPress={() => {
+                        setPatientInfo((curr) => ({
+                          ...curr,
+                          fullName: patientProfile.name,
+                          phone: patientProfile.phone || curr.phone,
+                        }));
+                        setActiveBhytCode(patientProfile.bhytCode || '');
+                      }}
+                      style={{
+                        paddingHorizontal: 12,
+                        paddingVertical: 6,
+                        borderRadius: 999,
+                        borderWidth: 1,
+                        borderColor:
+                          patientInfo.fullName === patientProfile.name
+                            ? COLORS.primary
+                            : COLORS.border,
+                        backgroundColor:
+                          patientInfo.fullName === patientProfile.name
+                            ? COLORS.tintBlue
+                            : COLORS.surface,
+                      }}
+                    >
+                      <Text
+                        style={{
+                          fontSize: 12,
+                          fontWeight: '700',
+                          color:
+                            patientInfo.fullName === patientProfile.name
+                              ? COLORS.primary
+                              : COLORS.textSecondary,
+                        }}
+                      >
+                        {patientProfile.name} (Bản thân)
+                      </Text>
+                    </TouchableOpacity>
+                    {familyMembers.map((mem) => {
+                      const selected = patientInfo.fullName === mem.name;
+                      return (
+                        <TouchableOpacity
+                          key={mem.id}
+                          onPress={() => {
+                            setPatientInfo((curr) => ({
+                              ...curr,
+                              fullName: mem.name,
+                              phone: mem.phone || patientProfile.phone || curr.phone,
+                            }));
+                            setActiveBhytCode(mem.bhyt || '');
+                          }}
+                          style={{
+                            paddingHorizontal: 12,
+                            paddingVertical: 6,
+                            borderRadius: 999,
+                            borderWidth: 1,
+                            borderColor: selected ? COLORS.primary : COLORS.border,
+                            backgroundColor: selected ? COLORS.tintBlue : COLORS.surface,
+                          }}
+                        >
+                          <Text
+                            style={{
+                              fontSize: 12,
+                              fontWeight: '700',
+                              color: selected ? COLORS.primary : COLORS.textSecondary,
+                            }}
+                          >
+                            {mem.name} ({mem.rawRelation || mem.relation.split('•')[0].trim()})
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </ScrollView>
+              </View>
+            ) : null}
             <AppInput
               label="Họ và tên *"
               leftIcon="person-outline"

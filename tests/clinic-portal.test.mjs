@@ -1,4 +1,4 @@
-﻿import fs from 'node:fs';
+import fs from 'node:fs';
 import vm from 'node:vm';
 import assert from 'node:assert/strict';
 import test from 'node:test';
@@ -31,6 +31,7 @@ const scenarios=[
  ['deleteBhytConfig','resetAppData','deleteBhytConfigCloud','setBhytConfigs',['qa']],
  ['moderateDoctorReview','deleteDoctorReview','moderateDoctorReviewCloud','setDoctorReviews',['qa',true,'note']],
  ['deleteDoctorReview','addDoctor','deleteDoctorReviewCloud','setDoctorReviews',['qa']],
+ ['updateFamilyMember','deleteFamilyMember','updateFamilyMemberCloud','setFamilyMembers',['fam-1',{name:'Member QA',dob:'01/01/2020',relation:'Con cái',bhyt:'TE1'}]],
 ];
 for(const [name,next,service,setter,args] of scenarios)test(name+' does not overwrite a different session after pending save',async()=>{
  const ref={current:'patient-a'};let writes=0;
@@ -48,8 +49,14 @@ test('editing a shift updates its id instead of creating a new date/shift row',a
  const row=await api.upsertDoctorScheduleCloud({id:'existing',doctorId:'doc-1',workDate:'2026-11-23',shift:'afternoon',room:'QA'});
  assert.equal(updatedId,'existing');assert.equal(row.id,'existing');assert.equal(payload.shift,'afternoon');
 });
-for(const [file,name] of [['clinicAdmin.ts','deleteDoctorScheduleCloud'],['clinicAdmin.ts','deleteBhytConfigCloud'],['clinicReviews.ts','deleteDoctorReviewCloud']])test(name+' rejects a zero-row delete instead of reporting success',async()=>{
+for(const [file,name] of [['clinicAdmin.ts','deleteDoctorScheduleCloud'],['clinicAdmin.ts','deleteBhytConfigCloud'],['clinicReviews.ts','deleteDoctorReviewCloud'],['clinicFamily.ts','deleteFamilyMemberCloud']])test(name+' rejects a zero-row delete instead of reporting success',async()=>{
  const table={delete:()=>table,eq:()=>table,select:async()=>({data:[],error:null})};const api=service('client/src/services/'+file,[name],{from:()=>table});await assert.rejects(api[name]('missing'));
+});
+test('updateFamilyMemberCloud updates existing family member medical metadata and computes BHYT badge',async()=>{
+ let updatedId,payload;const table={update:p=>{payload=p;return table;},eq:(col,id)=>{updatedId=id;return table;},select:()=>table,single:async()=>({data:{id:updatedId,...payload},error:null})};
+ const api=service('client/src/services/clinicFamily.ts',['updateFamilyMemberCloud'],{auth:{getUser:async()=>({data:{user:{id:'patient-a'}},error:null})},from:()=>table});
+ const member=await api.updateFamilyMemberCloud('fam-uuid-1',{name:'Nguyễn Bảo Nam',dob:'18/09/2020',relation:'Con cái',bhyt:'TE1 79 234 88190',blood:'O+',gender:'Nam',phone:'0909123456',allergies:'Hải sản',note:'Tiêm nhắc MMR'});
+ assert.equal(updatedId,'fam-uuid-1');assert.equal(member.blood,'O+');assert.equal(member.gender,'Nam');assert.equal(member.allergies,'Hải sản');assert.equal(member.badge,'Nhi đồng • BHYT');
 });
 test('invalid benefit rates are rejected before a network write',async()=>{
  let calls=0;const invoke=contextFunction('saveBhytConfig','toggleBhytConfig',{CLOUD_MODE:true,cloudUserIdRef:{current:'admin'},upsertBhytConfigCloud:async()=>{calls++;}});

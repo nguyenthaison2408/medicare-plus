@@ -11,13 +11,16 @@ export function clinicAppointmentToItem(appointment: ClinicAppointment): Appoint
   if (!doctor) throw new Error('Thông tin bác sĩ chưa được đồng bộ với ứng dụng.');
   const date = new Date(appointment.starts_at);
   const label = date.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+  const isChatConsult = Boolean(
+    appointment.symptoms && appointment.symptoms.startsWith('[Tư vấn Chat]')
+  );
   return {
     id: appointment.id, code: appointment.booking_code, doctor,
     dateLabel: label, timeRange: label,
     queueNumber: appointment.status === 'CHECKED_IN' ? 'Đã có mặt' : 'Đã xác nhận',
-    room: doctor.hospital,
+    room: isChatConsult ? 'Phòng Tư vấn Chat Trực tuyến' : doctor.hospital,
     status: appointment.status === 'COMPLETED' ? 'completed' : appointment.status === 'CANCELLED' ? 'cancelled' : 'upcoming',
-    mode: 'clinic',
+    mode: isChatConsult ? 'video' : 'clinic',
     patientName: appointment.patient_name,
     patientPhone: appointment.patient_phone,
     patientEmail: appointment.patient_email,

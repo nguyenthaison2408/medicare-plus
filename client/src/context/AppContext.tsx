@@ -13,7 +13,13 @@ import {
   moderateDoctorReviewCloud,
   deleteDoctorReviewCloud,
 } from '../services/clinicReviews';
-import { fetchFamilyMembersCloud, addFamilyMemberCloud } from '../services/clinicFamily';
+import {
+  fetchFamilyMembersCloud,
+  addFamilyMemberCloud,
+  updateFamilyMemberCloud,
+  deleteFamilyMemberCloud,
+  type FamilyMemberInput,
+} from '../services/clinicFamily';
 import {
   fetchDoctorSchedulesCloud,
   upsertDoctorScheduleCloud,
@@ -58,12 +64,16 @@ export interface FamilyMemberItem {
   id: string;
   name: string;
   relation: string;
+  rawRelation?: string;
   code: string;
   blood: string;
   note: string;
   badge: string;
   dob?: string;
   bhyt?: string;
+  gender?: string;
+  phone?: string;
+  allergies?: string;
 }
 
 export interface LatestBookingTicket {
@@ -177,6 +187,7 @@ interface AppContextValue {
   ) => Promise<boolean>;
 
   checkInAppointment: (appointmentId: string, bookingCode?: string) => Promise<boolean>;
+  checkInByCode: (bookingCode: string) => Promise<boolean>;
 
   // 2. Medication Adherence Log
   takenMap: Record<string, boolean>;
@@ -184,12 +195,9 @@ interface AppContextValue {
 
   // 3. Family Profiles
   familyMembers: FamilyMemberItem[];
-  addFamilyMember: (member: {
-    name: string;
-    dob: string;
-    relation: string;
-    bhyt: string;
-  }) => Promise<void>;
+  addFamilyMember: (member: FamilyMemberInput) => Promise<void>;
+  updateFamilyMember: (id: string, member: FamilyMemberInput) => Promise<FamilyMemberItem>;
+  deleteFamilyMember: (id: string) => Promise<void>;
 
   // 4. Prescriptions & Doctors (Shared with Doctor/Admin Portals)
   prescriptions: PrescriptionDrug[];
@@ -536,10 +544,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         }
         const profile = await loadClinicProfile();
         if (!mounted || request !== generation) return;
+        setCloudProfile(profile);
         const [cloudAppointments, cloudDoctors, families, reviews, schedules, configs, hospitalCatalog] = await Promise.all([
-          listClinicAppointments(),
+          listClinicAppointments().catch(() => []),
           listClinicDoctors().catch(() => []),
-          fetchFamilyMembersCloud(),
+          fetchFamilyMembersCloud().catch(() => []),
           (profile.role === 'admin'
             ? fetchAdminDoctorReviewsCloud()
             : fetchDoctorReviewsCloud()
@@ -598,12 +607,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         if (activeAppointment) {
           const item = clinicAppointmentToItem(activeAppointment);
           const date = new Date(activeAppointment.starts_at);
+          const isActiveChat = Boolean(
+            activeAppointment.symptoms && activeAppointment.symptoms.startsWith('[Tư vấn Chat]')
+          );
           setLatestBooking({
             code: item.code, doctor: item.doctor,
             dayLabel: date.toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', weekday: 'long' }),
             fullDate: date.toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }),
             timeRange: date.toLocaleTimeString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', hour: '2-digit', minute: '2-digit' }), room: item.room || item.doctor.hospital,
-            queueNumber: item.queueNumber || 'Đã xác nhận', consultMode: 'clinic', paymentMethod: activeAppointment.payment_method,
+            queueNumber: item.queueNumber || 'Đã xác nhận', consultMode: isActiveChat ? 'chat' : 'clinic', paymentMethod: activeAppointment.payment_method,
             patientName: activeAppointment.patient_name,
             patientPhone: activeAppointment.patient_phone,
             patientEmail: activeAppointment.patient_email,
@@ -795,18 +807,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     const chosenDay = day || BOOKING_DAYS[1];
     const chosenSlot = slot || TIME_SLOTS[3];
     if (CLOUD_MODE) {
-      if (consultMode !== 'clinic') throw new Error('Tư vấn từ xa chưa được hỗ trợ trong phiên bản trực tuyến.');
+      if (consultMode !== 'clinic' && consultMode !== 'chat' && consultMode !== 'video') {
+        throw new Error('Hình thức khám không hợp lệ.');
+      }
       if (paymentMethod !== 'at_clinic' && paymentMethod !== 'at_clinic_bhyt') throw new Error('Vui lòng chọn thanh toán tại cơ sở y tế.');
+      const isChatMode = consultMode === 'chat' || consultMode === 'video';
+      const normalizedPatientInfo: PatientBookingInfo =
+        isChatMode && !patientInfo.symptoms.trim().startsWith('[Tư vấn Chat]')
+          ? {
+              ...patientInfo,
+              symptoms: `[Tư vấn Chat] ${patientInfo.symptoms.trim()}`,
+            }
+          : patientInfo;
       const appointment = await bookClinicAppointment(
         doctor,
         chosenDay,
         chosenSlot,
-        patientInfo
+        normalizedPatientInfo
       );
       const ticket: LatestBookingTicket = {
         code: appointment.booking_code, doctor, dayLabel: chosenDay.dayLabel, fullDate: chosenDay.fullDate,
-        timeRange: chosenSlot.time, room: doctor.hospital,
-        queueNumber: 'Đã xác nhận', consultMode: 'clinic', paymentMethod: appointment.payment_method,
+        timeRange: chosenSlot.time,
+        room: isChatMode ? 'Phòng Tư vấn Chat Trực tuyến' : doctor.hospital,
+        queueNumber: 'Đã xác nhận',
+        consultMode: isChatMode ? 'chat' : 'clinic',
+        paymentMethod: appointment.payment_method,
         patientName: appointment.patient_name,
         patientPhone: appointment.patient_phone,
         patientEmail: appointment.patient_email,
@@ -928,6 +953,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
+  const checkInByCode = async (bookingCode: string): Promise<boolean> => {
+    try {
+      const trimmed = bookingCode.trim().toUpperCase();
+      if (CLOUD_MODE) {
+        await checkInClinic(trimmed);
+        const rows = await listClinicAppointments();
+        setAppointments(rows.map(clinicAppointmentToItem));
+        return true;
+      }
+      const target = appointments.find(a => a.code?.toUpperCase() === trimmed);
+      if (!target) throw new Error(`Không tìm thấy phiếu hẹn với mã ${trimmed}.`);
+      setAppointments(prev => prev.map(a => a.id === target.id ? { ...a, statusBadge: 'Đã có mặt' } : a));
+      return true;
+    } catch (error) {
+      Alert.alert('Tiếp đón bệnh nhân', error instanceof Error ? error.message : 'Không thể tiếp đón. Vui lòng tải lại lịch khám.');
+      return false;
+    }
+  };
+
   const toggleMedicationTaken = async (dose: MedicationDoseLogRef): Promise<void> => {
     if (CLOUD_MODE) {
       const expectedUser = cloudUserIdRef.current;
@@ -951,12 +995,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     setTakenMap(prev => ({ ...prev, [dose.logKey]: !prev[dose.logKey] }));
   };
 
-  const addFamilyMember = async (member: {
-    name: string;
-    dob: string;
-    relation: string;
-    bhyt: string;
-  }): Promise<void> => {
+  const addFamilyMember = async (member: FamilyMemberInput): Promise<void> => {
     if (CLOUD_MODE) {
       const expectedUser = cloudUserIdRef.current;
       if (!expectedUser) throw new Error('Vui lòng đăng nhập lại.');
@@ -966,18 +1005,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
       return;
     }
     const randCode = Math.floor(100000 + Math.random() * 899999);
+    const cleanNote =
+      member.note?.trim() ||
+      (member.bhyt
+        ? `Đã liên kết BHYT (${member.bhyt})`
+        : 'Hồ sơ người thân vừa tạo mới');
     const newMember: FamilyMemberItem = {
       id: `fam-${Date.now()}`,
       name: member.name.trim() || 'Thành viên mới',
       relation: `${member.relation} • Sinh: ${member.dob || '1995'}`,
+      rawRelation: member.relation,
       code: `#BN-${randCode}`,
-      blood: 'O+',
-      note: member.bhyt
-        ? `Đã liên kết BHYT (${member.bhyt})`
-        : 'Hồ sơ người thân vừa tạo mới',
-      badge: 'BHYT 80%',
+      blood: member.blood?.trim() || 'O+',
+      note: cleanNote,
+      badge: member.bhyt ? 'BHYT 80%' : 'Thành viên',
       dob: member.dob,
       bhyt: member.bhyt,
+      gender: member.gender?.trim() || 'Chưa cập nhật',
+      phone: member.phone?.trim() || '',
+      allergies: member.allergies?.trim() || '',
     };
     setFamilyMembers((prev) => [newMember, ...prev]);
 
@@ -1449,6 +1495,62 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     setIsPiiMasked(true);
   };
 
+  const updateFamilyMember = async (
+    id: string,
+    member: FamilyMemberInput
+  ): Promise<FamilyMemberItem> => {
+    if (CLOUD_MODE) {
+      const expectedUser = cloudUserIdRef.current;
+      if (!expectedUser) throw new Error('Vui lòng đăng nhập lại.');
+      const updated = await updateFamilyMemberCloud(id, member);
+      if (cloudUserIdRef.current !== expectedUser) {
+        throw new Error('Phiên đăng nhập đã thay đổi. Vui lòng tải lại hồ sơ.');
+      }
+      setFamilyMembers((prev) =>
+        prev.map((item) => (item.id === updated.id ? updated : item))
+      );
+      return updated;
+    }
+    const cleanNote =
+      member.note?.trim() ||
+      (member.bhyt
+        ? `Đã liên kết BHYT (${member.bhyt})`
+        : 'Hồ sơ sức khỏe gia đình');
+    const updatedItem: FamilyMemberItem = {
+      id,
+      name: member.name.trim() || 'Thành viên',
+      relation: member.dob
+        ? `${member.relation} • Sinh: ${member.dob}`
+        : member.relation,
+      rawRelation: member.relation,
+      code: `#BN-${id.slice(0, 6).toUpperCase()}`,
+      blood: member.blood?.trim() || 'O+',
+      note: cleanNote,
+      badge: member.bhyt ? 'Có BHYT' : 'Thành viên',
+      dob: member.dob,
+      bhyt: member.bhyt,
+      gender: member.gender?.trim() || 'Chưa cập nhật',
+      phone: member.phone?.trim() || '',
+      allergies: member.allergies?.trim() || '',
+    };
+    setFamilyMembers((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, ...updatedItem, code: item.code } : item))
+    );
+    return updatedItem;
+  };
+
+  const deleteFamilyMember = async (id: string): Promise<void> => {
+    if (CLOUD_MODE) {
+      const expectedUser = cloudUserIdRef.current;
+      if (!expectedUser) throw new Error('Vui lòng đăng nhập lại.');
+      await deleteFamilyMemberCloud(id);
+      if (cloudUserIdRef.current !== expectedUser) {
+        throw new Error('Phiên đăng nhập đã thay đổi. Vui lòng tải lại hồ sơ.');
+      }
+    }
+    setFamilyMembers((prev) => prev.filter((item) => item.id !== id));
+  };
+
   const resolvedPatientProfile: PatientProfileState = CLOUD_MODE
     ? {
         ...PATIENT_PROFILE,
@@ -1481,10 +1583,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         cancelAppointment,
         completeAppointment,
         checkInAppointment,
+        checkInByCode,
         takenMap,
         toggleMedicationTaken,
         familyMembers,
         addFamilyMember,
+        updateFamilyMember,
+        deleteFamilyMember,
         prescriptions,
         addPrescriptionDrug,
         diagnosisNote,

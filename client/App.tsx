@@ -12,7 +12,7 @@ import {
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, LAYOUT } from './src/theme';
 import { DOCTORS, DoctorItem } from './src/data/mockData';
-import { AppProvider, useAppContext } from './src/context/AppContext';
+import { AppProvider, useAppContext, type FamilyMemberItem } from './src/context/AppContext';
 import { CLOUD_MODE, SUPABASE_CONFIGURED, getSupabase } from './src/services/supabaseClient';
 import { parseClinicAuthCallback, routeForClinicRole } from './src/utils/clinicAuthRouting';
 import { loadClinicProfile, signOutClinic } from './src/services/clinicCloud';
@@ -66,6 +66,10 @@ function AppContent() {
   const [routeHistory, setRouteHistory] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<MainTabKey>('home');
   const [selectedDoctor, setSelectedDoctor] = useState<DoctorItem>(DOCTORS[0]);
+  const [selectedFamilyMember, setSelectedFamilyMember] =
+    useState<FamilyMemberItem | null>(null);
+  const [editingFamilyMember, setEditingFamilyMember] =
+    useState<FamilyMemberItem | null>(null);
   const [bookingInfo, setBookingInfo] = useState<{
     doctor?: DoctorItem;
     day?: any;
@@ -75,21 +79,46 @@ function AppContent() {
     patient?: {
       name: string;
       meta: string;
+      bhytCode?: string;
+      phone?: string;
     };
   }>({});
   const { width } = useWindowDimensions();
   const isTablet = width > 700;
 
   useEffect(() => {
-    if (!CLOUD_MODE || !SUPABASE_CONFIGURED) return;
+    if (!SUPABASE_CONFIGURED) return;
     let active = true;
     let generation = 0;
     let routedUser: string | null = null;
     const supabase = getSupabase();
+    const clearWebHash = () => {
+      if (
+        Platform.OS === 'web' &&
+        typeof window !== 'undefined' &&
+        window.location?.hash &&
+        (window.location.hash.includes('access_token=') ||
+          window.location.hash.includes('error='))
+      ) {
+        window.history?.replaceState?.(
+          null,
+          '',
+          window.location.pathname + window.location.search
+        );
+      }
+    };
     const applySession = async (userId: string | null) => {
       const request = ++generation;
       if (!userId) {
-        if (active) { routedUser = null; setRoute('login'); setRouteHistory([]); setActiveTab('home'); setBookingInfo({}); }
+        if (active && CLOUD_MODE) { routedUser = null; setRoute('login'); setRouteHistory([]); setActiveTab('home'); setBookingInfo({}); }
+        return;
+      }
+      clearWebHash();
+      if (!CLOUD_MODE) {
+        if (active) {
+          routedUser = userId;
+          setRoute(previous => ['login', 'splash', 'register'].includes(previous) ? 'main' : previous);
+        }
         return;
       }
       try {
@@ -255,6 +284,10 @@ function AppContent() {
             doctor={selectedDoctor}
             onBack={() => goBack('main')}
             onBookSlot={handleOpenBooking}
+            onOpenChat={(doc) => {
+              setSelectedDoctor(doc);
+              navigateTo('teleconsult');
+            }}
           />
         );
       case 'bookingSlot':
@@ -326,7 +359,18 @@ function AppContent() {
           <FamilyProfilesScreen
             onBack={() => goBack('main')}
             onSelectChild={() => navigateTo('childEHR')}
-            onAddMember={() => navigateTo('addFamilyMember')}
+            onSelectMember={(member) => {
+              setSelectedFamilyMember(member);
+              navigateTo('childEHR');
+            }}
+            onAddMember={() => {
+              setEditingFamilyMember(null);
+              navigateTo('addFamilyMember');
+            }}
+            onEditMember={(member) => {
+              setEditingFamilyMember(member);
+              navigateTo('addFamilyMember');
+            }}
             onNavigate={navigateTo}
             onBookForMember={(member) => {
               setBookingInfo((prev) => ({
@@ -334,6 +378,8 @@ function AppContent() {
                 patient: {
                   name: member.name,
                   meta: `${member.bhyt ? `BHYT: ${member.bhyt.split(' ')[0]} • ` : ''}${member.relation}`,
+                  bhytCode: member.bhyt,
+                  phone: member.phone,
                 },
               }));
               navigateTo('bookingSlot');
@@ -342,17 +388,38 @@ function AppContent() {
         );
       case 'childEHR':
         return (
-          <ChildEHRDetailScreen onBack={() => goBack('familyProfiles')} />
+          <ChildEHRDetailScreen
+            member={selectedFamilyMember}
+            onBack={() => goBack('familyProfiles')}
+            onEditMember={(member) => {
+              setEditingFamilyMember(member);
+              navigateTo('addFamilyMember');
+            }}
+            onBookForMember={(member) => {
+              setBookingInfo((prev) => ({
+                ...prev,
+                patient: {
+                  name: member.name,
+                  meta: `${member.bhyt ? `BHYT: ${member.bhyt.split(' ')[0]} • ` : ''}${member.relation}`,
+                  bhytCode: member.bhyt,
+                  phone: member.phone,
+                },
+              }));
+              navigateTo('bookingSlot');
+            }}
+          />
         );
       case 'addFamilyMember':
         return (
           <AddEditFamilyMemberScreen
+            editingMember={editingFamilyMember}
             onBack={() => goBack('familyProfiles')}
           />
         );
       case 'teleconsult':
         return (
           <TeleconsultationScreen
+            doctor={bookingInfo.doctor || selectedDoctor}
             onBack={() => goBack('main')}
             onFinishChat={() => navigateTo('postConsultSummary')}
             onOpenLabResults={() => navigateTo('labImagingResults')}

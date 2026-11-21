@@ -1379,7 +1379,7 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
   onNavigate,
   onSwitchTab,
 }) => {
-  const { appointments, familyMembers, takenMap, resetAppData, patientProfile, cloudProfile, updatePatientProfile } = useAppContext();
+  const { appointments, familyMembers, takenMap, resetAppData, patientProfile, updatePatientProfile } = useAppContext();
   const [pillReminder, setPillReminder] = useState(true);
   const [aptAlert, setAptAlert] = useState(true);
   const [labAlert, setLabAlert] = useState(true);
@@ -1528,22 +1528,6 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
         contentContainerStyle={styles.scrollPad}
         showsVerticalScrollIndicator={false}
       >
-        {CLOUD_MODE ? (
-          <View style={[styles.sectionCard, SHADOWS.sm]}>
-            {cloudProfile?.avatar_url ? <Image source={{uri: cloudProfile.avatar_url}} style={{width:88,height:88,borderRadius:44,marginBottom:12}} accessibilityLabel="Ảnh đại diện đã lưu" /> : null}
-            <Text style={styles.sectionCardTitle}>{patientProfile.name}</Text>
-            <Text style={styles.sectionCardSub}>Điện thoại: {patientProfile.phone || 'Chưa cập nhật'}</Text>
-            <Text style={styles.sectionCardSub}>Ngày sinh: {patientProfile.dob || 'Chưa cập nhật'}</Text>
-            <Text style={styles.sectionCardSub}>Giới tính: {patientProfile.gender || 'Chưa cập nhật'}</Text>
-            <Text style={styles.sectionCardSub}>Nhóm máu: {patientProfile.bloodType || 'Chưa cập nhật'}</Text>
-            <Text style={styles.sectionCardSub}>BHYT: {patientProfile.bhytCode || 'Chưa cập nhật'} (chưa xác minh)</Text>
-            <Text style={styles.sectionCardSub}>Liên hệ khẩn cấp: {patientProfile.emergencyContact || 'Chưa cập nhật'}</Text>
-            <AppButton title="Sửa hồ sơ" onPress={openEditProfile} />
-            <AppButton title="Đổi ảnh đại diện (web)" variant="tonal" onPress={handleQuickAvatarUpload} />
-            <AppButton title="Hồ sơ người thân" variant="outline" onPress={() => onNavigate('familyProfiles')} />
-            <AppButton title="Tủ thuốc của tôi" variant="outline" onPress={() => onNavigate('medicineCabinet')} />
-          </View>
-        ) : <>
         <ProfileHeaderCard
           profile={patientProfile}
           onEditPress={openEditProfile}
@@ -1560,7 +1544,7 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
 
         <SectionHeader
           title="Tổng quan điều trị"
-          actionText="Cập nhật 15 phút trước"
+          actionText="Xem bệnh án"
           onActionPress={() => onSwitchTab('records')}
         />
         {/* 2x2 Summary Stats Grid */}
@@ -1583,7 +1567,7 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
               Lịch hẹn sắp tới
             </Text>
             <Text style={styles.statBoxSub} numberOfLines={1}>
-              10:30 Thứ Năm (Nội thần kinh)
+              {upcomingCount > 0 ? 'Đã xác nhận lịch khám' : 'Chưa có lịch hẹn mới'}
             </Text>
           </TouchableOpacity>
 
@@ -1608,13 +1592,13 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
               Toa thuốc đang uống
             </Text>
             <Text style={styles.statBoxSub} numberOfLines={1}>
-              {totalDoses} cữ/ngày • Còn 5 ngày
+              {totalDoses} cữ/ngày • Theo dõi uống thuốc
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             activeOpacity={0.85}
-            onPress={() => onNavigate('labImagingResults')}
+            onPress={() => onSwitchTab('records')}
             style={[styles.statBox, SHADOWS.sm]}
           >
             <View style={styles.statBoxTop}>
@@ -1627,18 +1611,18 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
                 color={COLORS.textMuted}
               />
             </View>
-            <Text style={styles.statBigNum}>12</Text>
+            <Text style={styles.statBigNum}>{appointments.length}</Text>
             <Text style={styles.statBoxTitle} numberOfLines={1}>
               Hồ sơ bệnh án
             </Text>
             <Text style={styles.statBoxSub} numberOfLines={1}>
-              MRI, X-Quang & Huyết học
+              Lịch sử khám & Đơn thuốc
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             activeOpacity={0.85}
-            onPress={() => onNavigate('doctorDetail')}
+            onPress={() => onNavigate('familyProfiles')}
             style={[styles.statBox, SHADOWS.sm]}
           >
             <View style={styles.statBoxTop}>
@@ -1651,12 +1635,12 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
                 color={COLORS.textMuted}
               />
             </View>
-            <Text style={styles.statBigNum}>3</Text>
+            <Text style={styles.statBigNum}>{familyMembers.length + 1}</Text>
             <Text style={styles.statBoxTitle} numberOfLines={1}>
-              Bác sĩ phụ trách
+              Hồ sơ gia đình
             </Text>
             <Text style={styles.statBoxSub} numberOfLines={1}>
-              Chuyên khoa & Tư vấn AI
+              1 chủ hộ + {familyMembers.length} người thân
             </Text>
           </TouchableOpacity>
         </View>
@@ -1821,8 +1805,6 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
             onPress={() => Linking.openURL('tel:19006868')}
           />
         </View>
-
-        </>}
 
         <AppButton
           title="Đăng xuất tài khoản"

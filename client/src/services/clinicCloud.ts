@@ -1,4 +1,5 @@
 import { Linking, Platform } from 'react-native';
+import Constants from 'expo-constants';
 import type { DaySlotItem, DoctorItem, TimeSlotItem } from '../data/mockData';
 import type { PatientBookingInfo } from '../utils/bookingValidation';
 import { getSupabase } from './supabaseClient';
@@ -102,7 +103,46 @@ export async function loadClinicProfile(): Promise<ClinicProfile> {
   if (!user) throw new Error(errorMessages.AUTH_REQUIRED);
   const { data, error } = await getSupabase().from('clinic_profiles').select('*').eq('id', user.id).single();
   checkError(error);
-  return data as ClinicProfile;
+  const profile = data as ClinicProfile;
+  const meta = (user.user_metadata || {}) as Record<string, unknown>;
+  const oauthName = typeof meta.full_name === 'string' && meta.full_name.trim()
+    ? meta.full_name.trim()
+    : typeof meta.name === 'string' && meta.name.trim()
+      ? meta.name.trim()
+      : '';
+  const oauthAvatar = typeof meta.avatar_url === 'string' && meta.avatar_url.trim()
+    ? meta.avatar_url.trim()
+    : typeof meta.picture === 'string' && meta.picture.trim()
+      ? meta.picture.trim()
+      : '';
+  const needsNameSync = Boolean(oauthName && (!profile.full_name || profile.full_name === 'Bệnh nhân'));
+  const needsAvatarSync = Boolean(oauthAvatar && !profile.avatar_url);
+  if (needsNameSync || needsAvatarSync) {
+    try {
+      const syncPayload: Record<string, string> = {};
+      if (needsNameSync) syncPayload.full_name = oauthName;
+      if (needsAvatarSync) syncPayload.avatar_url = oauthAvatar;
+      const { data: updated, error: updateErr } = await getSupabase()
+        .from('clinic_profiles')
+        .update(syncPayload)
+        .eq('id', user.id)
+        .select('*')
+        .single();
+      if (!updateErr && updated) return updated as ClinicProfile;
+      if (updateErr && needsNameSync) {
+        const { data: fallbackUpdated } = await getSupabase()
+          .from('clinic_profiles')
+          .update({ full_name: oauthName })
+          .eq('id', user.id)
+          .select('*')
+          .single();
+        if (fallbackUpdated) return fallbackUpdated as ClinicProfile;
+      }
+    } catch {
+      // Ignore optional metadata sync error so login never fails
+    }
+  }
+  return profile;
 }
 
 export async function updateClinicProfile(updates: UpdateClinicProfileInput, expectedUserId?: string): Promise<ClinicProfile> {
@@ -142,11 +182,31 @@ export async function signInClinic(email: string, password: string): Promise<Cli
 
 export async function signInWithGoogleClinic(): Promise<void> {
   const isWeb = Platform.OS === 'web';
-  const redirectTo = isWeb
-    ? typeof window !== 'undefined' && window.location?.origin
-      ? window.location.origin
-      : undefined
-    : 'medicareplus://auth-callback';
+  let redirectTo: string | undefined = 'medicareplus://auth-callback';
+  if (isWeb) {
+    redirectTo =
+      typeof window !== 'undefined' && window.location?.origin
+        ? window.location.origin
+        : undefined;
+  } else {
+    try {
+      const hostUri = Constants.expoConfig?.hostUri;
+      const isExpoGo =
+        Constants.executionEnvironment === 'storeClient' ||
+        (Constants as unknown as { appOwnership?: string }).appOwnership === 'expo';
+      if (isExpoGo && hostUri) {
+        redirectTo = `exp://${hostUri.replace(/\/+$/, '')}/--/auth-callback`;
+      } else {
+        const initialUrl = await Linking.getInitialURL();
+        if (initialUrl && initialUrl.startsWith('exp://')) {
+          const base = initialUrl.replace(/\/+$/, '').split('/--/')[0];
+          redirectTo = `${base}/--/auth-callback`;
+        }
+      }
+    } catch {
+      redirectTo = 'medicareplus://auth-callback';
+    }
+  }
 
   const { data, error } = await getSupabase().auth.signInWithOAuth({
     provider: 'google',

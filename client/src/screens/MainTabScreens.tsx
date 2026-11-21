@@ -126,7 +126,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   onOpenProfile,
   onNavigate,
 }) => {
-  const { appointments, doctors, hospitals, patientProfile } = useAppContext();
+  const {
+    appointments,
+    doctors,
+    hospitals,
+    patientProfile,
+    refreshHospitalCatalog,
+  } = useAppContext();
   const [search, setSearch] = useState('');
   const [selectedSpecialty, setSelectedSpecialty] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -135,11 +141,15 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   const [notificationsVisible, setNotificationsVisible] = useState(false);
   const insets = useSafeAreaInsets();
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     setRefreshing(true);
-    setTimeout(() => {
+    try {
+      await refreshHospitalCatalog();
+    } catch {
+      // AppContext keeps the existing catalog and exposes the load error.
+    } finally {
       setRefreshing(false);
-    }, 850);
+    }
   };
 
   // Filter and sort upcoming appointments (nearest first) to show on Home
@@ -408,10 +418,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             badgeText="TP. Hồ Chí Minh"
             badgeVariant="teal"
             badgeIcon="navigate"
-            actionText="Xem bản đồ"
+            actionText={hospitals.length > 0 ? 'Xem bản đồ' : undefined}
             onActionPress={() => {
-              setSelectedMapHospital(hospitals[0]);
-              setMapModalVisible(true);
+              const firstHospital = hospitals[0];
+              if (firstHospital) {
+                setSelectedMapHospital(firstHospital);
+                setMapModalVisible(true);
+              }
             }}
           />
           {refreshing ? (
@@ -439,11 +452,18 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         initialHospital={selectedMapHospital}
         onClose={() => setMapModalVisible(false)}
         onBookAtHospital={(hosp) => {
-          const matchedDoc =
-            DOCTORS.find((d) =>
-              d.hospital.toLowerCase().includes(hosp.name.toLowerCase()) ||
-              hosp.name.toLowerCase().includes(d.hospital.toLowerCase())
-            ) || DOCTORS[0];
+          const hospitalName = hosp.name.trim().toLocaleLowerCase('vi-VN');
+          const matchedDoc = doctors.find(
+            (doctor) =>
+              doctor.hospital.trim().toLocaleLowerCase('vi-VN') === hospitalName
+          );
+          if (!matchedDoc) {
+            Alert.alert(
+              'Chưa có bác sĩ',
+              'Cơ sở này chưa có bác sĩ khả dụng để đặt lịch. Vui lòng chọn cơ sở khác.'
+            );
+            return;
+          }
           onBookDoctor(matchedDoc);
         }}
       />

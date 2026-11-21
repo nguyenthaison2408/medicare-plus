@@ -30,6 +30,7 @@ import {
   fetchMedicationDataForRole,
   setMedicationTakenCloud,
 } from '../services/clinicMedicine';
+import { addHospitalCloud, fetchHospitalsCloud } from '../services/clinicHospitals';
 import type { PatientBookingInfo } from '../utils/bookingValidation';
 import {
   APPOINTMENTS,
@@ -98,6 +99,8 @@ export interface NewHospitalInput {
   name: string;
   address: string;
   phone?: string;
+  latitude?: number;
+  longitude?: number;
   gateInfo?: string;
   parkingInfo?: string;
   workingHours?: string;
@@ -197,7 +200,8 @@ interface AppContextValue {
   addDoctor: (input: NewDoctorInput) => DoctorItem;
   approveDoctor: (doctorId: string) => void;
   hospitals: HospitalItem[];
-  addHospital: (input: NewHospitalInput) => HospitalItem;
+  addHospital: (input: NewHospitalInput) => Promise<HospitalItem>;
+  refreshHospitalCatalog: () => Promise<void>;
 
   // 5. Medicine Cabinet & Doctor Reviews
   cabinetMeds: MedicineCabinetItem[];
@@ -417,7 +421,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     CLOUD_MODE ? '' : 'Đau đầu căng thẳng (Tension headache) / Rối loạn vận mạch não nhẹ'
   );
   const [doctors, setDoctors] = useState<DoctorItem[]>(CLOUD_MODE ? [] : DOCTORS);
-  const [hospitals, setHospitals] = useState<HospitalItem[]>(HOSPITALS);
+  const [hospitals, setHospitals] = useState<HospitalItem[]>(
+    CLOUD_MODE ? [] : HOSPITALS
+  );
   const [cabinetMeds, setCabinetMeds] =
     useState<MedicineCabinetItem[]>(CLOUD_MODE ? [] : INITIAL_CABINET_MEDS);
   const [doctorReviews, setDoctorReviews] = useState<DoctorReviewItem[]>(
@@ -434,6 +440,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   const cloudUserIdRef = useRef<string | null>(null);
   const [cloudProfile, setCloudProfile] = useState<ClinicProfile | null>(null);
   const [cloudSyncError, setCloudSyncError] = useState('');
+
+  const refreshHospitalCatalog = async (): Promise<void> => {
+    if (!CLOUD_MODE) return;
+
+    try {
+      const cloudHospitals = await fetchHospitalsCloud();
+      setHospitals(cloudHospitals);
+      setCloudSyncError('');
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : 'Không tải được danh mục cơ sở y tế.';
+      setCloudSyncError(message);
+      throw error;
+    }
+  };
 
   useEffect(() => {
     if (!CLOUD_MODE) return;
@@ -500,11 +523,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
               );
             }
           }).catch(() => {});
+          fetchHospitalsCloud()
+            .then(cloudHospitals => {
+              if (mounted && request === generation) setHospitals(cloudHospitals);
+            })
+            .catch(error => {
+              if (mounted && request === generation) {
+                setCloudSyncError(error instanceof Error ? error.message : 'Không tải được cơ sở y tế.');
+              }
+            });
           return;
         }
         const profile = await loadClinicProfile();
         if (!mounted || request !== generation) return;
-        const [cloudAppointments, cloudDoctors, families, reviews, schedules, configs] = await Promise.all([
+        const [cloudAppointments, cloudDoctors, families, reviews, schedules, configs, hospitalCatalog] = await Promise.all([
           listClinicAppointments(),
           listClinicDoctors().catch(() => []),
           fetchFamilyMembersCloud(),
@@ -514,6 +546,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
           ).catch(() => []),
           fetchDoctorSchedulesCloud().catch(() => []),
           fetchBhytConfigsCloud().catch(() => []),
+          fetchHospitalsCloud()
+            .then(hospitals => ({ hospitals, error: null as unknown }))
+            .catch(error => ({ hospitals: null, error })),
         ]);
         if (!mounted || request !== generation) return;
         if (cloudDoctors && cloudDoctors.length > 0) {
@@ -554,6 +589,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
           );
         }
         setCloudProfile(profile);
+        if (hospitalCatalog.hospitals) {
+          setHospitals(hospitalCatalog.hospitals);
+        }
         setAppointments(cloudAppointments.map(clinicAppointmentToItem));
         const activeAppointments = cloudAppointments.filter(appointment => appointment.status === 'CONFIRMED' || appointment.status === 'CHECKED_IN');
         const activeAppointment = activeAppointments.find(appointment => appointment.booking_code === selectedTicketCode.current) || activeAppointments[0];
@@ -580,7 +618,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         setBhytConfigs(configs);
         setCabinetMeds([]);
         setTakenMap({});
-        setCloudSyncError('');
+        if (hospitalCatalog.error) {
+          setCloudSyncError(
+            hospitalCatalog.error instanceof Error
+              ? hospitalCatalog.error.message
+              : 'Không tải được danh mục cơ sở y tế.'
+          );
+        } else {
+          setCloudSyncError('');
+        }
 
         // Medicine data is patient-only. It must never block staff profiles,
         // appointments or the rest of the portal from loading.
@@ -1096,12 +1142,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     );
   };
 
-  const addHospital = (input: NewHospitalInput): HospitalItem => {
+  const addHospital = async (input: NewHospitalInput): Promise<HospitalItem> => {
     const trimmedName = input.name.trim();
     const existing = hospitals.find(
       (h) => h.name.toLowerCase() === trimmedName.toLowerCase()
     );
     if (existing) return existing;
+
+    if (CLOUD_MODE) {
+      const expectedUser = cloudUserIdRef.current;
+      if (!expectedUser) throw new Error('Vui lòng đăng nhập lại trước khi thêm cơ sở y tế.');
+      if (input.latitude === undefined || input.longitude === undefined) {
+        throw new Error('Vui lòng nhập tọa độ của cơ sở y tế.');
+      }
+      const saved = await addHospitalCloud({
+        ...input,
+        latitude: input.latitude,
+        longitude: input.longitude,
+      });
+      if (cloudUserIdRef.current !== expectedUser) {
+        throw new Error('Phiên đăng nhập đã thay đổi. Vui lòng tải lại danh sách cơ sở y tế.');
+      }
+      setHospitals(prev => [saved, ...prev.filter(hospital => hospital.id !== saved.id)]);
+      return saved;
+    }
 
     const newHosp: HospitalItem = {
       id: `hosp-${hospitals.length}`,
@@ -1113,8 +1177,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
       image:
         'https://images.unsplash.com/photo-1586773860418-d37222d8fce3?w=300&auto=format&fit=crop&q=80',
       address: input.address.trim() || 'TP. Hồ Chí Minh',
-      latitude: 10.768 + (hospitals.length % 4) * 0.006,
-      longitude: 106.666 + (hospitals.length % 4) * 0.008,
+      latitude: input.latitude ?? 10.768 + (hospitals.length % 4) * 0.006,
+      longitude: input.longitude ?? 106.666 + (hospitals.length % 4) * 0.008,
       phone: input.phone?.trim() || '19001234',
       gateInfo:
         input.gateInfo?.trim() ||
@@ -1430,6 +1494,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         approveDoctor,
         hospitals,
         addHospital,
+        refreshHospitalCatalog,
         cabinetMeds,
         addCabinetMedicine,
         doctorReviews,

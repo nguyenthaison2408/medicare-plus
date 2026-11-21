@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -123,10 +123,13 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({
   );
   const [customHospName, setCustomHospName] = useState('');
   const [customHospAddress, setCustomHospAddress] = useState('');
+  const [customHospLatitude, setCustomHospLatitude] = useState('');
+  const [customHospLongitude, setCustomHospLongitude] = useState('');
   const [newDocFee, setNewDocFee] = useState('300000');
   const [newDocExp, setNewDocExp] = useState('5');
   const [newDocLicense, setNewDocLicense] = useState('');
   const [docErrors, setDocErrors] = useState<Record<string, string>>({});
+  const [isSavingDoctor, setIsSavingDoctor] = useState(false);
 
   // Biểu mẫu thêm bệnh viện liên kết độc lập
   const [showAddHosp, setShowAddHosp] = useState(false);
@@ -134,7 +137,20 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({
   const [hospAddress, setHospAddress] = useState('');
   const [hospPhone, setHospPhone] = useState('');
   const [hospGate, setHospGate] = useState('');
+  const [hospLatitude, setHospLatitude] = useState('');
+  const [hospLongitude, setHospLongitude] = useState('');
   const [hospErrors, setHospErrors] = useState<Record<string, string>>({});
+  const [isSavingHospital, setIsSavingHospital] = useState(false);
+
+  useEffect(() => {
+    if (
+      hospitals.length > 0 &&
+      newDocHospitalId !== 'custom' &&
+      !hospitals.some(hospital => hospital.id === newDocHospitalId)
+    ) {
+      setNewDocHospitalId(hospitals[0].id);
+    }
+  }, [hospitals, newDocHospitalId]);
 
   // Số liệu tính từ dữ liệu thật trong AppContext
   const upcomingCount = appointments.filter((a) => a.status === 'upcoming').length;
@@ -181,16 +197,20 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({
     setNewDocHospitalId(hospitals[0]?.id || 'hosp-0');
     setCustomHospName('');
     setCustomHospAddress('');
+    setCustomHospLatitude('');
+    setCustomHospLongitude('');
     setNewDocFee('300000');
     setNewDocExp('5');
     setNewDocLicense('');
     setDocErrors({});
   };
 
-  const handleSubmitDoctor = () => {
+  const handleSubmitDoctor = async () => {
     const errors: Record<string, string> = {};
     const fee = Number(newDocFee.replace(/[^0-9]/g, ''));
     const exp = Number(newDocExp.replace(/[^0-9]/g, ''));
+    const customLatitude = Number(customHospLatitude.replace(',', '.'));
+    const customLongitude = Number(customHospLongitude.replace(',', '.'));
     if (newDocName.trim().length < 5) {
       errors.name = 'Nhập đầy đủ học hàm và họ tên (VD: BS. Nguyễn Văn A)';
     }
@@ -199,6 +219,12 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({
     }
     if (newDocHospitalId === 'custom' && customHospName.trim().length < 4) {
       errors.customHosp = 'Nhập tên bệnh viện / cơ sở y tế công tác';
+    }
+    if (newDocHospitalId === 'custom' && (!customHospLatitude.trim() || !Number.isFinite(customLatitude) || customLatitude < -90 || customLatitude > 90)) {
+      errors.customLatitude = 'Vĩ độ phải nằm trong khoảng -90 đến 90';
+    }
+    if (newDocHospitalId === 'custom' && (!customHospLongitude.trim() || !Number.isFinite(customLongitude) || customLongitude < -180 || customLongitude > 180)) {
+      errors.customLongitude = 'Kinh độ phải nằm trong khoảng -180 đến 180';
     }
     if (!newDocFee.trim() || Number.isNaN(fee) || fee < 50000) {
       errors.fee = 'Phí khám tối thiểu 50.000 đ';
@@ -209,57 +235,92 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({
     setDocErrors(errors);
     if (Object.keys(errors).length > 0) return;
 
-    const hospital =
-      newDocHospitalId === 'custom'
-        ? addHospital({
-            name: customHospName,
-            address: customHospAddress || 'TP. Hồ Chí Minh',
-          })
-        : hospitals.find((h) => h.id === newDocHospitalId) || hospitals[0];
-    const created = addDoctor({
-      name: newDocName,
-      degree: newDocDegree,
-      specialty: newDocSpecialty,
-      hospital: hospital.name,
-      address: hospital.address,
-      latitude: hospital.latitude,
-      longitude: hospital.longitude,
-      feeNumeric: fee,
-      experienceYears: exp,
-      licenseCode: newDocLicense,
-    });
-    resetDocForm();
-    setShowAddDoc(false);
-    setDocFilter('pending');
-    setAdminToast(`Đã thêm ${created.name}. Hồ sơ đang chờ duyệt CCHN.`);
+    setIsSavingDoctor(true);
+    try {
+      const hospital =
+        newDocHospitalId === 'custom'
+          ? await addHospital({
+              name: customHospName,
+              address: customHospAddress || 'TP. Hồ Chí Minh',
+              latitude: customLatitude,
+              longitude: customLongitude,
+            })
+          : hospitals.find((h) => h.id === newDocHospitalId) || hospitals[0];
+      if (!hospital) throw new Error('Vui lòng chọn cơ sở y tế công tác.');
+      const created = addDoctor({
+        name: newDocName,
+        degree: newDocDegree,
+        specialty: newDocSpecialty,
+        hospital: hospital.name,
+        address: hospital.address,
+        latitude: hospital.latitude,
+        longitude: hospital.longitude,
+        feeNumeric: fee,
+        experienceYears: exp,
+        licenseCode: newDocLicense,
+      });
+      resetDocForm();
+      setShowAddDoc(false);
+      setDocFilter('pending');
+      setAdminToast(`Đã thêm ${created.name}. Hồ sơ đang chờ duyệt CCHN.`);
+    } catch (error) {
+      setDocErrors(prev => ({
+        ...prev,
+        customHosp: error instanceof Error ? error.message : 'Chưa lưu được cơ sở y tế.',
+      }));
+    } finally {
+      setIsSavingDoctor(false);
+    }
   };
 
-  const handleSubmitHospital = () => {
+  const handleSubmitHospital = async () => {
     const errors: Record<string, string> = {};
+    const latitude = Number(hospLatitude.replace(',', '.'));
+    const longitude = Number(hospLongitude.replace(',', '.'));
     if (hospName.trim().length < 4) {
       errors.name = 'Vui lòng nhập tên bệnh viện hoặc phòng khám';
     }
     if (hospAddress.trim().length < 6) {
       errors.address = 'Vui lòng nhập địa chỉ cơ sở y tế';
     }
+    if (!hospLatitude.trim() || !Number.isFinite(latitude) || latitude < -90 || latitude > 90) {
+      errors.latitude = 'Vĩ độ phải nằm trong khoảng -90 đến 90';
+    }
+    if (!hospLongitude.trim() || !Number.isFinite(longitude) || longitude < -180 || longitude > 180) {
+      errors.longitude = 'Kinh độ phải nằm trong khoảng -180 đến 180';
+    }
     setHospErrors(errors);
     if (Object.keys(errors).length > 0) return;
 
-    const created = addHospital({
-      name: hospName,
-      address: hospAddress,
-      phone: hospPhone,
-      gateInfo: hospGate,
-    });
-    setHospName('');
-    setHospAddress('');
-    setHospPhone('');
-    setHospGate('');
-    setHospErrors({});
-    setShowAddHosp(false);
-    setAdminToast(
-      `Đã thêm cơ sở "${created.name}". Đã đồng bộ ra Trang chủ & Bản đồ!`
-    );
+    setIsSavingHospital(true);
+    try {
+      const created = await addHospital({
+        name: hospName,
+        address: hospAddress,
+        phone: hospPhone,
+        gateInfo: hospGate,
+        latitude,
+        longitude,
+      });
+      setHospName('');
+      setHospAddress('');
+      setHospPhone('');
+      setHospGate('');
+      setHospLatitude('');
+      setHospLongitude('');
+      setHospErrors({});
+      setShowAddHosp(false);
+      setAdminToast(
+        `Đã thêm cơ sở "${created.name}". Đã đồng bộ ra Trang chủ & Bản đồ!`
+      );
+    } catch (error) {
+      setHospErrors(prev => ({
+        ...prev,
+        submit: error instanceof Error ? error.message : 'Chưa lưu được cơ sở y tế.',
+      }));
+    } finally {
+      setIsSavingHospital(false);
+    }
   };
 
   const renderOverview = () => (
@@ -751,6 +812,26 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({
                 onChangeText={setCustomHospAddress}
                 leftIcon="location-outline"
               />
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <AppInput
+                  label="VĨ ĐỘ (*)"
+                  placeholder="10.755341"
+                  keyboardType="decimal-pad"
+                  value={customHospLatitude}
+                  onChangeText={setCustomHospLatitude}
+                  error={docErrors.customLatitude}
+                  containerStyle={{ flex: 1 }}
+                />
+                <AppInput
+                  label="KINH ĐỘ (*)"
+                  placeholder="106.664971"
+                  keyboardType="decimal-pad"
+                  value={customHospLongitude}
+                  onChangeText={setCustomHospLongitude}
+                  error={docErrors.customLongitude}
+                  containerStyle={{ flex: 1 }}
+                />
+              </View>
             </>
           )}
 
@@ -782,7 +863,8 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({
             variant="primary"
             size="md"
             leftIcon="checkmark-circle-outline"
-            onPress={handleSubmitDoctor}
+            onPress={() => void handleSubmitDoctor()}
+            loading={isSavingDoctor}
           />
         </View>
       )}
@@ -912,6 +994,32 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({
             onChangeText={setHospPhone}
             leftIcon="call-outline"
           />
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <AppInput
+              label="VĨ ĐỘ (*)"
+              placeholder="10.755341"
+              keyboardType="decimal-pad"
+              value={hospLatitude}
+              onChangeText={(value) => {
+                setHospLatitude(value);
+                if (hospErrors.latitude) setHospErrors(prev => ({ ...prev, latitude: '' }));
+              }}
+              error={hospErrors.latitude}
+              containerStyle={{ flex: 1 }}
+            />
+            <AppInput
+              label="KINH ĐỘ (*)"
+              placeholder="106.664971"
+              keyboardType="decimal-pad"
+              value={hospLongitude}
+              onChangeText={(value) => {
+                setHospLongitude(value);
+                if (hospErrors.longitude) setHospErrors(prev => ({ ...prev, longitude: '' }));
+              }}
+              error={hospErrors.longitude}
+              containerStyle={{ flex: 1 }}
+            />
+          </View>
           <AppInput
             label="HƯỚNG DẪN CỔNG VÀO & GỬI XE"
             placeholder="VD: Cổng số 1 — Khu tiếp đón Khám BHYT"
@@ -919,12 +1027,18 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({
             onChangeText={setHospGate}
             leftIcon="navigate-outline"
           />
+          {!!hospErrors.submit && (
+            <Text style={{ color: COLORS.error, marginBottom: 10 }}>
+              {hospErrors.submit}
+            </Text>
+          )}
           <AppButton
             title="Lưu cơ sở y tế vào hệ thống"
             variant="primary"
             size="md"
             leftIcon="checkmark-circle-outline"
-            onPress={handleSubmitHospital}
+            onPress={() => void handleSubmitHospital()}
+            loading={isSavingHospital}
           />
         </View>
       )}

@@ -52,9 +52,14 @@ export const HospitalMapModal: React.FC<HospitalMapModalProps> = ({
     manualSelection && manualSelection.initialId === initialHospital?.id
       ? manualSelection.hospital
       : initialHospital || hospitals[0];
+  const [travelMode, setTravelMode] = useState<TravelMode>('two-wheeler');
+
+  // The modal is mounted even when it is closed. In cloud mode the catalog
+  // starts empty, so do not read fields from an unavailable selected hospital.
+  if (!selectedHosp) return null;
+
   const setSelectedHosp = (hosp: HospitalItem) =>
     setManualSelection({ initialId: initialHospital?.id, hospital: hosp });
-  const [travelMode, setTravelMode] = useState<TravelMode>('two-wheeler');
 
   const handleOpenDirections = () => {
     openGoogleMapsDirections({

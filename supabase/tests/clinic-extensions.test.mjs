@@ -12,6 +12,24 @@ try{
  for(const [name,id] of Object.entries(ids))await db.query('insert into auth.users values($1,$2)',[id,JSON.stringify({full_name:'Test '+name,phone:'0901234567'})]);
  for(const role of ['doctor','reception','admin'])await db.query('update clinic_profiles set role=$1,doctor_id=$2 where id=$3',[role,role==='doctor'?'doc-1':null,ids[role]]);
  const tables=(await db.query("select tablename from pg_tables where schemaname='public'")).rows.map(x=>x.tablename);
+ if(tables.includes('clinic_hospitals')){
+  const addHospital=(name='Bệnh viện Kiểm thử',latitude=10.75,longitude=106.67)=>db.query("select public.clinic_admin_add_hospital($1,'123 Đường Kiểm thử, TP.HCM','02812345678',$2,$3) as hospital",[name,latitude,longitude]);
+  await as(null);
+  await check('anonymous users can read active hospital catalog',async()=>assert.equal((await db.query('select id from clinic_hospitals')).rows.length,4));
+  await check('anonymous hospital administration is denied',async()=>denied(()=>addHospital()));
+  await as(ids.a);await check('patients cannot add hospitals',async()=>denied(()=>addHospital()));
+  for(const role of ['doctor','reception']){await as(ids[role]);await check(role+' cannot add hospitals',async()=>denied(()=>addHospital()));}
+  await as(ids.admin);
+  const created=(await addHospital()).rows[0].hospital;
+  await check('admin can add a validated hospital',async()=>{assert.equal(created.name,'Bệnh viện Kiểm thử');assert.equal(created.latitude,10.75);});
+  await check('duplicate hospital creation returns existing row',async()=>assert.equal((await addHospital()).rows[0].hospital.id,created.id));
+  await check('invalid hospital coordinates are rejected',async()=>assert.rejects(()=>addHospital('Bệnh viện Tọa độ lỗi',999,106.67),e=>e.code==='22023'));
+  await check('direct hospital writes are denied',async()=>denied(()=>db.query("insert into clinic_hospitals(name,address,latitude,longitude) values('Direct hospital','Direct address',10,106)")));
+  await db.exec('reset role');
+  await db.query("insert into clinic_hospitals(name,address,latitude,longitude,active) values('Inactive hospital','Hidden address',10,106,false)");
+  await as(null);
+  await check('inactive hospitals are hidden from public catalog',async()=>assert.equal((await db.query("select id from clinic_hospitals where name='Inactive hospital'")).rows.length,0));
+ }
  if(tables.includes('clinic_family_members')){
   await as(ids.b);const family=(await db.query("insert into clinic_family_members(owner_id,full_name,relationship,bhyt_code) values($1,'Relative B','Con','TEST-BHYT') returning id",[ids.b])).rows[0];
   await check('owner can create family member and read it',async()=>assert.equal((await db.query('select id from clinic_family_members')).rows.length,1));

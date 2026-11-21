@@ -201,6 +201,7 @@ interface AppContextValue {
   approveDoctor: (doctorId: string) => void;
   hospitals: HospitalItem[];
   addHospital: (input: NewHospitalInput) => Promise<HospitalItem>;
+  refreshHospitalCatalog: () => Promise<void>;
 
   // 5. Medicine Cabinet & Doctor Reviews
   cabinetMeds: MedicineCabinetItem[];
@@ -440,6 +441,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   const [cloudProfile, setCloudProfile] = useState<ClinicProfile | null>(null);
   const [cloudSyncError, setCloudSyncError] = useState('');
 
+  const refreshHospitalCatalog = async (): Promise<void> => {
+    if (!CLOUD_MODE) return;
+
+    try {
+      const cloudHospitals = await fetchHospitalsCloud();
+      setHospitals(cloudHospitals);
+      setCloudSyncError('');
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : 'Không tải được danh mục cơ sở y tế.';
+      setCloudSyncError(message);
+      throw error;
+    }
+  };
+
   useEffect(() => {
     if (!CLOUD_MODE) return;
     let mounted = true;
@@ -518,7 +536,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         }
         const profile = await loadClinicProfile();
         if (!mounted || request !== generation) return;
-        const [cloudAppointments, cloudDoctors, families, reviews, schedules, configs, cloudHospitals] = await Promise.all([
+        const [cloudAppointments, cloudDoctors, families, reviews, schedules, configs, hospitalCatalog] = await Promise.all([
           listClinicAppointments(),
           listClinicDoctors().catch(() => []),
           fetchFamilyMembersCloud(),
@@ -528,7 +546,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
           ).catch(() => []),
           fetchDoctorSchedulesCloud().catch(() => []),
           fetchBhytConfigsCloud().catch(() => []),
-          fetchHospitalsCloud().catch(() => []),
+          fetchHospitalsCloud()
+            .then(hospitals => ({ hospitals, error: null as unknown }))
+            .catch(error => ({ hospitals: null, error })),
         ]);
         if (!mounted || request !== generation) return;
         if (cloudDoctors && cloudDoctors.length > 0) {
@@ -569,7 +589,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
           );
         }
         setCloudProfile(profile);
-        setHospitals(cloudHospitals);
+        if (hospitalCatalog.hospitals) {
+          setHospitals(hospitalCatalog.hospitals);
+        }
         setAppointments(cloudAppointments.map(clinicAppointmentToItem));
         const activeAppointments = cloudAppointments.filter(appointment => appointment.status === 'CONFIRMED' || appointment.status === 'CHECKED_IN');
         const activeAppointment = activeAppointments.find(appointment => appointment.booking_code === selectedTicketCode.current) || activeAppointments[0];
@@ -596,7 +618,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         setBhytConfigs(configs);
         setCabinetMeds([]);
         setTakenMap({});
-        setCloudSyncError('');
+        if (hospitalCatalog.error) {
+          setCloudSyncError(
+            hospitalCatalog.error instanceof Error
+              ? hospitalCatalog.error.message
+              : 'Không tải được danh mục cơ sở y tế.'
+          );
+        } else {
+          setCloudSyncError('');
+        }
 
         // Medicine data is patient-only. It must never block staff profiles,
         // appointments or the rest of the portal from loading.
@@ -1464,6 +1494,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         approveDoctor,
         hospitals,
         addHospital,
+        refreshHospitalCatalog,
         cabinetMeds,
         addCabinetMedicine,
         doctorReviews,

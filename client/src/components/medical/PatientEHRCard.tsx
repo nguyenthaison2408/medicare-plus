@@ -16,13 +16,28 @@ import { Badge } from '../common/Badge';
 import { AppButton } from '../common/AppButton';
 
 const maskBhyt = (code: string, masked: boolean) => {
+  if (!code || !code.trim()) return 'Chưa cập nhật mã thẻ';
   if (!masked) return code;
   // e.g. 'DN4 79 234 82390' -> 'DN4 79 *** 82390'
   const parts = code.split(' ');
   if (parts.length >= 4) {
     return `${parts[0]} ${parts[1]} *** ${parts[parts.length - 1]}`;
   }
-  return code.slice(0, 6) + '***' + code.slice(-4);
+  if (code.length <= 6) return code;
+  return code.slice(0, 4) + '***' + code.slice(-3);
+};
+
+const formatPatientCode = (code?: string) => {
+  if (!code || !code.trim()) return '#BN-TRUCTUYEN';
+  if (code.startsWith('#')) return code;
+  if (code.length > 16) return `#BN-${code.slice(0, 6).toUpperCase()}`;
+  return code;
+};
+
+const formatAgeOrDob = (profile: typeof PATIENT_PROFILE & { dob?: string }) => {
+  if (profile.dob && profile.dob.trim()) return `Sinh: ${profile.dob.trim()}`;
+  if (profile.age && profile.age > 0) return `${profile.age} tuổi`;
+  return 'Chưa cập nhật ngày sinh';
 };
 
 const maskCccd = (masked: boolean) =>
@@ -57,10 +72,10 @@ export const PatientMasterIdentityCard: React.FC<PatientMasterIdentityCardProps>
             <Text style={styles.name} numberOfLines={1}>
               {profile.name}
             </Text>
-            <Badge label={`${profile.age} tuổi • ${profile.gender}`} variant="surface" />
+            <Badge label={`${formatAgeOrDob(profile as typeof PATIENT_PROFILE & { dob?: string })} • ${profile.gender || 'Chưa cập nhật'}`} variant="surface" />
           </View>
           <Text style={styles.patientCode} numberOfLines={1}>
-            Mã BN: {profile.patientCode}
+            Mã BN: {formatPatientCode(profile.patientCode)}
           </Text>
 
           {/* PII Masked Identity Row (CCCD & BHYT) */}
@@ -188,10 +203,16 @@ export const VssIDInsuranceCard: React.FC<VssIDInsuranceCardProps> = ({
           </View>
           <View style={{ flex: 1, minWidth: 0 }}>
             <Text style={styles.vssidType}>BẢO HIỂM Y TẾ ĐIỆN TỬ</Text>
-            <Text style={styles.vssidSync}>VssID Đồng bộ thời gian thực</Text>
+            <Text style={styles.vssidSync}>
+              {profile.bhytCode ? 'VssID • Đã liên kết thẻ BHYT' : 'Chưa liên kết mã thẻ BHYT'}
+            </Text>
           </View>
         </View>
-        <Badge label="Hiệu lực" variant="teal" showDot />
+        <Badge
+          label={profile.bhytCode ? 'Hiệu lực' : 'Chưa liên kết'}
+          variant={profile.bhytCode ? 'teal' : 'surface'}
+          showDot={Boolean(profile.bhytCode)}
+        />
       </View>
 
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -220,13 +241,13 @@ export const VssIDInsuranceCard: React.FC<VssIDInsuranceCardProps> = ({
         <View style={styles.vssidMetaRow}>
           <Text style={styles.vssidMetaKey}>Nơi ĐKKCB Ban Đầu:</Text>
           <Text style={styles.vssidMetaVal} numberOfLines={1}>
-            {profile.bhytHospital}
+            {profile.bhytHospital || 'Chưa cập nhật'}
           </Text>
         </View>
         <View style={[styles.vssidMetaRow, { marginTop: 4 }]}>
           <Text style={styles.vssidMetaKey}>Hạn bảo hiểm:</Text>
           <Text style={styles.vssidMetaVal} numberOfLines={1}>
-            {profile.bhytExpiry}
+            {profile.bhytExpiry || 'Chưa cập nhật'}
           </Text>
         </View>
       </View>
@@ -239,7 +260,9 @@ export const VssIDInsuranceCard: React.FC<VssIDInsuranceCardProps> = ({
         accessibilityLabel="Tra cứu chi tiết và lịch sử quỹ chi trả BHYT"
       >
         <Text style={styles.vssidBtnText} numberOfLines={1}>
-          Tra cứu chi tiết & Lịch sử quỹ chi trả
+          {profile.bhytCode
+            ? 'Cập nhật thẻ BHYT & Tra cứu quyền lợi'
+            : 'Bấm để cập nhật mã thẻ BHYT cá nhân'}
         </Text>
         <Ionicons name="arrow-forward" size={14} color="#FFFFFF" />
       </TouchableOpacity>
@@ -251,6 +274,7 @@ export interface ProfileHeaderCardProps {
   profile?: typeof PATIENT_PROFILE;
   onEditPress?: () => void;
   onQrPress?: () => void;
+  onAvatarPress?: () => void;
   style?: ViewStyle;
 }
 
@@ -258,40 +282,54 @@ export const ProfileHeaderCard: React.FC<ProfileHeaderCardProps> = ({
   profile = PATIENT_PROFILE,
   onEditPress,
   onQrPress,
+  onAvatarPress,
   style,
 }) => {
   return (
     <View style={[styles.card, SHADOWS.sm, style]}>
       <View style={styles.topRow}>
-        <View style={styles.avatarWrap}>
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={onAvatarPress || onEditPress}
+          style={styles.avatarWrap}
+          accessibilityRole="button"
+          accessibilityLabel="Đổi ảnh đại diện"
+        >
           <Image source={{ uri: profile.avatar }} style={styles.avatarLg} />
           <View style={styles.verifiedBadge}>
-            <Ionicons name="checkmark-circle" size={18} color={COLORS.secondary} />
+            <Ionicons
+              name={onAvatarPress ? 'camera' : 'checkmark-circle'}
+              size={14}
+              color={onAvatarPress ? COLORS.primary : COLORS.secondary}
+            />
           </View>
-        </View>
+        </TouchableOpacity>
         <View style={{ flex: 1, minWidth: 0, marginLeft: 12 }}>
           <View style={styles.nameRow}>
             <Text style={styles.nameLg} numberOfLines={1}>
               {profile.name}
             </Text>
-            <Badge label="eKYC" variant="teal" icon="shield-checkmark-outline" />
+            <Badge label="Đã xác thực" variant="teal" icon="shield-checkmark-outline" />
           </View>
           <Text style={styles.metaText} numberOfLines={1}>
-            {profile.age} tuổi • {profile.gender} • Nhóm máu{' '}
+            {formatAgeOrDob(profile as typeof PATIENT_PROFILE & { dob?: string })} • {profile.gender || 'Chưa cập nhật'} • Nhóm máu{' '}
             <Text style={{ color: COLORS.primary, fontWeight: '800' }}>
-              {profile.bloodType}
+              {profile.bloodType || 'Chưa cập nhật'}
             </Text>
           </Text>
           <View style={styles.codeCopyPill}>
             <Text style={styles.codeCopyText} numberOfLines={1}>
-              {profile.patientCode}
+              {formatPatientCode(profile.patientCode)}
+              {(profile as typeof PATIENT_PROFILE & { phone?: string }).phone
+                ? ` • SĐT: ${(profile as typeof PATIENT_PROFILE & { phone?: string }).phone}`
+                : ''}
             </Text>
             <Ionicons name="copy-outline" size={13} color={COLORS.primary} />
           </View>
         </View>
       </View>
 
-      <TouchableOpacity style={styles.tierBar} activeOpacity={0.8}>
+      <TouchableOpacity style={styles.tierBar} activeOpacity={0.8} onPress={onEditPress}>
         <View style={[styles.tierLeft, { flex: 1, minWidth: 0, marginRight: 8 }]}>
           <Ionicons name="ribbon-outline" size={16} color={COLORS.primary} />
           <Text style={[styles.tierText, { flex: 1 }]} numberOfLines={1}>
@@ -348,7 +386,7 @@ export const ProfileHeaderCard: React.FC<ProfileHeaderCardProps> = ({
             <Ionicons name="medical" size={15} color={COLORS.error} />
             <View style={{ flex: 1, minWidth: 0 }}>
               <Text style={styles.emergencyLabel}>
-                Liên hệ khẩn cấp (Dữ liệu mẫu)
+                Liên hệ khẩn cấp
               </Text>
               <Text style={styles.emergencyText}>
                 {rawContact || 'Chưa cập nhật số điện thoại khẩn cấp'}

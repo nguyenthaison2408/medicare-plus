@@ -1,47 +1,73 @@
-# MediCare Plus / SmartClinic
+# MediCare Plus
 
-Đồ án Quản trị dự án phần mềm — VKU. Giảng viên: TS. Nguyễn Thanh Tuấn. Pathway 1: kế thừa ứng dụng đa nền tảng SmartClinic. Hạn báo cáo nhóm xác nhận: **23/11/2026**.
+Đồ án Quản trị dự án phần mềm — VKU, Nhóm 04. Giảng viên: TS. Nguyễn Thanh Tuấn. Báo cáo: **23/11/2026**.
 
-## Trạng thái được kiểm tra
+## Nhóm và trách nhiệm
 
-- Client: Expo SDK 58, React Native 0.88, TypeScript; giao diện web và di động.
-- API Express hiện có sử dụng bộ nhớ trong một tiến trình để chạy demo.
-- Đã tạo Supabase project medicare-plus (Free, Singapore), áp dụng hai migration và kiểm thử Auth, PostgreSQL/RLS, Realtime cùng luồng đặt lịch/tiếp đón/bệnh án trên dịch vụ thật.
-- Chế độ minh họa giữ dữ liệu cục bộ. Chế độ Supabase chỉ xác nhận giao dịch khi cơ sở dữ liệu xử lý thành công.
-- Email thông báo và Redis đã được PM đồng ý hoãn. Thanh toán online, video call, BHYT/eKYC và các tiện ích chưa tích hợp được tách khỏi luồng cloud đã kiểm chứng.
-- Kết quả hiện có: 26 API + 27 SQL + 26 cloud checks; k6 tra cứu 100 VU/30 giây đạt p95 137,53 ms, lỗi HTTP 0%; k6 tranh chấp slot có 1 thành công và 49 xung đột dự kiến. Chưa thay thế UAT/kiểm tra camera.
+| Thành viên | MSV | Trách nhiệm | Tỷ lệ nhóm chốt |
+|---|---|---|---:|
+| Nguyễn Thái Sơn | 23IT.EB086 | PM/Scrum Master, QA, Supabase và tích hợp | 30% |
+| Vi Hữu Thành | 23IT.EB096 | Tech Lead/CI, backend, trợ lý phân luồng theo luật | 22% |
+| Đặng Thanh Vũ | 23IT.EB120 | Frontend/Mobile, các cổng người dùng và tích hợp UI | 28% |
+| Nguyễn Từ Anh Nguyên | 23IT.EB064 | Full-stack/Booking, tủ thuốc, bệnh viện | 20% |
 
-## Nhóm
+Tỷ lệ do trưởng nhóm quyết định sau đối chiếu công việc. Số commit không phải giờ công hoặc công thức chia tỷ lệ.
 
-| Thành viên | MSV | Vai trò | Phân bổ đã thống nhất |
-|---|---|---|---|
-| Nguyễn Thái Sơn | 23IT.EB086 | PM / Scrum Master | 40% |
-| Vi Hữu Thành | 23IT.EB096 | Tech Lead / Architect | 20% |
-| Đặng Thanh Vũ | 23IT.EB120 | Backend | 20% |
-| Nguyễn Từ Anh Nguyên | 23IT.EB064 | Frontend / QA | 20% |
+## Sản phẩm và phạm vi nghiệm thu
+
+- Client Expo 58/React Native/TypeScript gọi Supabase Auth, Data API, RPC và PostgreSQL/RLS. Express là API demo lưu trong bộ nhớ, chạy độc lập.
+- Demo cốt lõi: đăng nhập đúng vai trò → đặt lịch chống trùng → phiếu QR → tiếp đón đúng ngày → bác sĩ lưu EMR → bệnh nhân đọc lại.
+- Main **602b76c** ngày 22/11 gồm PR #23–#27, #29–#32 và #43: UI/mobile, check-in, EMR, người thân, review, tủ thuốc, bệnh viện, trợ lý, hồ sơ/avatar, ca trực, BHYT, chat và email tùy chọn.
+- Trợ lý sử dụng từ khóa/luật cục bộ, không gọi Gemini/OpenAI hoặc LLM. Không xem kết quả là chẩn đoán lâm sàng.
+- OTP đăng ký do Supabase Auth xác minh; app không tự tạo hoặc đối chiếu mã để xác nhận email. Liên kết/mã email phụ thuộc template và chính sách Auth của project.
+- Email phiếu hẹn đã có mã nhưng chưa có bằng chứng thư đến hộp nhận thực. Webhook phải trả JSON {"ok":true} sau khi xử lý thành công; lỗi HTTP, HTML hoặc phản hồi thiếu xác nhận không được coi là đã gửi.
+- Avatar picker hiện hỗ trợ web; BHYT là cấu hình/ước tính, chưa tích hợp xác minh quyền lợi. Redis, video, eKYC và thanh toán online chưa triển khai.
+
+## Database và triển khai
+
+Supabase project medicare-plus lưu dữ liệu trực tuyến. Source có **12 tệp SQL**; ledger ngày 22/11 ghi **10 migration**. Cloud đã có bảng chat và cột người thân mới nhưng chưa ghi ledger 007/008; [Issue #44](https://github.com/nguyenthaison2408/medicare-plus/issues/44) theo dõi đối chiếu schema/RLS/trigger/publication và checksum trước khi reconcile. Không chạy lại SQL hoặc ghi ledger chỉ vì bảng đã tồn tại.
+
+Các thành viên đăng nhập ứng dụng bằng tài khoản được cấp vai trò; quyền quản trị dashboard Supabase được cấp riêng. Cấu hình: [supabase/README.md](supabase/README.md), [client/.env.example](client/.env.example). Publishable key được phép ở client; mật khẩu database và service-role key phải giữ ngoài client/Git.
 
 ## Chạy và kiểm tra
 
-Yêu cầu Node.js 22.13+ trong dòng 22, hoặc 24.3+ trong dòng 24. Cài các dependency bằng npm ci ở thư mục gốc, server và client.
+Yêu cầu Node 22.13+ trong dòng 22 hoặc 24.3+ trong dòng 24. Chạy npm ci ở root, server và client.
 
-- npm run dev:server — API demo tại http://localhost:5000/api/v1.
-- npm run dev:client — Expo Web, địa chỉ do Expo hiển thị.
-- npm test — kiểm thử PostgreSQL nhúng/RLS và API demo.
-- npm --prefix client run lint — kiểm tra lint.
-- npm --prefix client run typecheck — kiểm tra TypeScript.
-- npm run build — xuất web vào client/dist.
-- npm run preview:web — mở bản web đã build tại http://127.0.0.1:4173 (cần Internet để truy cập Supabase).
-- npm run test:cloud — kiểm thử project thật bằng tài khoản giả và dọn fixture; cần cấu hình riêng của chủ project.
+~~~text
+npm run dev:server           # API demo: localhost:5000/api/v1
+npm run dev:client           # Expo: xem URL do CLI hiển thị
+npm test                    # kiểm thử local, không chứng minh UAT cloud
+npm --prefix client run lint
+npm --prefix client run typecheck
+npm run build               # client/dist
+npm run preview:web         # localhost:4173
+~~~
 
-Phần Supabase: xem [hướng dẫn cấu hình](supabase/README.md) và client/.env.example. Publishable key có thể dùng trong client; mật khẩu CSDL và service-role key không được đặt ở đó.
+Chế độ cloud dùng EXPO_PUBLIC_DATA_MODE=supabase cùng URL và publishable key trong client/.env.local. Cấu hình email là tùy chọn, đăng ký Auth không phụ thuộc webhook phiếu hẹn. Công cụ migration/cloud-test yêu cầu cấu hình quản trị riêng; cloud-test có thể tạo dữ liệu QA và phải dọn đúng fixture.
 
-## Quản lý dự án và bằng chứng
+## Bằng chứng kỹ thuật
 
-- [Repository](https://github.com/nguyenthaison2408/medicare-plus)
-- [Scrum Board](https://github.com/users/nguyenthaison2408/projects/1/views/1)
-- [Bảng đối chiếu 19 thẻ, lịch và hạn báo cáo](docs/09_Implementation_Audit.md)
-- [Kịch bản demo và tổng duyệt](docs/11_Demo_Runbook_20261123.md)
-- [Báo cáo kỹ thuật cập nhật — bản thảo](docs/12_Technical_Report_Current_Draft.md)
-- [Bảng rủi ro Excel hiện tại](docs/10_Risk_Register_Current.xlsx)
+- Main/PR #43: CI Node 22 và 24 đạt. Bộ local gồm **241 ca**: 16 trợ lý, 27 portal, 32 staff, 5 auth, 5 validation, 29 SQL lõi, 93 SQL mở rộng và 34 API/hồi quy.
+- Cloud: bộ 28 checks ngày 19/11 và bộ 29 checks ngày 21/11 có phiên bản/phạm vi khác nhau. Không cộng chúng thành một lần nghiệm thu trên main mới.
+- k6 ngày 19/11: tra cứu 100 VU/30 giây, 8.596 request, p95 137,53 ms, lỗi HTTP 0%; tranh chấp 50 request: một thành công/49 xung đột. Chưa chạy lại toàn bộ benchmark trên main 602b76c.
+- Chưa có kết luận UAT, camera/chat hai thiết bị hoặc gửi email thực trên bản cuối. [#13](https://github.com/nguyenthaison2408/medicare-plus/issues/13), [#14](https://github.com/nguyenthaison2408/medicare-plus/issues/14), [#18](https://github.com/nguyenthaison2408/medicare-plus/issues/18), [#45](https://github.com/nguyenthaison2408/medicare-plus/issues/45) theo dõi phần còn lại.
 
-Các hồ sơ cũ trong docs đang được đối chiếu. Số commit, test, coverage, UAT, chữ ký và URL production chỉ được ghi là đã kiểm chứng khi có bằng chứng tương ứng. Kiểm thử PostgreSQL nhúng không thay thế kiểm thử Auth, Realtime hoặc tải nhiều kết nối trên Supabase thật.
+## Scrum và hồ sơ
+
+[Scrum Project](https://github.com/users/nguyenthaison2408/projects/1): 31 thẻ, 4 Done / 20 In Review / 4 In Progress / 2 Ready / 1 Backlog tại mốc đối chiếu 22/11. Giữ 136 SP đường cơ sở; Sprint 6 có 123 SP, gồm 5 Done và 118 chưa Done. Thẻ bổ sung chưa ước lượng để trống SP. Không suy velocity hoặc nghiệm thu Sprint từ ngày commit.
+
+Toàn bộ 17 nhánh có 115 commit khác nhau: 111 trên main và 4 ngoài main; merge commit và công việc chưa tích hợp được phân biệt.
+
+Năm Sprint gốc và M1–M5 giữ làm đường cơ sở; Sprint 6: 16–22/11, tổng duyệt 22/11, báo cáo 23/11. [Ma trận toàn bộ commit](docs/evidence/2026-11-22-commit-traceability.csv) phân biệt tác giả, merge và hạng mục liên quan; [hồ sơ đối chiếu](docs/evidence/2026-11-22-full-history-audit.json) có phạm vi/giới hạn.
+
+Bảy tệp nộp chính:
+
+1. [Báo cáo kỹ thuật](docs/01_Final_Technical_Report.docx)
+2. [Project Charter](docs/02_Project_Charter_Signed.docx)
+3. [WBS và từ điển](docs/03_WBS_and_WBS_Dictionary.docx)
+4. [Risk Register Excel](docs/04_Risk_Register_Evolution.xlsx)
+5. [Hồi cứu Sprint](docs/05_Sprint_Retrospectives.docx)
+6. [Scope Change Record](docs/06_Scope_Change_Control_Record.docx)
+7. [PowerPoint 9 slide](docs/08_Presentation_Slide_Deck.pptx)
+
+Không tạo tệp 07 tùy chọn. Word/Excel/PowerPoint là bản nguồn giữ định dạng; node scripts/export-word-reports.cjs chỉ sao chép/kiểm tra các bản Office, không sinh lại từ bản thảo Markdown. Bằng chứng nằm trong docs/evidence; hướng dẫn thao tác nằm trong demo. PR tài liệu #22 được PR #46 thay thế; bằng chứng riêng của #22 được lưu trong docs/evidence. PR #28 về dữ liệu bệnh án/identity vẫn cần review/tích hợp vì còn sửa app chưa vào main.

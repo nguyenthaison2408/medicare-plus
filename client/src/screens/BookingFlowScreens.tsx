@@ -13,10 +13,10 @@ import {
   BOOKING_DAYS,
   TIME_SLOTS,
   TimeSlotItem,
-  PATIENT_PROFILE,
 } from '../data/mockData';
 import {
   AppHeader,
+  AppButton,
   AppInput,
   DoctorProfileHeaderCard,
   SectionHeader,
@@ -35,6 +35,7 @@ import {
 import { findHospitalForDoctor } from '../utils/mapNavigation';
 import { shareDoctorProfile } from '../utils/shareUtils';
 import { useAppContext } from '../context/AppContext';
+import { calculateBhytBenefit } from '../services/clinicAdmin';
 import { CLOUD_MODE } from '../services/supabaseClient';
 import { listClinicSlots, toClinicStart } from '../services/clinicCloud';
 import {
@@ -50,28 +51,63 @@ export interface DoctorDetailScreenProps {
   doctor: DoctorItem;
   onBack: () => void;
   onBookSlot: (doctor: DoctorItem) => void;
+  onOpenChat?: (doctor: DoctorItem) => void;
 }
 
 export const DoctorDetailScreen: React.FC<DoctorDetailScreenProps> = ({
   doctor,
   onBack,
   onBookSlot,
+  onOpenChat,
 }) => {
-  const { doctorReviews, hospitals } = useAppContext();
+  const { doctorReviews, hospitals, appointments, addDoctorReview } = useAppContext();
   const [selectedDay, setSelectedDay] = useState('d2');
   const [reviewFilter, setReviewFilter] = useState('all');
   const [mapModalVisible, setMapModalVisible] = useState(false);
   const [bookmarked, setBookmarked] = useState(false);
+  const [myRating, setMyRating] = useState(5);
+  const [myComment, setMyComment] = useState('');
+  const [reviewSaving, setReviewSaving] = useState(false);
+  const [reviewError, setReviewError] = useState('');
+  const [reviewSuccess, setReviewSuccess] = useState('');
+
   const doctorHospital = findHospitalForDoctor(doctor, hospitals);
   const allDocReviews = doctorReviews.filter(
-    (r) => r.doctorId === doctor.id || doctor.id !== 'doc-1'
+    (r) => r.doctorId === doctor.id && !r.isHidden
   );
+  const hasCompletedVisit = appointments.some(
+    (a) => a.doctor.id === doctor.id && a.status === 'completed'
+  );
+  const avgRatingText =
+    allDocReviews.length > 0
+      ? `${(allDocReviews.reduce((sum, r) => sum + r.rating, 0) / allDocReviews.length).toFixed(1)} / 5 (${allDocReviews.length} lượt đã xác thực)`
+      : 'Chưa có đánh giá';
+
   const filteredDocReviews = allDocReviews.filter((r) => {
     if (reviewFilter === '5star') return r.rating === 5;
     if (reviewFilter === 'recent')
-      return r.metaText.includes('Vừa xong') || r.metaText.includes('3 ngày');
+      return r.metaText.includes('Vừa xong') || r.metaText.includes('Đã xác thực') || r.metaText.includes('3 ngày');
     return true;
   });
+
+  const handleSubmitReview = async () => {
+    setReviewError('');
+    setReviewSuccess('');
+    setReviewSaving(true);
+    try {
+      await addDoctorReview({
+        doctorId: doctor.id,
+        rating: myRating,
+        comment: myComment,
+      });
+      setMyComment('');
+      setReviewSuccess('Cảm ơn bạn! Đánh giá đã được xác thực lượt khám và đăng công khai.');
+    } catch (err) {
+      setReviewError(err instanceof Error ? err.message : 'Không thể gửi đánh giá.');
+    } finally {
+      setReviewSaving(false);
+    }
+  };
 
   return (
     <View style={styles.screen}>
@@ -221,7 +257,7 @@ export const DoctorDetailScreen: React.FC<DoctorDetailScreenProps> = ({
           <SectionHeader
             title="Đánh giá của bệnh nhân"
             leftIcon="star"
-            actionText={`${doctor.rating} / 5 (${doctor.reviewCount + Math.max(0, allDocReviews.length - 2)})`}
+            actionText={avgRatingText}
           />
 
           <SegmentedControl
@@ -239,20 +275,116 @@ export const DoctorDetailScreen: React.FC<DoctorDetailScreenProps> = ({
             style={{ marginBottom: 12 }}
           />
 
-          {filteredDocReviews.map((rev, idx) => (
-            <PatientReviewCard
-              key={rev.id}
-              initials={rev.initials}
-              initialsBg={
-                idx % 2 === 0
-                  ? COLORS.primaryContainer
-                  : COLORS.secondaryContainer
-              }
-              authorName={rev.authorName}
-              metaText={`${rev.metaText} • ${rev.rating}★`}
-              comment={rev.comment}
-            />
-          ))}
+          {filteredDocReviews.length === 0 ? (
+            <View style={{ paddingVertical: 14, alignItems: 'center' }}>
+              <Ionicons name="chatbubble-ellipses-outline" size={26} color={COLORS.textMuted} />
+              <Text style={{ fontSize: TYPOGRAPHY.size.xs, color: COLORS.textSecondary, marginTop: 6, textAlign: 'center' }}>
+                Chưa có nhận xét nào đã xác thực cho bác sĩ này.
+              </Text>
+            </View>
+          ) : (
+            filteredDocReviews.map((rev, idx) => (
+              <PatientReviewCard
+                key={rev.id}
+                initials={rev.initials}
+                initialsBg={
+                  idx % 2 === 0
+                    ? COLORS.primaryContainer
+                    : COLORS.secondaryContainer
+                }
+                authorName={rev.authorName}
+                metaText={`${rev.metaText} • ${rev.rating}★`}
+                comment={rev.comment}
+              />
+            ))
+          )}
+
+          {/* Verified Review Submission Gate */}
+          <View
+            style={{
+              marginTop: 14,
+              paddingTop: 14,
+              borderTopWidth: 1,
+              borderTopColor: COLORS.divider,
+            }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+              <Ionicons name="shield-checkmark" size={16} color={COLORS.secondary} />
+              <Text style={{ fontSize: TYPOGRAPHY.size.sm, fontWeight: '700', color: COLORS.textPrimary }}>
+                Gửi nhận xét về bác sĩ
+              </Text>
+            </View>
+
+            {!hasCompletedVisit ? (
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 8,
+                  backgroundColor: COLORS.surfaceContainerLow,
+                  borderRadius: RADIUS.md,
+                  padding: 12,
+                  borderWidth: 1,
+                  borderColor: COLORS.border,
+                }}
+              >
+                <Ionicons name="lock-closed-outline" size={18} color={COLORS.textSecondary} />
+                <Text style={{ flex: 1, fontSize: TYPOGRAPHY.size.xs, color: COLORS.textSecondary, lineHeight: 18 }}>
+                  Chỉ bệnh nhân đã đặt lịch và hoàn tất lượt khám với {doctor.name} mới có thể gửi bình luận (nhằm tránh bình luận ảo/xấu).
+                </Text>
+              </View>
+            ) : (
+              <View>
+                <Text style={{ fontSize: TYPOGRAPHY.size.xs, color: COLORS.secondary, fontWeight: '600', marginBottom: 8 }}>
+                  ✓ Tài khoản của bạn đã hoàn tất khám với bác sĩ này và đủ điều kiện đánh giá.
+                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <TouchableOpacity
+                      key={star}
+                      onPress={() => setMyRating(star)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Đánh giá ${star} sao`}
+                    >
+                      <Ionicons
+                        name={star <= myRating ? 'star' : 'star-outline'}
+                        size={26}
+                        color={star <= myRating ? '#F59E0B' : COLORS.textMuted}
+                      />
+                    </TouchableOpacity>
+                  ))}
+                  <Text style={{ fontSize: TYPOGRAPHY.size.xs, fontWeight: '700', color: COLORS.textPrimary, marginLeft: 4 }}>
+                    {myRating}/5 sao
+                  </Text>
+                </View>
+
+                <AppInput
+                  label="Nội dung nhận xét thực tế *"
+                  leftIcon="chatbox-ellipses-outline"
+                  value={myComment}
+                  onChangeText={setMyComment}
+                  placeholder="Chia sẻ trải nghiệm khám bệnh, thái độ và chuyên môn của bác sĩ..."
+                  multiline
+                  error={reviewError || undefined}
+                />
+
+                {!!reviewSuccess && (
+                  <Text style={{ fontSize: TYPOGRAPHY.size.xs, color: COLORS.secondary, fontWeight: '700', marginBottom: 8 }}>
+                    {reviewSuccess}
+                  </Text>
+                )}
+
+                <AppButton
+                  title={reviewSaving ? 'Đang gửi đánh giá...' : 'Gửi đánh giá đã xác thực'}
+                  variant="secondary"
+                  size="sm"
+                  leftIcon="send-outline"
+                  loading={reviewSaving}
+                  onPress={handleSubmitReview}
+                />
+              </View>
+            )}
+          </View>
         </View>
 
         {/* Clinic Guarantee Badge */}
@@ -266,6 +398,18 @@ export const DoctorDetailScreen: React.FC<DoctorDetailScreenProps> = ({
             MediCare Plus bảo lãnh chất lượng chuyên môn & bảo mật bệnh án
           </Text>
         </View>
+
+        {onOpenChat ? (
+          <View style={{ marginTop: 12 }}>
+            <AppButton
+              title={`Chat tư vấn trực tuyến với ${doctor.name}`}
+              variant="tonal"
+              size="md"
+              leftIcon="chatbubbles-outline"
+              onPress={() => onOpenChat(doctor)}
+            />
+          </View>
+        ) : null}
       </ScrollView>
 
       <StickyBottomBar
@@ -301,6 +445,7 @@ export const BookingSlotScreen: React.FC<BookingSlotScreenProps> = ({
   onBack,
   onConfirmBooking,
 }) => {
+  const { doctorSchedules } = useAppContext();
   const [consultMode, setConsultMode] = useState('clinic');
   const [selectedDayId, setSelectedDayId] = useState('d2');
   const [selectedSlot, setSelectedSlot] = useState<TimeSlotItem>(TIME_SLOTS[3]);
@@ -313,9 +458,29 @@ export const BookingSlotScreen: React.FC<BookingSlotScreenProps> = ({
   const [slotError, setSlotError] = useState('');
   const slotKey = `${doctor.id}:${currentDay.fullDate}`;
   const slotsReady = !CLOUD_MODE || loadedSlotKey === slotKey;
+
+  const [dPart, mPart, yPart] = currentDay.fullDate.split('/');
+  const isoDay = dPart && mPart && yPart ? `${yPart}-${mPart.padStart(2, '0')}-${dPart.padStart(2, '0')}` : '';
+  const dayShifts = doctorSchedules.filter(
+    (s) => s.doctorId === doctor.id && s.workDate === isoDay
+  );
+  const demoShiftAwareSlots: TimeSlotItem[] =
+    dayShifts.length === 0
+      ? TIME_SLOTS
+      : TIME_SLOTS.map((slot) => {
+          const allowed = dayShifts.some(
+            (s) =>
+              s.active &&
+              (s.shift === 'full_day' ||
+                (s.shift === 'morning' && slot.period === 'morning') ||
+                (s.shift === 'afternoon' && slot.period === 'afternoon'))
+          );
+          return allowed ? slot : { ...slot, status: 'booked' };
+        });
+
   const visibleSlots: TimeSlotItem[] = CLOUD_MODE
     ? slotsReady ? remoteSlots : TIME_SLOTS.map(slot => ({ ...slot, status: 'booked' }))
-    : TIME_SLOTS;
+    : demoShiftAwareSlots;
   const selectedSlotAvailable = visibleSlots.some(slot => slot.id === selectedSlot.id && slot.status !== 'booked');
 
   useEffect(() => {
@@ -356,7 +521,7 @@ export const BookingSlotScreen: React.FC<BookingSlotScreenProps> = ({
         <SegmentedControl
           variant="box"
           selectedKey={consultMode}
-          onSelect={(mode) => { if (!CLOUD_MODE || mode === 'clinic') setConsultMode(mode); }}
+          onSelect={setConsultMode}
           options={[
             {
               key: 'clinic',
@@ -450,6 +615,8 @@ export interface BookingPaymentScreenProps {
   patient?: {
     name: string;
     meta: string;
+    bhytCode?: string;
+    phone?: string;
   };
   onBack: () => void;
   onPaymentSuccess: (
@@ -467,14 +634,17 @@ export const BookingPaymentScreen: React.FC<BookingPaymentScreenProps> = ({
   onBack,
   onPaymentSuccess,
 }) => {
-  const { patientProfile } = useAppContext();
+  const { patientProfile, cloudProfile, bhytConfigs, familyMembers } = useAppContext();
   const [selectedMethod, setSelectedMethod] =
     useState<PaymentMethodType>('at_clinic_bhyt');
   const [submitting, setSubmitting] = useState(false);
+  const [activeBhytCode, setActiveBhytCode] = useState<string>(
+    patient?.bhytCode ?? patientProfile.bhytCode ?? ''
+  );
   const [patientInfo, setPatientInfo] = useState<PatientBookingInfo>({
     fullName: patient?.name || patientProfile.name,
-    phone: '',
-    email: '',
+    phone: patient?.phone || patientProfile.phone || '',
+    email: cloudProfile?.email || '',
     symptoms: '',
   });
   const [patientErrors, setPatientErrors] = useState<PatientBookingErrors>({});
@@ -482,6 +652,14 @@ export const BookingPaymentScreen: React.FC<BookingPaymentScreenProps> = ({
   const currentDay = day || BOOKING_DAYS[1];
   const currentSlot = slot || TIME_SLOTS[3];
   const isAtClinic = selectedMethod === 'at_clinic_bhyt';
+  const bhytBenefit = calculateBhytBenefit(
+    doctor.feeNumeric,
+    activeBhytCode,
+    bhytConfigs,
+    true
+  );
+  const formatCurrency = (val: number) =>
+    `${val.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.')} đ`;
 
   const updatePatientField = (field: PatientBookingField, value: string) => {
     setPatientInfo((current) => ({ ...current, [field]: value }));
@@ -494,7 +672,7 @@ export const BookingPaymentScreen: React.FC<BookingPaymentScreenProps> = ({
     {
       id: 'at_clinic_bhyt' as PaymentMethodType,
       title: 'Thanh toán tại viện bằng BHYT',
-      sub: 'Xuất trình CCCD / VssID tại quầy để giảm trừ 80% - 100%',
+      sub: 'Xuất trình hồ sơ tại quầy để xác minh quyền lợi và chi phí thực tế',
       badge: 'Khuyên dùng có BHYT',
       badgeVariant: 'teal' as const,
       icon: 'business-outline' as const,
@@ -546,6 +724,88 @@ export const BookingPaymentScreen: React.FC<BookingPaymentScreenProps> = ({
             <Text style={styles.patientFormHint}>
               Các trường có dấu * là bắt buộc. Thông tin này được dùng để liên hệ và hỗ trợ bác sĩ chuẩn bị cho buổi khám.
             </Text>
+            {familyMembers.length > 0 ? (
+              <View style={{ marginBottom: 12 }}>
+                <Text style={[styles.patientFormHint, { fontWeight: '700', marginBottom: 6 }]}>
+                  Chọn hồ sơ người khám (Tự động điền & tính BHYT):
+                </Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  <View style={{ flexDirection: 'row', gap: 8 }}>
+                    <TouchableOpacity
+                      onPress={() => {
+                        setPatientInfo((curr) => ({
+                          ...curr,
+                          fullName: patientProfile.name,
+                          phone: patientProfile.phone || curr.phone,
+                        }));
+                        setActiveBhytCode(patientProfile.bhytCode || '');
+                      }}
+                      style={{
+                        paddingHorizontal: 12,
+                        paddingVertical: 6,
+                        borderRadius: 999,
+                        borderWidth: 1,
+                        borderColor:
+                          patientInfo.fullName === patientProfile.name
+                            ? COLORS.primary
+                            : COLORS.border,
+                        backgroundColor:
+                          patientInfo.fullName === patientProfile.name
+                            ? COLORS.tintBlue
+                            : COLORS.surface,
+                      }}
+                    >
+                      <Text
+                        style={{
+                          fontSize: 12,
+                          fontWeight: '700',
+                          color:
+                            patientInfo.fullName === patientProfile.name
+                              ? COLORS.primary
+                              : COLORS.textSecondary,
+                        }}
+                      >
+                        {patientProfile.name} (Bản thân)
+                      </Text>
+                    </TouchableOpacity>
+                    {familyMembers.map((mem) => {
+                      const selected = patientInfo.fullName === mem.name;
+                      return (
+                        <TouchableOpacity
+                          key={mem.id}
+                          onPress={() => {
+                            setPatientInfo((curr) => ({
+                              ...curr,
+                              fullName: mem.name,
+                              phone: mem.phone || patientProfile.phone || curr.phone,
+                            }));
+                            setActiveBhytCode(mem.bhyt || '');
+                          }}
+                          style={{
+                            paddingHorizontal: 12,
+                            paddingVertical: 6,
+                            borderRadius: 999,
+                            borderWidth: 1,
+                            borderColor: selected ? COLORS.primary : COLORS.border,
+                            backgroundColor: selected ? COLORS.tintBlue : COLORS.surface,
+                          }}
+                        >
+                          <Text
+                            style={{
+                              fontSize: 12,
+                              fontWeight: '700',
+                              color: selected ? COLORS.primary : COLORS.textSecondary,
+                            }}
+                          >
+                            {mem.name} ({mem.rawRelation || mem.relation.split('•')[0].trim()})
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </ScrollView>
+              </View>
+            ) : null}
             <AppInput
               label="Họ và tên *"
               leftIcon="person-outline"
@@ -674,7 +934,7 @@ export const BookingPaymentScreen: React.FC<BookingPaymentScreenProps> = ({
                 </Text>
                 <Text style={styles.paymentInfoSub} numberOfLines={1}>
                   {patient?.meta ||
-                    `BHYT: ${PATIENT_PROFILE.bhytCode.split(' ')[0]} • ${PATIENT_PROFILE.gender} (${PATIENT_PROFILE.age}T)`}
+                    `BHYT: ${(patientProfile.bhytCode || 'Chưa cập nhật').split(' ')[0]} • ${patientProfile.gender}`}
                 </Text>
               </View>
             </View>
@@ -687,7 +947,7 @@ export const BookingPaymentScreen: React.FC<BookingPaymentScreenProps> = ({
         <AnimatedEntry delay={90} direction="up">
           <View style={[styles.card, SHADOWS.sm, { marginBottom: 16 }]}>
             <SectionHeader
-              title="Chi tiết viện phí"
+              title="Chi phí tham khảo"
               leftIcon="receipt-outline"
             />
 
@@ -698,11 +958,22 @@ export const BookingPaymentScreen: React.FC<BookingPaymentScreenProps> = ({
 
             <View style={styles.feeLineRow}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                <Text style={styles.feeLineLabel}>Giảm trừ BHYT:</Text>
-                <Badge label="Đối soát tại quầy" variant="teal" />
+                <Text style={styles.feeLineLabel}>Ước tính BHYT:</Text>
+                <Badge
+                  label={
+                    bhytBenefit.matchedRule
+                      ? `Cấu hình ${bhytBenefit.matchedRule.prefixCode} (${bhytBenefit.rate}%)`
+                      : 'Đối soát tại quầy'
+                  }
+                  variant="teal"
+                />
               </View>
               <Text style={[styles.feeLineVal, { color: COLORS.secondary }]}>
-                {isAtClinic ? 'Trừ 80% - 100%' : 'Chờ hoàn tiền'}
+                {isAtClinic
+                  ? bhytBenefit.matchedRule
+                    ? `-${formatCurrency(bhytBenefit.discountAmount)}`
+                    : 'Chưa xác định'
+                  : 'Chờ hoàn tiền'}
               </Text>
             </View>
 
@@ -716,11 +987,11 @@ export const BookingPaymentScreen: React.FC<BookingPaymentScreenProps> = ({
             <View style={styles.paymentDivider} />
 
             <View style={styles.feeTotalRow}>
-              <Text style={styles.feeTotalLabel}>Tổng số tiền cần trả:</Text>
-              <Text style={styles.feeTotalVal}>
-                {isAtClinic ? '0 đ (Trả tại viện)' : doctor.fee}
+              <Text style={styles.feeTotalLabel}>Phí khám niêm yết:</Text>
+              <Text style={styles.feeTotalVal}>{doctor.fee} (chưa đối soát BHYT)
               </Text>
             </View>
+            <Text style={styles.paymentInfoSub}>Ước tính theo cấu hình đúng tuyến; thẻ, tuyến và mức hưởng chưa được xác minh. Cơ sở y tế đối soát chi phí tại quầy; ứng dụng chưa thu tiền.</Text>
           </View>
         </AnimatedEntry>
 

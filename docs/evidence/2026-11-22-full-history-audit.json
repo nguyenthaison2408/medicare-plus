@@ -1,0 +1,2329 @@
+{
+  "asOf": "2026-11-22",
+  "main": "602b76cd3c49661ba7d0e644b112cd2fc2cccb2a",
+  "totals": {
+    "commits": 111,
+    "ordinary": 87,
+    "merges": 24,
+    "branches": 17,
+    "pullRequests": 15,
+    "branchOnlyCommits": 4
+  },
+  "ratios": {
+    "nguyenthaison2408": 30,
+    "thanhvihuu2005": 22,
+    "thanhvuvn": 28,
+    "myth0ss": 20
+  },
+  "ratioBasis": "Decision by project owner; percentages are not computed from commit counts.",
+  "mappingLimit": "Keyword-assisted traceability; merged code, review, and acceptance evidence are checked separately. Author date is not proof of work duration or Sprint acceptance.",
+  "commits": [
+    {
+      "sha": "602b76cd3c49661ba7d0e644b112cd2fc2cccb2a",
+      "login": "nguyenthaison2408",
+      "author": "nguyenthaison2408",
+      "date": "2026-11-22T08:33:02Z",
+      "parents": [
+        "7caa8e14fa84dd3029ce8187a6ad36a36910031e",
+        "b5e3331bfd9482e2d67c9f067852a8c142980546"
+      ],
+      "message": "Merge pull request #43 from nguyenthaison2408/feat/family-profiles-cloud\n\nfeat: cloud family profiles, doctor chat and QR reception",
+      "issues": [],
+      "kind": "merge",
+      "authorDate": "2026-11-22T15:33:02+07:00",
+      "committerDate": "2026-11-22T15:33:02+07:00",
+      "committerName": "GitHub"
+    },
+    {
+      "sha": "b5e3331bfd9482e2d67c9f067852a8c142980546",
+      "login": "thanhvuvn",
+      "author": "thanhvuvn",
+      "date": "2026-11-22T08:25:40Z",
+      "parents": [
+        "a03de9d5420de1c2f006460b356ed47be9feeeb8"
+      ],
+      "message": "fix(ui,ux): resolve web alerts, nested button, time format, reminder visibility, and chat poll interval",
+      "issues": [
+        7,
+        9,
+        45
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-11-22T15:25:40+07:00",
+      "committerDate": "2026-11-22T15:25:58+07:00",
+      "committerName": "thanhvuvn"
+    },
+    {
+      "sha": "a03de9d5420de1c2f006460b356ed47be9feeeb8",
+      "login": "nguyenthaison2408",
+      "author": "nguyenthaison2408",
+      "date": "2026-11-22T08:00:50Z",
+      "parents": [
+        "c018ca14ce23e7eb3865d585223f3256d7b5bb82"
+      ],
+      "message": "fix(auth): verify registration email through Supabase Auth",
+      "issues": [
+        3,
+        12
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-11-22T15:00:50+07:00",
+      "committerDate": "2026-11-22T15:00:50+07:00",
+      "committerName": "nguyenthaison2408"
+    },
+    {
+      "sha": "c018ca14ce23e7eb3865d585223f3256d7b5bb82",
+      "login": "thanhvuvn",
+      "author": "thanhvuvn",
+      "date": "2026-11-22T07:52:34Z",
+      "parents": [
+        "9e88b37bffdff2bb342c749e99d3b90402247eb8"
+      ],
+      "message": "feat(auth): require 6-digit email OTP verification on registration",
+      "issues": [
+        3
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-11-22T14:52:34+07:00",
+      "committerDate": "2026-11-22T14:53:56+07:00",
+      "committerName": "thanhvuvn"
+    },
+    {
+      "sha": "9e88b37bffdff2bb342c749e99d3b90402247eb8",
+      "login": "nguyenthaison2408",
+      "author": "nguyenthaison2408",
+      "date": "2026-11-22T07:45:25Z",
+      "parents": [
+        "49b849c7888467a0fb4e717c81d657fadbed550b"
+      ],
+      "message": "fix(email): inline Expo config and require webhook acknowledgement",
+      "issues": [
+        12
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-11-22T14:45:25+07:00",
+      "committerDate": "2026-11-22T14:45:25+07:00",
+      "committerName": "nguyenthaison2408"
+    },
+    {
+      "sha": "49b849c7888467a0fb4e717c81d657fadbed550b",
+      "login": "thanhvuvn",
+      "author": "thanhvuvn",
+      "date": "2026-11-22T07:33:28Z",
+      "parents": [
+        "9773d7cb13ef154795dbfea3cb6d6739162b498c"
+      ],
+      "message": "feat(booking): auto-fill patient booking email from authenticated account",
+      "issues": [
+        3,
+        6,
+        12
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-11-22T14:33:28+07:00",
+      "committerDate": "2026-11-22T14:33:28+07:00",
+      "committerName": "thanhvuvn"
+    },
+    {
+      "sha": "9773d7cb13ef154795dbfea3cb6d6739162b498c",
+      "login": "thanhvuvn",
+      "author": "thanhvuvn",
+      "date": "2026-11-22T07:29:45Z",
+      "parents": [
+        "6cec39a87fd9aaa3866a226fc2ccc733b536fef9"
+      ],
+      "message": "chore(eas): add booking email webhook url to build config",
+      "issues": [
+        6,
+        12,
+        14
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-11-22T14:29:45+07:00",
+      "committerDate": "2026-11-22T14:29:45+07:00",
+      "committerName": "thanhvuvn"
+    },
+    {
+      "sha": "6cec39a87fd9aaa3866a226fc2ccc733b536fef9",
+      "login": "thanhvuvn",
+      "author": "thanhvuvn",
+      "date": "2026-11-22T07:19:36Z",
+      "parents": [
+        "2c84b36f7841259b7436fc4c2386078475363bb1"
+      ],
+      "message": "feat(email): add booking confirmation email with html ticket and qr code",
+      "issues": [
+        6,
+        10,
+        12
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-11-22T14:19:36+07:00",
+      "committerDate": "2026-11-22T14:19:36+07:00",
+      "committerName": "thanhvuvn"
+    },
+    {
+      "sha": "2c84b36f7841259b7436fc4c2386078475363bb1",
+      "login": "thanhvuvn",
+      "author": "thanhvuvn",
+      "date": "2026-11-22T06:59:39Z",
+      "parents": [
+        "a3455cb891f7ff43a5bf532793835daec80a9996"
+      ],
+      "message": "fix(chat,family): isolate realtime chat, reject failed writes, and preserve selected doctor",
+      "issues": [
+        41,
+        45
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-11-22T13:59:39+07:00",
+      "committerDate": "2026-11-22T13:59:39+07:00",
+      "committerName": "thanhvuvn"
+    },
+    {
+      "sha": "a3455cb891f7ff43a5bf532793835daec80a9996",
+      "login": "thanhvuvn",
+      "author": "thanhvuvn",
+      "date": "2026-11-21T16:12:54Z",
+      "parents": [
+        "7caa8e14fa84dd3029ce8187a6ad36a36910031e"
+      ],
+      "message": "feat: cloud family profiles, realtime doctor chat, and qr check-in enhancements",
+      "issues": [
+        10,
+        41,
+        45
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-11-21T23:12:54+07:00",
+      "committerDate": "2026-11-21T23:12:54+07:00",
+      "committerName": "thanhvuvn"
+    },
+    {
+      "sha": "7caa8e14fa84dd3029ce8187a6ad36a36910031e",
+      "login": "nguyenthaison2408",
+      "author": "nguyenthaison2408",
+      "date": "2026-11-21T12:54:09Z",
+      "parents": [
+        "fc7c09984671c3a56b25a89c1fec452f58a2b751",
+        "7f99182b863e5de108519ce7e9c1f0ab1f7748e0"
+      ],
+      "message": "Merge PR #30: Supabase hospital catalog with safe map and booking flows\n\nfeat: đồng bộ cơ sở y tế và bệnh viện với Supabase",
+      "issues": [],
+      "kind": "merge",
+      "authorDate": "2026-11-21T19:54:09+07:00",
+      "committerDate": "2026-11-21T19:54:09+07:00",
+      "committerName": "GitHub"
+    },
+    {
+      "sha": "7f99182b863e5de108519ce7e9c1f0ab1f7748e0",
+      "login": "myth0ss",
+      "author": "anhnguyen",
+      "date": "2026-11-21T12:46:15Z",
+      "parents": [
+        "084c4ed4f639dbfda729bd7d5ca361833a1c6c35"
+      ],
+      "message": "fix: harden hospital catalog interactions",
+      "issues": [
+        40
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-11-21T19:46:15+07:00",
+      "committerDate": "2026-11-21T19:46:15+07:00",
+      "committerName": "anhnguyen"
+    },
+    {
+      "sha": "084c4ed4f639dbfda729bd7d5ca361833a1c6c35",
+      "login": "myth0ss",
+      "author": "anhnguyen",
+      "date": "2026-11-20T09:24:56Z",
+      "parents": [
+        "fc7c09984671c3a56b25a89c1fec452f58a2b751"
+      ],
+      "message": "feat: integrate hospital catalog with Supabase",
+      "issues": [
+        40
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-11-20T16:24:56+07:00",
+      "committerDate": "2026-11-21T19:32:32+07:00",
+      "committerName": "anhnguyen"
+    },
+    {
+      "sha": "fc7c09984671c3a56b25a89c1fec452f58a2b751",
+      "login": "nguyenthaison2408",
+      "author": "nguyenthaison2408",
+      "date": "2026-11-20T16:02:14Z",
+      "parents": [
+        "65023007394d2a567e7a639a16882716d7db9280",
+        "d6fa4f151b4c69a2e2c6af99345d82f8fdc19b0e"
+      ],
+      "message": "Merge PR #32: validated clinic profiles, schedules and role-aware authentication\n\nfeat(clinic): add profile edit & avatar upload, doctor shift scheduling, BHYT rules, review moderation, and Google OAuth",
+      "issues": [],
+      "kind": "merge",
+      "authorDate": "2026-11-20T23:02:14+07:00",
+      "committerDate": "2026-11-20T23:02:14+07:00",
+      "committerName": "GitHub"
+    },
+    {
+      "sha": "d6fa4f151b4c69a2e2c6af99345d82f8fdc19b0e",
+      "login": "nguyenthaison2408",
+      "author": "nguyenthaison2408",
+      "date": "2026-11-20T15:59:36Z",
+      "parents": [
+        "026523feae532a490857ebf82d5ee0ddd218a5a2"
+      ],
+      "message": "docs: state verified assistant behavior and integration test limits",
+      "issues": [
+        15,
+        17
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-11-20T22:59:36+07:00",
+      "committerDate": "2026-11-20T22:59:36+07:00",
+      "committerName": "nguyenthaison2408"
+    },
+    {
+      "sha": "026523feae532a490857ebf82d5ee0ddd218a5a2",
+      "login": "nguyenthaison2408",
+      "author": "nguyenthaison2408",
+      "date": "2026-11-20T15:58:00Z",
+      "parents": [
+        "0f03d7b5c8674039ac20c1da84220981861e71fe"
+      ],
+      "message": "fix(portal): wait for account hydration and remove fabricated cloud profile data",
+      "issues": [
+        3,
+        35
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-11-20T22:58:00+07:00",
+      "committerDate": "2026-11-20T22:58:00+07:00",
+      "committerName": "nguyenthaison2408"
+    },
+    {
+      "sha": "0f03d7b5c8674039ac20c1da84220981861e71fe",
+      "login": "nguyenthaison2408",
+      "author": "nguyenthaison2408",
+      "date": "2026-11-20T15:49:15Z",
+      "parents": [
+        "81512e842a4eacddb03d98eb55a79ac3af0b0f72",
+        "65023007394d2a567e7a639a16882716d7db9280"
+      ],
+      "message": "fix(portal): preserve authenticated roles and guard pending profile and admin writes",
+      "issues": [],
+      "kind": "merge",
+      "authorDate": "2026-11-20T22:49:15+07:00",
+      "committerDate": "2026-11-20T22:49:15+07:00",
+      "committerName": "nguyenthaison2408"
+    },
+    {
+      "sha": "65023007394d2a567e7a639a16882716d7db9280",
+      "login": "nguyenthaison2408",
+      "author": "nguyenthaison2408",
+      "date": "2026-11-20T15:42:14Z",
+      "parents": [
+        "6e5693726670456318beb4f2bb15d4e2bbdd9433",
+        "2c79c97b14f7f45bb16c23d10bc1a3ba85529c24"
+      ],
+      "message": "Merge PR #31: validated patient assistant and conversation isolation\n\nfeat(ai): integrate AI Patient Assistant & Clinical Triage with multi-specialty routing and EHR safety guardrails",
+      "issues": [],
+      "kind": "merge",
+      "authorDate": "2026-11-20T22:42:14+07:00",
+      "committerDate": "2026-11-20T22:42:14+07:00",
+      "committerName": "GitHub"
+    },
+    {
+      "sha": "2c79c97b14f7f45bb16c23d10bc1a3ba85529c24",
+      "login": "nguyenthaison2408",
+      "author": "nguyenthaison2408",
+      "date": "2026-11-20T15:39:23Z",
+      "parents": [
+        "28998fb55ad125a3e72e2db9313ecd802e8d5dee"
+      ],
+      "message": "fix(ai): use live doctor catalog and isolate patient conversations",
+      "issues": [
+        5,
+        34
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-11-20T22:39:23+07:00",
+      "committerDate": "2026-11-20T22:39:23+07:00",
+      "committerName": "nguyenthaison2408"
+    },
+    {
+      "sha": "81512e842a4eacddb03d98eb55a79ac3af0b0f72",
+      "login": "thanhvuvn",
+      "author": "thanhvuvn",
+      "date": "2026-11-20T15:24:49Z",
+      "parents": [
+        "9938471d8d32a797dffbf8d906f9369fcf33b5b6",
+        "6e5693726670456318beb4f2bb15d4e2bbdd9433"
+      ],
+      "message": "fix(pr32): merge main, restrict review admin_note to admins, and enforce doctor shifts in booking RPCs",
+      "issues": [],
+      "kind": "merge",
+      "authorDate": "2026-11-20T22:24:49+07:00",
+      "committerDate": "2026-11-20T22:24:49+07:00",
+      "committerName": "thanhvuvn"
+    },
+    {
+      "sha": "28998fb55ad125a3e72e2db9313ecd802e8d5dee",
+      "login": "thanhvihuu2005",
+      "author": "thanhvihuu2005",
+      "date": "2026-11-20T15:11:43Z",
+      "parents": [
+        "44274b944f5bcfd297c102fa352208281a33690e"
+      ],
+      "message": "fix(ai): prioritize emergency triage over medication, isolate EHR allergies, fix dermatology doctor mapping and follow-up context",
+      "issues": [
+        33,
+        34
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-11-20T22:11:43+07:00",
+      "committerDate": "2026-11-20T22:11:43+07:00",
+      "committerName": "thanhvihuu2005"
+    },
+    {
+      "sha": "9938471d8d32a797dffbf8d906f9369fcf33b5b6",
+      "login": "thanhvuvn",
+      "author": "thanhvuvn",
+      "date": "2026-11-20T15:06:23Z",
+      "parents": [
+        "f687d42c0a540ca4559f19d4ec78816151438a71"
+      ],
+      "message": "feat(auth): wire Supabase Google OAuth for web and Android deep-link callback",
+      "issues": [
+        3,
+        39
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-11-20T22:06:23+07:00",
+      "committerDate": "2026-11-20T22:06:23+07:00",
+      "committerName": "thanhvuvn"
+    },
+    {
+      "sha": "44274b944f5bcfd297c102fa352208281a33690e",
+      "login": "thanhvihuu2005",
+      "author": "thanhvihuu2005",
+      "date": "2026-11-20T15:04:24Z",
+      "parents": [
+        "4f763326b70725c6d3070a3947e488b68dd869a8",
+        "6e5693726670456318beb4f2bb15d4e2bbdd9433"
+      ],
+      "message": "Merge branch 'main' into feat/ai-patient-assistant",
+      "issues": [],
+      "kind": "merge",
+      "authorDate": "2026-11-20T22:04:24+07:00",
+      "committerDate": "2026-11-20T22:04:24+07:00",
+      "committerName": "thanhvihuu2005"
+    },
+    {
+      "sha": "f687d42c0a540ca4559f19d4ec78816151438a71",
+      "login": "thanhvuvn",
+      "author": "thanhvuvn",
+      "date": "2026-11-20T14:31:03Z",
+      "parents": [
+        "562096b453744858fe33ddc8be3e17face2a10f8"
+      ],
+      "message": "feat(client): integrate profile edit with avatar upload, shift scheduling, bhyt deduction and review moderation",
+      "issues": [
+        35,
+        36,
+        37,
+        38
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-11-20T21:31:03+07:00",
+      "committerDate": "2026-11-20T21:31:03+07:00",
+      "committerName": "thanhvuvn"
+    },
+    {
+      "sha": "562096b453744858fe33ddc8be3e17face2a10f8",
+      "login": "thanhvuvn",
+      "author": "thanhvuvn",
+      "date": "2026-11-20T14:31:03Z",
+      "parents": [
+        "640f77fdbbbc7ed2697bab6198ff996da0c82189"
+      ],
+      "message": "feat(services): implement cloud clients for shifts, bhyt rules, reviews and avatar",
+      "issues": [
+        35,
+        36,
+        37
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-11-20T21:31:03+07:00",
+      "committerDate": "2026-11-20T21:31:03+07:00",
+      "committerName": "thanhvuvn"
+    },
+    {
+      "sha": "640f77fdbbbc7ed2697bab6198ff996da0c82189",
+      "login": "thanhvuvn",
+      "author": "thanhvuvn",
+      "date": "2026-11-20T14:31:03Z",
+      "parents": [
+        "c14ddd1309e4a888a13124d78ee8c5a64a0da4fa"
+      ],
+      "message": "feat(db): add migrations for profile avatar, doctor shifts, bhyt configs and review moderation",
+      "issues": [
+        2,
+        35,
+        36,
+        37,
+        38,
+        42
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-11-20T21:31:03+07:00",
+      "committerDate": "2026-11-20T21:31:03+07:00",
+      "committerName": "thanhvuvn"
+    },
+    {
+      "sha": "4f763326b70725c6d3070a3947e488b68dd869a8",
+      "login": "thanhvihuu2005",
+      "author": "thanhvihuu2005",
+      "date": "2026-11-20T09:15:30Z",
+      "parents": [
+        "fec04314dc531e024baaf8d65ed936eb71de5455"
+      ],
+      "message": "docs(ai): finalize patient AI user guide, test scripts in package.json and verification evidence",
+      "issues": [
+        34
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-11-20T16:15:30+07:00",
+      "committerDate": "2026-11-20T21:25:27+07:00",
+      "committerName": "thanhvihuu2005"
+    },
+    {
+      "sha": "fec04314dc531e024baaf8d65ed936eb71de5455",
+      "login": "thanhvihuu2005",
+      "author": "thanhvihuu2005",
+      "date": "2026-11-19T04:35:45Z",
+      "parents": [
+        "a73c52f00778ad804552e7652f25133f1b9d025b"
+      ],
+      "message": "feat(ai-screen): wire interactive AI triage assistant screen with real doctor booking",
+      "issues": [
+        6,
+        7,
+        9,
+        34
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-11-19T11:35:45+07:00",
+      "committerDate": "2026-11-20T21:24:46+07:00",
+      "committerName": "thanhvihuu2005"
+    },
+    {
+      "sha": "a73c52f00778ad804552e7652f25133f1b9d025b",
+      "login": "thanhvihuu2005",
+      "author": "thanhvihuu2005",
+      "date": "2026-11-18T03:50:12Z",
+      "parents": [
+        "eb796907348796893f1fc4c59c5d2609fb9b6c47"
+      ],
+      "message": "feat(ai-ui): enhance AIChatComponents with multi-turn triage badges and smart actions",
+      "issues": [
+        7,
+        9,
+        34,
+        45
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-11-18T10:50:12+07:00",
+      "committerDate": "2026-11-20T21:22:54+07:00",
+      "committerName": "thanhvihuu2005"
+    },
+    {
+      "sha": "eb796907348796893f1fc4c59c5d2609fb9b6c47",
+      "login": "thanhvihuu2005",
+      "author": "thanhvihuu2005",
+      "date": "2026-11-17T09:25:40Z",
+      "parents": [
+        "45e573d8ca5f521e4f2c36d2a8cc2531de1966ae"
+      ],
+      "message": "test(ai): add comprehensive test suite for triage engine and safety guardrails",
+      "issues": [
+        13,
+        34
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-11-17T16:25:40+07:00",
+      "committerDate": "2026-11-20T21:21:23+07:00",
+      "committerName": "thanhvihuu2005"
+    },
+    {
+      "sha": "6e5693726670456318beb4f2bb15d4e2bbdd9433",
+      "login": "nguyenthaison2408",
+      "author": "nguyenthaison2408",
+      "date": "2026-11-20T14:20:09Z",
+      "parents": [
+        "c14ddd1309e4a888a13124d78ee8c5a64a0da4fa",
+        "2df4a61a791971f32ab1566c83a7997a4333ac3f"
+      ],
+      "message": "Merge PR #29: persist medicine cabinet and prescription-specific medication logs\n\nfeat: Add Supabase medicine cabinet and medication tracking",
+      "issues": [],
+      "kind": "merge",
+      "authorDate": "2026-11-20T21:20:09+07:00",
+      "committerDate": "2026-11-20T21:20:09+07:00",
+      "committerName": "GitHub"
+    },
+    {
+      "sha": "45e573d8ca5f521e4f2c36d2a8cc2531de1966ae",
+      "login": "thanhvihuu2005",
+      "author": "thanhvihuu2005",
+      "date": "2026-11-16T07:10:25Z",
+      "parents": [
+        "575ad80142762b10f175095c1a365c582754f138"
+      ],
+      "message": "feat(ai): implement interactive clarifying follow-up questions generator",
+      "issues": [
+        34
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-11-16T14:10:25+07:00",
+      "committerDate": "2026-11-20T21:18:55+07:00",
+      "committerName": "thanhvihuu2005"
+    },
+    {
+      "sha": "575ad80142762b10f175095c1a365c582754f138",
+      "login": "thanhvihuu2005",
+      "author": "thanhvihuu2005",
+      "date": "2026-11-15T08:40:00Z",
+      "parents": [
+        "a3fddc1a684e10621e64cfad304c54fb72718268"
+      ],
+      "message": "feat(ai): add personalized EHR safety guardrails and contraindication checks",
+      "issues": [
+        34
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-11-15T15:40:00+07:00",
+      "committerDate": "2026-11-20T21:18:01+07:00",
+      "committerName": "thanhvihuu2005"
+    },
+    {
+      "sha": "2df4a61a791971f32ab1566c83a7997a4333ac3f",
+      "login": "nguyenthaison2408",
+      "author": "nguyenthaison2408",
+      "date": "2026-11-20T14:17:58Z",
+      "parents": [
+        "a9d13ba0632f22382548563f25e45b3210762103"
+      ],
+      "message": "fix: avoid inferring medication doses from quantities and clinical notes",
+      "issues": [
+        33
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-11-20T21:17:58+07:00",
+      "committerDate": "2026-11-20T21:17:58+07:00",
+      "committerName": "nguyenthaison2408"
+    },
+    {
+      "sha": "a3fddc1a684e10621e64cfad304c54fb72718268",
+      "login": "thanhvihuu2005",
+      "author": "thanhvihuu2005",
+      "date": "2026-11-14T04:20:15Z",
+      "parents": [
+        "d63b6bd341d4d2da02e95539847bb5ecd4b36f09"
+      ],
+      "message": "feat(ai): implement multi-specialty clinical triage rules engine",
+      "issues": [
+        34
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-11-14T11:20:15+07:00",
+      "committerDate": "2026-11-20T21:17:41+07:00",
+      "committerName": "thanhvihuu2005"
+    },
+    {
+      "sha": "d63b6bd341d4d2da02e95539847bb5ecd4b36f09",
+      "login": "thanhvihuu2005",
+      "author": "thanhvihuu2005",
+      "date": "2026-11-13T09:45:30Z",
+      "parents": [
+        "af64c70b9b1b2cc676d0f2fbc48c99f8d5ce0e27"
+      ],
+      "message": "feat(ai): build clinical symptom knowledge base and red-flag emergency detector",
+      "issues": [
+        34
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-11-13T16:45:30+07:00",
+      "committerDate": "2026-11-20T21:17:02+07:00",
+      "committerName": "thanhvihuu2005"
+    },
+    {
+      "sha": "af64c70b9b1b2cc676d0f2fbc48c99f8d5ce0e27",
+      "login": "thanhvihuu2005",
+      "author": "thanhvihuu2005",
+      "date": "2026-11-12T07:30:10Z",
+      "parents": [
+        "f29c03b4c134f78be14bbc63846ae6d91dd462a5"
+      ],
+      "message": "feat(ai): define TypeScript domain models and triage severity types for patient AI",
+      "issues": [
+        34
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-11-12T14:30:10+07:00",
+      "committerDate": "2026-11-20T21:16:17+07:00",
+      "committerName": "thanhvihuu2005"
+    },
+    {
+      "sha": "f29c03b4c134f78be14bbc63846ae6d91dd462a5",
+      "login": "thanhvihuu2005",
+      "author": "thanhvihuu2005",
+      "date": "2026-11-11T03:15:20Z",
+      "parents": [
+        "c14ddd1309e4a888a13124d78ee8c5a64a0da4fa"
+      ],
+      "message": "docs(ai): add clinical patient AI assistant architecture and triage specification",
+      "issues": [
+        1,
+        34
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-11-11T10:15:20+07:00",
+      "committerDate": "2026-11-20T21:15:54+07:00",
+      "committerName": "thanhvihuu2005"
+    },
+    {
+      "sha": "a9d13ba0632f22382548563f25e45b3210762103",
+      "login": "myth0ss",
+      "author": "anhnguyen",
+      "date": "2026-11-20T14:12:50Z",
+      "parents": [
+        "7e5c0ae84cef6d3f57d67e8373fadff6c5bde22c"
+      ],
+      "message": "fix: track medication adherence by prescription and dose",
+      "issues": [
+        11,
+        33
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-11-20T21:12:50+07:00",
+      "committerDate": "2026-11-20T21:12:50+07:00",
+      "committerName": "anhnguyen"
+    },
+    {
+      "sha": "7e5c0ae84cef6d3f57d67e8373fadff6c5bde22c",
+      "login": "myth0ss",
+      "author": "anhnguyen",
+      "date": "2026-11-20T13:58:20Z",
+      "parents": [
+        "0533487b073058fb25d089009a6140ff2da32585"
+      ],
+      "message": "fix: isolate patient medication data and remove mock values",
+      "issues": [
+        33
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-11-20T20:58:20+07:00",
+      "committerDate": "2026-11-20T20:58:20+07:00",
+      "committerName": "anhnguyen"
+    },
+    {
+      "sha": "0533487b073058fb25d089009a6140ff2da32585",
+      "login": "myth0ss",
+      "author": "anhnguyen",
+      "date": "2026-11-20T08:52:04Z",
+      "parents": [
+        "c14ddd1309e4a888a13124d78ee8c5a64a0da4fa"
+      ],
+      "message": "feat: integrate medicine cabinet and medication tracking with Supabase",
+      "issues": [
+        33
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-11-20T15:52:04+07:00",
+      "committerDate": "2026-11-20T15:52:04+07:00",
+      "committerName": "anhnguyen"
+    },
+    {
+      "sha": "c14ddd1309e4a888a13124d78ee8c5a64a0da4fa",
+      "login": "nguyenthaison2408",
+      "author": "nguyenthaison2408",
+      "date": "2026-11-20T08:28:05Z",
+      "parents": [
+        "b220855160b36b2e3761246b81fbaa3b0995bc7a",
+        "644b292f60b6b230a3bba16159d30f0b68177236"
+      ],
+      "message": "Merge PR #24: integrate validated check-in, EMR, family profiles and reviews\n\n[Sprint 3] [TechLead-Core] feat: connect reception and doctor check-in flow to Supabase RPC",
+      "issues": [],
+      "kind": "merge",
+      "authorDate": "2026-11-20T15:28:05+07:00",
+      "committerDate": "2026-11-20T15:28:05+07:00",
+      "committerName": "GitHub"
+    },
+    {
+      "sha": "644b292f60b6b230a3bba16159d30f0b68177236",
+      "login": "nguyenthaison2408",
+      "author": "nguyenthaison2408",
+      "date": "2026-11-20T08:25:32Z",
+      "parents": [
+        "86e0027a1a738142e31c8376b35c192796a9351d",
+        "cee213d9886e6cdd31edbf4388cac0d719688253"
+      ],
+      "message": "Merge PR #25: validated clinic cloud workflow\n\n[Sprint 4] [TechLead-EMR] feat: wire doctor EMR and electronic prescription to Supabase Cloud",
+      "issues": [],
+      "kind": "merge",
+      "authorDate": "2026-11-20T15:25:32+07:00",
+      "committerDate": "2026-11-20T15:25:32+07:00",
+      "committerName": "GitHub"
+    },
+    {
+      "sha": "cee213d9886e6cdd31edbf4388cac0d719688253",
+      "login": "nguyenthaison2408",
+      "author": "nguyenthaison2408",
+      "date": "2026-11-20T08:25:28Z",
+      "parents": [
+        "c5b8245d6b9abe5fe78bf2d56d7dfaad1608e902",
+        "db6dbbba7e576d4cb4287f00ceda66510df69f5c"
+      ],
+      "message": "Merge PR #26: validated clinic cloud workflow\n\n[Sprint 3] [TechLead-DB] feat: add clinic_family_members migration with RLS security policies",
+      "issues": [],
+      "kind": "merge",
+      "authorDate": "2026-11-20T15:25:28+07:00",
+      "committerDate": "2026-11-20T15:25:28+07:00",
+      "committerName": "GitHub"
+    },
+    {
+      "sha": "db6dbbba7e576d4cb4287f00ceda66510df69f5c",
+      "login": "nguyenthaison2408",
+      "author": "nguyenthaison2408",
+      "date": "2026-11-20T08:23:30Z",
+      "parents": [
+        "57d50f23381afac69167f06514ac0596b0773a0d",
+        "a14602bf12ca926c8f7405ae94709102746b3890"
+      ],
+      "message": "Merge PR #27: validated clinic cloud workflow\n\n[Sprint 2] [TechLead-DB] feat: add clinic_doctor_reviews migration and cloud review sync",
+      "issues": [],
+      "kind": "merge",
+      "authorDate": "2026-11-20T15:23:30+07:00",
+      "committerDate": "2026-11-20T15:23:30+07:00",
+      "committerName": "GitHub"
+    },
+    {
+      "sha": "86e0027a1a738142e31c8376b35c192796a9351d",
+      "login": "nguyenthaison2408",
+      "author": "nguyenthaison2408",
+      "date": "2026-11-20T08:17:32Z",
+      "parents": [
+        "9864b412eb425cc22acdb4f83d1e1d8bb2c8b9d3"
+      ],
+      "message": "ci: run required checks for dependent clinic feature PRs",
+      "issues": [
+        1
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-11-20T15:17:32+07:00",
+      "committerDate": "2026-11-20T15:17:32+07:00",
+      "committerName": "nguyenthaison2408"
+    },
+    {
+      "sha": "c5b8245d6b9abe5fe78bf2d56d7dfaad1608e902",
+      "login": "nguyenthaison2408",
+      "author": "nguyenthaison2408",
+      "date": "2026-11-20T08:17:32Z",
+      "parents": [
+        "6a19c8a214c2b24c02046e1cbd82c79f261c3137",
+        "86e0027a1a738142e31c8376b35c192796a9351d"
+      ],
+      "message": "Merge branch 'fix/thanh-pr24' into fix/thanh-pr25",
+      "issues": [],
+      "kind": "merge",
+      "authorDate": "2026-11-20T15:17:32+07:00",
+      "committerDate": "2026-11-20T15:17:32+07:00",
+      "committerName": "nguyenthaison2408"
+    },
+    {
+      "sha": "57d50f23381afac69167f06514ac0596b0773a0d",
+      "login": "nguyenthaison2408",
+      "author": "nguyenthaison2408",
+      "date": "2026-11-20T08:17:32Z",
+      "parents": [
+        "8eb5859f477f9e62079979d8cbb6df3d62afe060",
+        "c5b8245d6b9abe5fe78bf2d56d7dfaad1608e902"
+      ],
+      "message": "Merge branch 'fix/thanh-pr25' into fix/thanh-pr26",
+      "issues": [],
+      "kind": "merge",
+      "authorDate": "2026-11-20T15:17:32+07:00",
+      "committerDate": "2026-11-20T15:17:32+07:00",
+      "committerName": "nguyenthaison2408"
+    },
+    {
+      "sha": "a14602bf12ca926c8f7405ae94709102746b3890",
+      "login": "nguyenthaison2408",
+      "author": "nguyenthaison2408",
+      "date": "2026-11-20T08:17:32Z",
+      "parents": [
+        "3220ec81cda6c88b242b8647034fad7702c9a0a7",
+        "57d50f23381afac69167f06514ac0596b0773a0d"
+      ],
+      "message": "Merge branch 'fix/thanh-pr26' into fix/thanh-pr27",
+      "issues": [],
+      "kind": "merge",
+      "authorDate": "2026-11-20T15:17:32+07:00",
+      "committerDate": "2026-11-20T15:17:32+07:00",
+      "committerName": "nguyenthaison2408"
+    },
+    {
+      "sha": "3220ec81cda6c88b242b8647034fad7702c9a0a7",
+      "login": "nguyenthaison2408",
+      "author": "nguyenthaison2408",
+      "date": "2026-11-20T08:15:03Z",
+      "parents": [
+        "4967d1b87ab1cd00cb083de79e9d6812a641b485",
+        "8eb5859f477f9e62079979d8cbb6df3d62afe060"
+      ],
+      "message": "Merge branch 'fix/thanh-pr26' into fix/thanh-pr27",
+      "issues": [],
+      "kind": "merge",
+      "authorDate": "2026-11-20T15:15:03+07:00",
+      "committerDate": "2026-11-20T15:15:03+07:00",
+      "committerName": "nguyenthaison2408"
+    },
+    {
+      "sha": "4967d1b87ab1cd00cb083de79e9d6812a641b485",
+      "login": "nguyenthaison2408",
+      "author": "nguyenthaison2408",
+      "date": "2026-11-20T08:15:03Z",
+      "parents": [
+        "3ca05989858d81894d2e868288ef3563e9ec197b",
+        "d35e3804b0b9583561362bc0ee5b7b689032aba3"
+      ],
+      "message": "fix(reviews): verify completed visits and persist server-confirmed feedback",
+      "issues": [],
+      "kind": "merge",
+      "authorDate": "2026-11-20T15:15:03+07:00",
+      "committerDate": "2026-11-20T15:15:03+07:00",
+      "committerName": "nguyenthaison2408"
+    },
+    {
+      "sha": "8eb5859f477f9e62079979d8cbb6df3d62afe060",
+      "login": "nguyenthaison2408",
+      "author": "nguyenthaison2408",
+      "date": "2026-11-20T08:11:55Z",
+      "parents": [
+        "d35e3804b0b9583561362bc0ee5b7b689032aba3"
+      ],
+      "message": "style(family): remove UTF-8 BOM for strict lint",
+      "issues": [
+        41
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-11-20T15:11:55+07:00",
+      "committerDate": "2026-11-20T15:11:55+07:00",
+      "committerName": "nguyenthaison2408"
+    },
+    {
+      "sha": "d35e3804b0b9583561362bc0ee5b7b689032aba3",
+      "login": "nguyenthaison2408",
+      "author": "nguyenthaison2408",
+      "date": "2026-11-20T08:11:23Z",
+      "parents": [
+        "f88860c8317ccf30dcb5d5c1aa95a1f5f6338711",
+        "6a19c8a214c2b24c02046e1cbd82c79f261c3137"
+      ],
+      "message": "fix(family): restrict owner access and synchronize authenticated saves",
+      "issues": [],
+      "kind": "merge",
+      "authorDate": "2026-11-20T15:11:23+07:00",
+      "committerDate": "2026-11-20T15:11:23+07:00",
+      "committerName": "nguyenthaison2408"
+    },
+    {
+      "sha": "6a19c8a214c2b24c02046e1cbd82c79f261c3137",
+      "login": "nguyenthaison2408",
+      "author": "nguyenthaison2408",
+      "date": "2026-11-20T08:08:36Z",
+      "parents": [
+        "bb990eab2db457690ac91ba3267dfbe6f3a6e60f",
+        "9864b412eb425cc22acdb4f83d1e1d8bb2c8b9d3"
+      ],
+      "message": "fix(emr): wire cloud form to validated completion and preserve failed edits",
+      "issues": [],
+      "kind": "merge",
+      "authorDate": "2026-11-20T15:08:36+07:00",
+      "committerDate": "2026-11-20T15:08:36+07:00",
+      "committerName": "nguyenthaison2408"
+    },
+    {
+      "sha": "9864b412eb425cc22acdb4f83d1e1d8bb2c8b9d3",
+      "login": "nguyenthaison2408",
+      "author": "nguyenthaison2408",
+      "date": "2026-11-20T08:07:05Z",
+      "parents": [
+        "a145b2653becdda36f8a49b935c534b39fcfe114"
+      ],
+      "message": "fix(checkin): stop success UI after rejected RPC and reload cloud state",
+      "issues": [
+        7,
+        9,
+        10
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-11-20T15:07:05+07:00",
+      "committerDate": "2026-11-20T15:07:05+07:00",
+      "committerName": "nguyenthaison2408"
+    },
+    {
+      "sha": "b220855160b36b2e3761246b81fbaa3b0995bc7a",
+      "login": "nguyenthaison2408",
+      "author": "nguyenthaison2408",
+      "date": "2026-11-20T07:19:12Z",
+      "parents": [
+        "8f2059386effedcba25c2e6597ccdb81c711a4cc",
+        "87ce7a1b6f3a60c6eecd2698d28ed66359097020"
+      ],
+      "message": "Merge pull request #23: restore MediCare UI and fix authenticated cloud workflows\n\nfeat(client): Khôi phục giao diện MediCare Plus, bỏ chọn vai trò Demo & đồng bộ dữ liệu Bác sĩ/Hàng đợi từ Supabase",
+      "issues": [],
+      "kind": "merge",
+      "authorDate": "2026-11-20T14:19:12+07:00",
+      "committerDate": "2026-11-20T14:19:12+07:00",
+      "committerName": "GitHub"
+    },
+    {
+      "sha": "87ce7a1b6f3a60c6eecd2698d28ed66359097020",
+      "login": "nguyenthaison2408",
+      "author": "nguyenthaison2408",
+      "date": "2026-11-20T07:17:02Z",
+      "parents": [
+        "9058c054640873657f2ec51647adc96418a8b2c6"
+      ],
+      "message": "fix(client): preserve authenticated QR and EMR workflows in restored UI",
+      "issues": [
+        3,
+        7,
+        9,
+        10,
+        11
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-11-20T14:17:02+07:00",
+      "committerDate": "2026-11-20T14:17:02+07:00",
+      "committerName": "nguyenthaison2408"
+    },
+    {
+      "sha": "9058c054640873657f2ec51647adc96418a8b2c6",
+      "login": "thanhvuvn",
+      "author": "thanhvuvn",
+      "date": "2026-11-20T07:04:05Z",
+      "parents": [
+        "8f2059386effedcba25c2e6597ccdb81c711a4cc"
+      ],
+      "message": "feat(client): restore full MediCare Plus UI, remove demo role picker and sync Supabase doctor/queue data",
+      "issues": [
+        3,
+        7,
+        9
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-11-20T14:04:05+07:00",
+      "committerDate": "2026-11-20T14:04:05+07:00",
+      "committerName": "thanhvuvn"
+    },
+    {
+      "sha": "8f2059386effedcba25c2e6597ccdb81c711a4cc",
+      "login": "nguyenthaison2408",
+      "author": "nguyenthaison2408",
+      "date": "2026-11-19T10:55:00Z",
+      "parents": [
+        "08abe25e567ae08f5014923e4fe2d35cbeb8b4d0",
+        "6ee11c2a91ceac5e61cd68edd3b1d29161b4b5b9"
+      ],
+      "message": "Merge pull request #21 from nguyenthaison2408/feat/booking-patient-info-validation\n\nfeat: Add patient information and booking validation",
+      "issues": [],
+      "kind": "merge",
+      "authorDate": "2026-11-19T17:55:00+07:00",
+      "committerDate": "2026-11-19T17:55:00+07:00",
+      "committerName": "GitHub"
+    },
+    {
+      "sha": "6ee11c2a91ceac5e61cd68edd3b1d29161b4b5b9",
+      "login": "nguyenthaison2408",
+      "author": "Nguyen Thai Son",
+      "date": "2026-11-19T10:52:18Z",
+      "parents": [
+        "3d849b1d04881238cc95f97f83cb992fc3e14ba5"
+      ],
+      "message": "test: wait for postgres realtime readiness and record cloud checks",
+      "issues": [],
+      "kind": "ordinary",
+      "authorDate": "2026-11-19T17:52:18+07:00",
+      "committerDate": "2026-11-19T17:52:18+07:00",
+      "committerName": "Nguyen Thai Son"
+    },
+    {
+      "sha": "3d849b1d04881238cc95f97f83cb992fc3e14ba5",
+      "login": "nguyenthaison2408",
+      "author": "Nguyen Thai Son",
+      "date": "2026-11-19T10:34:46Z",
+      "parents": [
+        "2d436a9ca1b5627ca747e406df5b88b9ae4fb34a"
+      ],
+      "message": "fix: preserve real patient checkout and validate booking fields",
+      "issues": [
+        6
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-11-19T17:34:46+07:00",
+      "committerDate": "2026-11-19T17:34:46+07:00",
+      "committerName": "Nguyen Thai Son"
+    },
+    {
+      "sha": "2d436a9ca1b5627ca747e406df5b88b9ae4fb34a",
+      "login": "myth0ss",
+      "author": "anhnguyen",
+      "date": "2026-11-19T09:59:20Z",
+      "parents": [
+        "08abe25e567ae08f5014923e4fe2d35cbeb8b4d0"
+      ],
+      "message": "feat: add patient details and validation to booking flow",
+      "issues": [
+        6
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-11-19T16:59:20+07:00",
+      "committerDate": "2026-11-19T16:59:20+07:00",
+      "committerName": "anhnguyen"
+    },
+    {
+      "sha": "08abe25e567ae08f5014923e4fe2d35cbeb8b4d0",
+      "login": "nguyenthaison2408",
+      "author": "nguyenthaison2408",
+      "date": "2026-11-19T07:22:27Z",
+      "parents": [
+        "e2a1beb1d2a13a75d87983142a0fe779d75f18af",
+        "7034aceab4a962a183b2e7dbc1b842a053e2b342"
+      ],
+      "message": "Merge pull request #20 from nguyenthaison2408/feat/supabase-clinic-demo\n\nfeat: integrate Supabase booking, QR check-in and patient records",
+      "issues": [],
+      "kind": "merge",
+      "authorDate": "2026-11-19T14:22:27+07:00",
+      "committerDate": "2026-11-19T14:22:27+07:00",
+      "committerName": "GitHub"
+    },
+    {
+      "sha": "7034aceab4a962a183b2e7dbc1b842a053e2b342",
+      "login": "nguyenthaison2408",
+      "author": "Nguyen Thai Son",
+      "date": "2026-11-19T07:13:37Z",
+      "parents": [
+        "e2a1beb1d2a13a75d87983142a0fe779d75f18af"
+      ],
+      "message": "feat: connect clinic demo to Supabase with verified test evidence",
+      "issues": [
+        5
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-11-19T14:13:37+07:00",
+      "committerDate": "2026-11-19T14:13:37+07:00",
+      "committerName": "Nguyen Thai Son"
+    },
+    {
+      "sha": "bb990eab2db457690ac91ba3267dfbe6f3a6e60f",
+      "login": "thanhvihuu2005",
+      "author": "thanhvihuu2005",
+      "date": "2026-11-18T09:10:25Z",
+      "parents": [
+        "b220855160b36b2e3761246b81fbaa3b0995bc7a"
+      ],
+      "message": "feat(cloud): wire doctor EMR and electronic prescription to Supabase completeClinicAppointment RPC",
+      "issues": [
+        6,
+        11
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-11-18T16:10:25+07:00",
+      "committerDate": "2026-11-18T16:10:25+07:00",
+      "committerName": "thanhvihuu2005"
+    },
+    {
+      "sha": "e2a1beb1d2a13a75d87983142a0fe779d75f18af",
+      "login": "nguyenthaison2408",
+      "author": "nguyenthaison2408",
+      "date": "2026-11-17T04:45:43Z",
+      "parents": [
+        "773bd990486517bd85a408e189ddbe379f410691",
+        "e74ffe188d3ea08367603f92e6d5719265da715b"
+      ],
+      "message": "feat(ci,api): merge PR #19 from thanhvihuu2005 - enhance CI typecheck and booking validation\n\nMerged by Project Manager @nguyenthaison2408.\n\nApproved Technical Lead @thanhvihuu2005 contributions to CI pipeline and input validation.",
+      "issues": [],
+      "kind": "merge",
+      "authorDate": "2026-11-17T11:45:43+07:00",
+      "committerDate": "2026-11-17T11:45:43+07:00",
+      "committerName": "GitHub"
+    },
+    {
+      "sha": "e74ffe188d3ea08367603f92e6d5719265da715b",
+      "login": "thanhvihuu2005",
+      "author": "thanhvihuu2005",
+      "date": "2026-11-17T04:34:06Z",
+      "parents": [
+        "773bd990486517bd85a408e189ddbe379f410691"
+      ],
+      "message": "feat(ci,api): add client typecheck step to CI workflow and enhance booking input validation",
+      "issues": [
+        1,
+        6
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-11-17T11:34:06+07:00",
+      "committerDate": "2026-11-17T11:34:06+07:00",
+      "committerName": "thanhvihuu2005"
+    },
+    {
+      "sha": "773bd990486517bd85a408e189ddbe379f410691",
+      "login": "nguyenthaison2408",
+      "author": "Nguyen Thai Son",
+      "date": "2026-11-16T04:30:00Z",
+      "parents": [
+        "b825027797b4945ec312ce99a7f39c455632d612",
+        "7fafd7a5d3f9c4f7a0f93703d7fe2a2b366aa017"
+      ],
+      "message": "feat(mobile): merge mobile app cross-platform client by dangthanhvu into main (#15)",
+      "issues": [],
+      "kind": "merge",
+      "authorDate": "2026-11-16T11:30:00+07:00",
+      "committerDate": "2026-11-16T11:30:00+07:00",
+      "committerName": "Nguyen Thai Son"
+    },
+    {
+      "sha": "7fafd7a5d3f9c4f7a0f93703d7fe2a2b366aa017",
+      "login": "thanhvuvn",
+      "author": "thanhvuvn",
+      "date": "2026-11-16T02:50:00Z",
+      "parents": [
+        "d58d0eb41aa28dcc610d90b757cb394b8b2ffaf6"
+      ],
+      "message": "chore(release): finalize mobile client migration and prepare PR for main (#15)",
+      "issues": [
+        2,
+        7,
+        9,
+        14,
+        16
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-11-16T09:50:00+07:00",
+      "committerDate": "2026-11-16T09:50:00+07:00",
+      "committerName": "thanhvuvn"
+    },
+    {
+      "sha": "b825027797b4945ec312ce99a7f39c455632d612",
+      "login": "nguyenthaison2408",
+      "author": "Nguyen Thai Son",
+      "date": "2026-11-14T09:20:15Z",
+      "parents": [
+        "f7601bf1f852fd8f46edb8d7863a5ceb0a134d12"
+      ],
+      "message": "docs: generate standardized Word docx reports with Times New Roman typography",
+      "issues": [
+        15,
+        17
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-11-14T16:20:15+07:00",
+      "committerDate": "2026-11-14T16:20:15+07:00",
+      "committerName": "Nguyen Thai Son"
+    },
+    {
+      "sha": "d58d0eb41aa28dcc610d90b757cb394b8b2ffaf6",
+      "login": "thanhvuvn",
+      "author": "thanhvuvn",
+      "date": "2026-11-14T08:10:00Z",
+      "parents": [
+        "2e139f180a5ba0074a0947e0f32f21114b5be97b"
+      ],
+      "message": "chore(ci): add typecheck and build scripts to client/package.json for CI pipeline (#15)",
+      "issues": [
+        1
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-11-14T15:10:00+07:00",
+      "committerDate": "2026-11-14T15:10:00+07:00",
+      "committerName": "thanhvuvn"
+    },
+    {
+      "sha": "2e139f180a5ba0074a0947e0f32f21114b5be97b",
+      "login": "thanhvuvn",
+      "author": "thanhvuvn",
+      "date": "2026-11-12T03:30:00Z",
+      "parents": [
+        "38cffadbb99da0d597b22948701c0c7f8c61a7d9"
+      ],
+      "message": "docs(mobile): add PRODUCT.md, UX_AUDIT.md and PROJECT_PROGRESS.md documentation (#15)",
+      "issues": [
+        7,
+        9,
+        15,
+        17
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-11-12T10:30:00+07:00",
+      "committerDate": "2026-11-12T10:30:00+07:00",
+      "committerName": "thanhvuvn"
+    },
+    {
+      "sha": "38cffadbb99da0d597b22948701c0c7f8c61a7d9",
+      "login": "thanhvuvn",
+      "author": "thanhvuvn",
+      "date": "2026-11-10T09:15:00Z",
+      "parents": [
+        "514f3925d7c076a2c658f148550b7cf2facf6384"
+      ],
+      "message": "feat(app): wire complete multi-role navigation and splash flow in App.tsx (#10)",
+      "issues": [
+        3,
+        7,
+        9
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-11-10T16:15:00+07:00",
+      "committerDate": "2026-11-10T16:15:00+07:00",
+      "committerName": "thanhvuvn"
+    },
+    {
+      "sha": "a145b2653becdda36f8a49b935c534b39fcfe114",
+      "login": "thanhvihuu2005",
+      "author": "thanhvihuu2005",
+      "date": "2026-11-09T08:20:40Z",
+      "parents": [
+        "b220855160b36b2e3761246b81fbaa3b0995bc7a"
+      ],
+      "message": "feat(cloud): connect reception and doctor check-in flow to Supabase clinic_check_in RPC",
+      "issues": [
+        10
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-11-09T15:20:40+07:00",
+      "committerDate": "2026-11-09T15:20:40+07:00",
+      "committerName": "thanhvihuu2005"
+    },
+    {
+      "sha": "514f3925d7c076a2c658f148550b7cf2facf6384",
+      "login": "thanhvuvn",
+      "author": "thanhvuvn",
+      "date": "2026-11-08T04:00:00Z",
+      "parents": [
+        "d046862034843f83051473094ed4188255573b05"
+      ],
+      "message": "feat(roles): implement RoleDashboards for Doctor queue console and Admin portal (#11)",
+      "issues": [
+        3,
+        11
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-11-08T11:00:00+07:00",
+      "committerDate": "2026-11-08T11:00:00+07:00",
+      "committerName": "thanhvuvn"
+    },
+    {
+      "sha": "d046862034843f83051473094ed4188255573b05",
+      "login": "thanhvuvn",
+      "author": "thanhvuvn",
+      "date": "2026-11-06T07:35:00Z",
+      "parents": [
+        "89759a3306e946778657088ea2a670bd889d9d4a"
+      ],
+      "message": "feat(admin): build AdminCharts KPI analytics component for clinic dashboard (#11)",
+      "issues": [
+        7,
+        9
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-11-06T14:35:00+07:00",
+      "committerDate": "2026-11-06T14:35:00+07:00",
+      "committerName": "thanhvuvn"
+    },
+    {
+      "sha": "f7601bf1f852fd8f46edb8d7863a5ceb0a134d12",
+      "login": "nguyenthaison2408",
+      "author": "Nguyen Thai Son",
+      "date": "2026-11-05T07:40:50Z",
+      "parents": [
+        "ba403c3d579f8baf292d1edd55fa01a6ccb4b97c"
+      ],
+      "message": "docs: restructure evidence package deliverables to match official SPM syllabus",
+      "issues": [
+        4,
+        15,
+        17
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-11-05T14:40:50+07:00",
+      "committerDate": "2026-11-05T14:40:50+07:00",
+      "committerName": "Nguyen Thai Son"
+    },
+    {
+      "sha": "f88860c8317ccf30dcb5d5c1aa95a1f5f6338711",
+      "login": "thanhvihuu2005",
+      "author": "thanhvihuu2005",
+      "date": "2026-11-05T03:45:15Z",
+      "parents": [
+        "b220855160b36b2e3761246b81fbaa3b0995bc7a"
+      ],
+      "message": "feat(db): add clinic_family_members migration with RLS and cloud family profile integration",
+      "issues": [
+        2,
+        41
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-11-05T10:45:15+07:00",
+      "committerDate": "2026-11-05T10:45:15+07:00",
+      "committerName": "thanhvihuu2005"
+    },
+    {
+      "sha": "89759a3306e946778657088ea2a670bd889d9d4a",
+      "login": "thanhvuvn",
+      "author": "thanhvuvn",
+      "date": "2026-11-04T02:20:00Z",
+      "parents": [
+        "e14b1f5fdbf800edf28b4a6f4555b7bfcdec3252"
+      ],
+      "message": "feat(telehealth): [CR-01] add TelehealthAndFamilyScreens with QR check-in and family profiles (#10)",
+      "issues": [
+        7,
+        9,
+        8,
+        10,
+        41
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-11-04T09:20:00+07:00",
+      "committerDate": "2026-11-04T09:20:00+07:00",
+      "committerName": "thanhvuvn"
+    },
+    {
+      "sha": "e14b1f5fdbf800edf28b4a6f4555b7bfcdec3252",
+      "login": "thanhvuvn",
+      "author": "thanhvuvn",
+      "date": "2026-11-02T08:50:00Z",
+      "parents": [
+        "05c2521f5f88c88a02aaf5dc32b6380689fcbc09"
+      ],
+      "message": "feat(pharmacy): implement PharmacyAndMedicationScreens for family medicine cabinet (#11)",
+      "issues": [
+        7,
+        9,
+        33,
+        41
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-11-02T15:50:00+07:00",
+      "committerDate": "2026-11-02T15:50:00+07:00",
+      "committerName": "thanhvuvn"
+    },
+    {
+      "sha": "05c2521f5f88c88a02aaf5dc32b6380689fcbc09",
+      "login": "thanhvuvn",
+      "author": "thanhvuvn",
+      "date": "2026-10-31T04:30:00Z",
+      "parents": [
+        "4cfc71a26682922f4febff95e6205fb59b00b588"
+      ],
+      "message": "feat(ehr): build PatientEHRCard and PrescriptionCard components (#11)",
+      "issues": [
+        7,
+        9,
+        11
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-10-31T11:30:00+07:00",
+      "committerDate": "2026-10-31T11:30:00+07:00",
+      "committerName": "thanhvuvn"
+    },
+    {
+      "sha": "4cfc71a26682922f4febff95e6205fb59b00b588",
+      "login": "thanhvuvn",
+      "author": "thanhvuvn",
+      "date": "2026-10-29T07:10:00Z",
+      "parents": [
+        "4e3fe00427b2c7b94b29afffb580168e7efbc519"
+      ],
+      "message": "feat(utils): add native OS share utilities for clinical passes and prescriptions (#9)",
+      "issues": [
+        11
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-10-29T14:10:00+07:00",
+      "committerDate": "2026-10-29T14:10:00+07:00",
+      "committerName": "thanhvuvn"
+    },
+    {
+      "sha": "ba403c3d579f8baf292d1edd55fa01a6ccb4b97c",
+      "login": "nguyenthaison2408",
+      "author": "Nguyen Thai Son",
+      "date": "2026-10-28T03:10:05Z",
+      "parents": [
+        "c35ef4fd6d42dc056bc51f40fcbe28f0d6c5d259"
+      ],
+      "message": "docs: update correct student ids",
+      "issues": [
+        4,
+        15,
+        17
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-10-28T10:10:05+07:00",
+      "committerDate": "2026-10-28T10:10:05+07:00",
+      "committerName": "Nguyen Thai Son"
+    },
+    {
+      "sha": "4e3fe00427b2c7b94b29afffb580168e7efbc519",
+      "login": "thanhvuvn",
+      "author": "thanhvuvn",
+      "date": "2026-10-27T03:40:00Z",
+      "parents": [
+        "5d802240395e48c264758f509543f4334a4bdb11"
+      ],
+      "message": "feat(screens): implement MainTabScreens for Home, Schedule, AI and Profile (#9)",
+      "issues": [
+        7,
+        9,
+        34
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-10-27T10:40:00+07:00",
+      "committerDate": "2026-10-27T10:40:00+07:00",
+      "committerName": "thanhvuvn"
+    },
+    {
+      "sha": "5d802240395e48c264758f509543f4334a4bdb11",
+      "login": "thanhvuvn",
+      "author": "thanhvuvn",
+      "date": "2026-10-25T09:20:00Z",
+      "parents": [
+        "7259fecf9cc6f9d2a13d7a45e6e2e3a338f79906"
+      ],
+      "message": "feat(ai): build AIChatComponents for 24/7 clinical symptom triage (#9)",
+      "issues": [
+        7,
+        9,
+        34,
+        45
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-10-25T16:20:00+07:00",
+      "committerDate": "2026-10-25T16:20:00+07:00",
+      "committerName": "thanhvuvn"
+    },
+    {
+      "sha": "7259fecf9cc6f9d2a13d7a45e6e2e3a338f79906",
+      "login": "thanhvuvn",
+      "author": "thanhvuvn",
+      "date": "2026-10-23T06:45:00Z",
+      "parents": [
+        "473f888b586a1c6c8febbfdeafbcc32f1e957c4a"
+      ],
+      "message": "feat(ui): implement 60fps Animations engine (AnimatedEntry, PressableScale, Shimmer) (#9)",
+      "issues": [
+        7,
+        9
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-10-23T13:45:00+07:00",
+      "committerDate": "2026-10-23T13:45:00+07:00",
+      "committerName": "thanhvuvn"
+    },
+    {
+      "sha": "3ca05989858d81894d2e868288ef3563e9ec197b",
+      "login": "thanhvihuu2005",
+      "author": "thanhvihuu2005",
+      "date": "2026-10-22T07:25:30Z",
+      "parents": [
+        "b220855160b36b2e3761246b81fbaa3b0995bc7a"
+      ],
+      "message": "feat(db): add clinic_doctor_reviews migration with RLS policies and cloud review service",
+      "issues": [
+        2,
+        42
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-10-22T14:25:30+07:00",
+      "committerDate": "2026-10-22T14:25:30+07:00",
+      "committerName": "thanhvihuu2005"
+    },
+    {
+      "sha": "473f888b586a1c6c8febbfdeafbcc32f1e957c4a",
+      "login": "thanhvuvn",
+      "author": "thanhvuvn",
+      "date": "2026-10-21T02:55:00Z",
+      "parents": [
+        "ffe1071153adddb55ab7228e49d1f4aa48e8902c"
+      ],
+      "message": "fix(booking): [R-01] export unified components and enforce slot lock checks (#8)",
+      "issues": [
+        6,
+        7,
+        9,
+        8
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-10-21T09:55:00+07:00",
+      "committerDate": "2026-10-21T09:55:00+07:00",
+      "committerName": "thanhvuvn"
+    },
+    {
+      "sha": "ffe1071153adddb55ab7228e49d1f4aa48e8902c",
+      "login": "thanhvuvn",
+      "author": "thanhvuvn",
+      "date": "2026-10-19T08:30:00Z",
+      "parents": [
+        "60e866e7453521642ad756b5024364500793a31e"
+      ],
+      "message": "feat(appointment): build AppointmentCard with status borders and countdown badge (#9)",
+      "issues": [
+        6
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-10-19T15:30:00+07:00",
+      "committerDate": "2026-10-19T15:30:00+07:00",
+      "committerName": "thanhvuvn"
+    },
+    {
+      "sha": "c35ef4fd6d42dc056bc51f40fcbe28f0d6c5d259",
+      "login": "nguyenthaison2408",
+      "author": "Nguyen Thai Son",
+      "date": "2026-10-18T08:30:18Z",
+      "parents": [
+        "f7d2a242a12e48b6461ef926b306f36f6c57bfc6"
+      ],
+      "message": "docs(team): update 4 team members, student IDs and RACI governance matrix",
+      "issues": [
+        4
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-10-18T15:30:18+07:00",
+      "committerDate": "2026-10-18T15:30:18+07:00",
+      "committerName": "Nguyen Thai Son"
+    },
+    {
+      "sha": "60e866e7453521642ad756b5024364500793a31e",
+      "login": "thanhvuvn",
+      "author": "thanhvuvn",
+      "date": "2026-10-17T04:15:00Z",
+      "parents": [
+        "6e15ff06d068142bb695816a320d0845ebd3ba00"
+      ],
+      "message": "feat(booking): build BookingFlowScreens with VietQR, VNPAY, MoMo and BHYT checkout (#6)",
+      "issues": [
+        6,
+        7,
+        9,
+        10,
+        37
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-10-17T11:15:00+07:00",
+      "committerDate": "2026-10-17T11:15:00+07:00",
+      "committerName": "thanhvuvn"
+    },
+    {
+      "sha": "6e15ff06d068142bb695816a320d0845ebd3ba00",
+      "login": "thanhvuvn",
+      "author": "thanhvuvn",
+      "date": "2026-10-15T07:50:00Z",
+      "parents": [
+        "f7e622d0a9c4ff074cb4a89a99b9b9a5a940e10b"
+      ],
+      "message": "feat(booking): implement DateTimeSlotPicker for horizontal dates and time slots (#6)",
+      "issues": [
+        3,
+        6
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-10-15T14:50:00+07:00",
+      "committerDate": "2026-10-15T14:50:00+07:00",
+      "committerName": "thanhvuvn"
+    },
+    {
+      "sha": "f7e622d0a9c4ff074cb4a89a99b9b9a5a940e10b",
+      "login": "thanhvuvn",
+      "author": "thanhvuvn",
+      "date": "2026-10-13T03:25:00Z",
+      "parents": [
+        "66f25b388c1f321faab642b22068ac3005674321"
+      ],
+      "message": "feat(utils): add deep-link map navigation helper for Google and Apple Maps (#5)",
+      "issues": [
+        7,
+        9
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-10-13T10:25:00+07:00",
+      "committerDate": "2026-10-13T10:25:00+07:00",
+      "committerName": "thanhvuvn"
+    },
+    {
+      "sha": "66f25b388c1f321faab642b22068ac3005674321",
+      "login": "thanhvuvn",
+      "author": "thanhvuvn",
+      "date": "2026-10-11T09:05:00Z",
+      "parents": [
+        "5f7e1df46bcf13b8f06ec828d22e05b6bddf18f8"
+      ],
+      "message": "feat(hospital): build HospitalCard and HospitalMapModal with parking guides (#5)",
+      "issues": [
+        40
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-10-11T16:05:00+07:00",
+      "committerDate": "2026-10-11T16:05:00+07:00",
+      "committerName": "thanhvuvn"
+    },
+    {
+      "sha": "5f7e1df46bcf13b8f06ec828d22e05b6bddf18f8",
+      "login": "thanhvuvn",
+      "author": "thanhvuvn",
+      "date": "2026-10-09T02:40:00Z",
+      "parents": [
+        "7f328ce732afd1ed4c37e199c7d9b7b423d9f73f"
+      ],
+      "message": "feat(doctor): implement DoctorCard with ratings, specialty and consultation fee (#5)",
+      "issues": [],
+      "kind": "ordinary",
+      "authorDate": "2026-10-09T09:40:00+07:00",
+      "committerDate": "2026-10-09T09:40:00+07:00",
+      "committerName": "thanhvuvn"
+    },
+    {
+      "sha": "7f328ce732afd1ed4c37e199c7d9b7b423d9f73f",
+      "login": "thanhvuvn",
+      "author": "thanhvuvn",
+      "date": "2026-10-07T08:20:00Z",
+      "parents": [
+        "cdccd753d217b223eccb1112da561b6689581fea"
+      ],
+      "message": "feat(home): build AIHeroBanner and SpecialtyGrid clinical discovery cards (#7)",
+      "issues": [],
+      "kind": "ordinary",
+      "authorDate": "2026-10-07T15:20:00+07:00",
+      "committerDate": "2026-10-07T15:20:00+07:00",
+      "committerName": "thanhvuvn"
+    },
+    {
+      "sha": "cdccd753d217b223eccb1112da561b6689581fea",
+      "login": "thanhvuvn",
+      "author": "thanhvuvn",
+      "date": "2026-10-05T04:30:00Z",
+      "parents": [
+        "e04f202f32b27f7fd21c8a5c8c8dcff19ea78902"
+      ],
+      "message": "feat(auth): implement LoginScreen and RegisterScreen with role selection (#3)",
+      "issues": [
+        3,
+        7,
+        9
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-10-05T11:30:00+07:00",
+      "committerDate": "2026-10-05T11:30:00+07:00",
+      "committerName": "thanhvuvn"
+    },
+    {
+      "sha": "f7d2a242a12e48b6461ef926b306f36f6c57bfc6",
+      "login": "nguyenthaison2408",
+      "author": "Nguyen Thai Son",
+      "date": "2026-10-04T04:20:45Z",
+      "parents": [
+        "05378a03f4781a33874d4e519f87c06787250194"
+      ],
+      "message": "feat(client): implement patient portal, QR check-in and doctor EMR consultation console",
+      "issues": [
+        10,
+        11
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-10-04T11:20:45+07:00",
+      "committerDate": "2026-10-04T11:20:45+07:00",
+      "committerName": "Nguyen Thai Son"
+    },
+    {
+      "sha": "e04f202f32b27f7fd21c8a5c8c8dcff19ea78902",
+      "login": "thanhvuvn",
+      "author": "thanhvuvn",
+      "date": "2026-10-03T07:15:00Z",
+      "parents": [
+        "66f8953930893311e957beff9b57afef1d5b610b"
+      ],
+      "message": "feat(state): setup AppContext global state and AsyncStorage persistence (#3)",
+      "issues": [],
+      "kind": "ordinary",
+      "authorDate": "2026-10-03T14:15:00+07:00",
+      "committerDate": "2026-10-03T14:15:00+07:00",
+      "committerName": "thanhvuvn"
+    },
+    {
+      "sha": "66f8953930893311e957beff9b57afef1d5b610b",
+      "login": "thanhvuvn",
+      "author": "thanhvuvn",
+      "date": "2026-10-01T03:50:00Z",
+      "parents": [
+        "8e49efbe1a21c5aa4d9d628873d9bb89275596ac"
+      ],
+      "message": "feat(api): implement RESTful apiClient with JWT auth and offline fallback (#3)",
+      "issues": [
+        3
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-10-01T10:50:00+07:00",
+      "committerDate": "2026-10-01T10:50:00+07:00",
+      "committerName": "thanhvuvn"
+    },
+    {
+      "sha": "8e49efbe1a21c5aa4d9d628873d9bb89275596ac",
+      "login": "thanhvuvn",
+      "author": "thanhvuvn",
+      "date": "2026-09-29T06:30:00Z",
+      "parents": [
+        "f38d33647acfaae2cfc827f1ef9ff8d74720ff0b"
+      ],
+      "message": "feat(navigation): build AppHeader, BottomTabBar and StickyBottomBar components (#7)",
+      "issues": [
+        7,
+        9
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-09-29T13:30:00+07:00",
+      "committerDate": "2026-09-29T13:30:00+07:00",
+      "committerName": "thanhvuvn"
+    },
+    {
+      "sha": "f38d33647acfaae2cfc827f1ef9ff8d74720ff0b",
+      "login": "thanhvuvn",
+      "author": "thanhvuvn",
+      "date": "2026-09-27T02:45:00Z",
+      "parents": [
+        "2b244c6099ef65d4a476e50a85c007985135c92b"
+      ],
+      "message": "feat(ui): implement Feedback modals and SegmentedControl switcher (#3)",
+      "issues": [
+        7,
+        9
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-09-27T09:45:00+07:00",
+      "committerDate": "2026-09-27T09:45:00+07:00",
+      "committerName": "thanhvuvn"
+    },
+    {
+      "sha": "2b244c6099ef65d4a476e50a85c007985135c92b",
+      "login": "thanhvuvn",
+      "author": "thanhvuvn",
+      "date": "2026-09-25T09:10:00Z",
+      "parents": [
+        "e98fa3e5c185cf1c7467381ffbc93f696fd9a7b1"
+      ],
+      "message": "feat(ui): add Badge, SectionHeader and SettingRow reusable UI primitives (#3)",
+      "issues": [
+        7,
+        9
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-09-25T16:10:00+07:00",
+      "committerDate": "2026-09-25T16:10:00+07:00",
+      "committerName": "thanhvuvn"
+    },
+    {
+      "sha": "e98fa3e5c185cf1c7467381ffbc93f696fd9a7b1",
+      "login": "thanhvuvn",
+      "author": "thanhvuvn",
+      "date": "2026-09-23T08:40:00Z",
+      "parents": [
+        "b597380bcb71d884f124fb73072784ffde17a1cb"
+      ],
+      "message": "feat(ui): implement core AppButton and AppInput atomic components (#3)",
+      "issues": [
+        7,
+        9
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-09-23T15:40:00+07:00",
+      "committerDate": "2026-09-23T15:40:00+07:00",
+      "committerName": "thanhvuvn"
+    },
+    {
+      "sha": "05378a03f4781a33874d4e519f87c06787250194",
+      "login": "nguyenthaison2408",
+      "author": "Nguyen Thai Son",
+      "date": "2026-09-22T09:45:10Z",
+      "parents": [
+        "cb16c0b198f1d68926db867249497d4950e0fb4b"
+      ],
+      "message": "feat(api): implement booking engine, concurrency slot lock, EMR and test suite",
+      "issues": [
+        6,
+        8,
+        11,
+        13
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-09-22T16:45:10+07:00",
+      "committerDate": "2026-09-22T16:45:10+07:00",
+      "committerName": "Nguyen Thai Son"
+    },
+    {
+      "sha": "b597380bcb71d884f124fb73072784ffde17a1cb",
+      "login": "thanhvuvn",
+      "author": "thanhvuvn",
+      "date": "2026-09-21T04:05:00Z",
+      "parents": [
+        "1097f671961442a365ef6e37bf3ead5f0a033ddb"
+      ],
+      "message": "feat(data): add Vietnam hospital coordinates, doctors and medical mock dataset (#5)",
+      "issues": [
+        5,
+        40
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-09-21T11:05:00+07:00",
+      "committerDate": "2026-09-21T11:05:00+07:00",
+      "committerName": "thanhvuvn"
+    },
+    {
+      "sha": "1097f671961442a365ef6e37bf3ead5f0a033ddb",
+      "login": "thanhvuvn",
+      "author": "thanhvuvn",
+      "date": "2026-09-19T07:20:00Z",
+      "parents": [
+        "1745ab5df408d8e7d46d313d85f4d06d61f4a7f3"
+      ],
+      "message": "feat(theme): define clinical color palette, typography scale and spacing tokens (#1)",
+      "issues": [
+        7,
+        9
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-09-19T14:20:00+07:00",
+      "committerDate": "2026-09-19T14:20:00+07:00",
+      "committerName": "thanhvuvn"
+    },
+    {
+      "sha": "1745ab5df408d8e7d46d313d85f4d06d61f4a7f3",
+      "login": "thanhvuvn",
+      "author": "thanhvuvn",
+      "date": "2026-09-17T03:15:00Z",
+      "parents": [
+        "d246b6403ddf029d6d0a095a2d29114d6629bd80"
+      ],
+      "message": "feat(mobile): add app icons, splash screen and adaptive Android assets (#1)",
+      "issues": [
+        7,
+        9
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-09-17T10:15:00+07:00",
+      "committerDate": "2026-09-17T10:15:00+07:00",
+      "committerName": "thanhvuvn"
+    },
+    {
+      "sha": "d246b6403ddf029d6d0a095a2d29114d6629bd80",
+      "login": "thanhvuvn",
+      "author": "thanhvuvn",
+      "date": "2026-09-15T02:30:00Z",
+      "parents": [
+        "b825027797b4945ec312ce99a7f39c455632d612"
+      ],
+      "message": "feat(mobile): drop legacy web client and initialize Expo SDK 58 mobile app (#1)",
+      "issues": [
+        7,
+        9
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-09-15T09:30:00+07:00",
+      "committerDate": "2026-09-15T09:30:00+07:00",
+      "committerName": "thanhvuvn"
+    },
+    {
+      "sha": "cb16c0b198f1d68926db867249497d4950e0fb4b",
+      "login": "nguyenthaison2408",
+      "author": "Nguyen Thai Son",
+      "date": "2026-09-12T07:30:22Z",
+      "parents": [
+        "11ddc91c764372018929b9710ddfa081b3607ac5"
+      ],
+      "message": "docs(spm): add authentic 7-report project management package for VKU SPM capstone",
+      "issues": [
+        3,
+        4,
+        15,
+        17
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-09-12T14:30:22+07:00",
+      "committerDate": "2026-09-12T14:30:22+07:00",
+      "committerName": "Nguyen Thai Son"
+    },
+    {
+      "sha": "11ddc91c764372018929b9710ddfa081b3607ac5",
+      "login": "nguyenthaison2408",
+      "author": "Nguyen Thai Son",
+      "date": "2026-09-07T02:15:30Z",
+      "parents": [],
+      "message": "feat(init): initialize MediCare Plus project structure, CI/CD and GitHub ecosystem",
+      "issues": [
+        1
+      ],
+      "kind": "ordinary",
+      "authorDate": "2026-09-07T09:15:30+07:00",
+      "committerDate": "2026-09-07T09:15:30+07:00",
+      "committerName": "Nguyen Thai Son"
+    }
+  ],
+  "branches": [
+    {
+      "name": "docs/rubric-evidence-20261119",
+      "sha": "0e5ed9004c44de50892fe114d6f0cfeea7597da5"
+    },
+    {
+      "name": "feat/ai-patient-assistant",
+      "sha": "de131157d1a53cdd7f2f415684f9447a5e311dff"
+    },
+    {
+      "name": "feat/booking-patient-info-validation",
+      "sha": "6ee11c2a91ceac5e61cd68edd3b1d29161b4b5b9"
+    },
+    {
+      "name": "feat/clinic-portal-enhancements",
+      "sha": "d6fa4f151b4c69a2e2c6af99345d82f8fdc19b0e"
+    },
+    {
+      "name": "feat/cloud-checkin-reception",
+      "sha": "644b292f60b6b230a3bba16159d30f0b68177236"
+    },
+    {
+      "name": "feat/cloud-emr-prescription",
+      "sha": "cee213d9886e6cdd31edbf4388cac0d719688253"
+    },
+    {
+      "name": "feat/family-profiles-cloud",
+      "sha": "b5e3331bfd9482e2d67c9f067852a8c142980546"
+    },
+    {
+      "name": "feat/restore-ui-and-supabase-sync",
+      "sha": "87ce7a1b6f3a60c6eecd2698d28ed66359097020"
+    },
+    {
+      "name": "feat/supabase-clinic-demo",
+      "sha": "7034aceab4a962a183b2e7dbc1b842a053e2b342"
+    },
+    {
+      "name": "feat/supabase-doctor-reviews",
+      "sha": "a14602bf12ca926c8f7405ae94709102746b3890"
+    },
+    {
+      "name": "feat/supabase-family-profiles",
+      "sha": "db6dbbba7e576d4cb4287f00ceda66510df69f5c"
+    },
+    {
+      "name": "feat/supabase-hospitals",
+      "sha": "7f99182b863e5de108519ce7e9c1f0ab1f7748e0"
+    },
+    {
+      "name": "feat/supabase-medicine-cabinet",
+      "sha": "2df4a61a791971f32ab1566c83a7997a4333ac3f"
+    },
+    {
+      "name": "feature/mobile-app",
+      "sha": "7fafd7a5d3f9c4f7a0f93703d7fe2a2b366aa017"
+    },
+    {
+      "name": "fix/ci-and-server-validation",
+      "sha": "e74ffe188d3ea08367603f92e6d5719265da715b"
+    },
+    {
+      "name": "fix/post-merge-family-identity",
+      "sha": "5517b4c9b7e1e5200f7b1086f8a5f91bd5cbbf8a"
+    },
+    {
+      "name": "main",
+      "sha": "602b76cd3c49661ba7d0e644b112cd2fc2cccb2a"
+    }
+  ],
+  "prs": [
+    {
+      "number": 43,
+      "title": "feat: cloud family profiles, doctor chat and QR reception",
+      "user": "nguyenthaison2408",
+      "head": "b5e3331bfd9482e2d67c9f067852a8c142980546",
+      "merged": "2026-11-22T08:33:02Z",
+      "merge": "602b76cd3c49661ba7d0e644b112cd2fc2cccb2a",
+      "state": "closed"
+    },
+    {
+      "number": 32,
+      "title": "feat(clinic): add profile edit & avatar upload, doctor shift scheduling, BHYT rules, review moderation, and Google OAuth",
+      "user": "thanhvuvn",
+      "head": "d6fa4f151b4c69a2e2c6af99345d82f8fdc19b0e",
+      "merged": "2026-11-20T16:02:15Z",
+      "merge": "fc7c09984671c3a56b25a89c1fec452f58a2b751",
+      "state": "closed"
+    },
+    {
+      "number": 31,
+      "title": "feat(ai): integrate AI Patient Assistant & Clinical Triage with multi-specialty routing and EHR safety guardrails",
+      "user": "thanhvihuu2005",
+      "head": "2c79c97b14f7f45bb16c23d10bc1a3ba85529c24",
+      "merged": "2026-11-20T15:42:15Z",
+      "merge": "65023007394d2a567e7a639a16882716d7db9280",
+      "state": "closed"
+    },
+    {
+      "number": 30,
+      "title": "feat: đồng bộ cơ sở y tế và bệnh viện với Supabase",
+      "user": "myth0ss",
+      "head": "7f99182b863e5de108519ce7e9c1f0ab1f7748e0",
+      "merged": "2026-11-21T12:54:09Z",
+      "merge": "7caa8e14fa84dd3029ce8187a6ad36a36910031e",
+      "state": "closed"
+    },
+    {
+      "number": 29,
+      "title": "feat: Add Supabase medicine cabinet and medication tracking",
+      "user": "myth0ss",
+      "head": "2df4a61a791971f32ab1566c83a7997a4333ac3f",
+      "merged": "2026-11-20T14:20:09Z",
+      "merge": "6e5693726670456318beb4f2bb15d4e2bbdd9433",
+      "state": "closed"
+    },
+    {
+      "number": 28,
+      "title": "fix: display saved cloud patient records and correct family identity",
+      "user": "nguyenthaison2408",
+      "head": "5517b4c9b7e1e5200f7b1086f8a5f91bd5cbbf8a",
+      "merged": null,
+      "merge": null,
+      "state": "open"
+    },
+    {
+      "number": 27,
+      "title": "[Sprint 2] [TechLead-DB] feat: add clinic_doctor_reviews migration and cloud review sync",
+      "user": "thanhvihuu2005",
+      "head": "a14602bf12ca926c8f7405ae94709102746b3890",
+      "merged": "2026-11-20T08:23:30Z",
+      "merge": "db6dbbba7e576d4cb4287f00ceda66510df69f5c",
+      "state": "closed"
+    },
+    {
+      "number": 26,
+      "title": "[Sprint 3] [TechLead-DB] feat: add clinic_family_members migration with RLS security policies",
+      "user": "thanhvihuu2005",
+      "head": "db6dbbba7e576d4cb4287f00ceda66510df69f5c",
+      "merged": "2026-11-20T08:25:28Z",
+      "merge": "cee213d9886e6cdd31edbf4388cac0d719688253",
+      "state": "closed"
+    },
+    {
+      "number": 25,
+      "title": "[Sprint 4] [TechLead-EMR] feat: wire doctor EMR and electronic prescription to Supabase Cloud",
+      "user": "thanhvihuu2005",
+      "head": "cee213d9886e6cdd31edbf4388cac0d719688253",
+      "merged": "2026-11-20T08:25:32Z",
+      "merge": "644b292f60b6b230a3bba16159d30f0b68177236",
+      "state": "closed"
+    },
+    {
+      "number": 24,
+      "title": "[Sprint 3] [TechLead-Core] feat: connect reception and doctor check-in flow to Supabase RPC",
+      "user": "thanhvihuu2005",
+      "head": "644b292f60b6b230a3bba16159d30f0b68177236",
+      "merged": "2026-11-20T08:28:06Z",
+      "merge": "c14ddd1309e4a888a13124d78ee8c5a64a0da4fa",
+      "state": "closed"
+    },
+    {
+      "number": 23,
+      "title": "feat(client): Khôi phục giao diện MediCare Plus, bỏ chọn vai trò Demo & đồng bộ dữ liệu Bác sĩ/Hàng đợi từ Supabase",
+      "user": "thanhvuvn",
+      "head": "87ce7a1b6f3a60c6eecd2698d28ed66359097020",
+      "merged": "2026-11-20T07:19:13Z",
+      "merge": "b220855160b36b2e3761246b81fbaa3b0995bc7a",
+      "state": "closed"
+    },
+    {
+      "number": 22,
+      "title": "docs: finalize submission reports and PowerPoint deck",
+      "user": "nguyenthaison2408",
+      "head": "0e5ed9004c44de50892fe114d6f0cfeea7597da5",
+      "merged": null,
+      "merge": "102a61729602709d7d31e71775f88d40b68f5e8e",
+      "state": "open"
+    },
+    {
+      "number": 21,
+      "title": "feat: Add patient information and booking validation",
+      "user": "myth0ss",
+      "head": "6ee11c2a91ceac5e61cd68edd3b1d29161b4b5b9",
+      "merged": "2026-11-19T10:55:01Z",
+      "merge": "8f2059386effedcba25c2e6597ccdb81c711a4cc",
+      "state": "closed"
+    },
+    {
+      "number": 20,
+      "title": "feat: integrate Supabase booking, QR check-in and patient records",
+      "user": "nguyenthaison2408",
+      "head": "7034aceab4a962a183b2e7dbc1b842a053e2b342",
+      "merged": "2026-11-19T07:22:27Z",
+      "merge": "08abe25e567ae08f5014923e4fe2d35cbeb8b4d0",
+      "state": "closed"
+    },
+    {
+      "number": 19,
+      "title": "[Sprint 3] [TechLead-CI] feat: enhance CI typecheck pipeline & booking controller validation",
+      "user": "thanhvihuu2005",
+      "head": "e74ffe188d3ea08367603f92e6d5719265da715b",
+      "merged": "2026-11-17T04:45:43Z",
+      "merge": "e2a1beb1d2a13a75d87983142a0fe779d75f18af",
+      "state": "closed"
+    }
+  ],
+  "dateVerification": {
+    "authorVsCommitterDifferences": 13,
+    "meaning": "Neither timestamp measures hours or confirms a Sprint ceremony."
+  },
+  "branchComparisons": [
+    {
+      "name": "docs/rubric-evidence-20261119",
+      "sha": "0e5ed9004c44de50892fe114d6f0cfeea7597da5",
+      "aheadOfMain": 2,
+      "behindMain": 62
+    },
+    {
+      "name": "feat/ai-patient-assistant",
+      "sha": "de131157d1a53cdd7f2f415684f9447a5e311dff",
+      "aheadOfMain": 1,
+      "behindMain": 23
+    },
+    {
+      "name": "feat/booking-patient-info-validation",
+      "sha": "6ee11c2a91ceac5e61cd68edd3b1d29161b4b5b9",
+      "aheadOfMain": 0,
+      "behindMain": 63
+    },
+    {
+      "name": "feat/clinic-portal-enhancements",
+      "sha": "d6fa4f151b4c69a2e2c6af99345d82f8fdc19b0e",
+      "aheadOfMain": 0,
+      "behindMain": 14
+    },
+    {
+      "name": "feat/cloud-checkin-reception",
+      "sha": "644b292f60b6b230a3bba16159d30f0b68177236",
+      "aheadOfMain": 0,
+      "behindMain": 42
+    },
+    {
+      "name": "feat/cloud-emr-prescription",
+      "sha": "cee213d9886e6cdd31edbf4388cac0d719688253",
+      "aheadOfMain": 0,
+      "behindMain": 43
+    },
+    {
+      "name": "feat/family-profiles-cloud",
+      "sha": "b5e3331bfd9482e2d67c9f067852a8c142980546",
+      "aheadOfMain": 0,
+      "behindMain": 1
+    },
+    {
+      "name": "feat/restore-ui-and-supabase-sync",
+      "sha": "87ce7a1b6f3a60c6eecd2698d28ed66359097020",
+      "aheadOfMain": 0,
+      "behindMain": 60
+    },
+    {
+      "name": "feat/supabase-clinic-demo",
+      "sha": "7034aceab4a962a183b2e7dbc1b842a053e2b342",
+      "aheadOfMain": 0,
+      "behindMain": 67
+    },
+    {
+      "name": "feat/supabase-doctor-reviews",
+      "sha": "a14602bf12ca926c8f7405ae94709102746b3890",
+      "aheadOfMain": 0,
+      "behindMain": 45
+    },
+    {
+      "name": "feat/supabase-family-profiles",
+      "sha": "db6dbbba7e576d4cb4287f00ceda66510df69f5c",
+      "aheadOfMain": 0,
+      "behindMain": 44
+    },
+    {
+      "name": "feat/supabase-hospitals",
+      "sha": "7f99182b863e5de108519ce7e9c1f0ab1f7748e0",
+      "aheadOfMain": 0,
+      "behindMain": 11
+    },
+    {
+      "name": "feat/supabase-medicine-cabinet",
+      "sha": "2df4a61a791971f32ab1566c83a7997a4333ac3f",
+      "aheadOfMain": 0,
+      "behindMain": 37
+    },
+    {
+      "name": "feature/mobile-app",
+      "sha": "7fafd7a5d3f9c4f7a0f93703d7fe2a2b366aa017",
+      "aheadOfMain": 0,
+      "behindMain": 71
+    },
+    {
+      "name": "fix/ci-and-server-validation",
+      "sha": "e74ffe188d3ea08367603f92e6d5719265da715b",
+      "aheadOfMain": 0,
+      "behindMain": 69
+    },
+    {
+      "name": "fix/post-merge-family-identity",
+      "sha": "5517b4c9b7e1e5200f7b1086f8a5f91bd5cbbf8a",
+      "aheadOfMain": 1,
+      "behindMain": 41
+    },
+    {
+      "name": "main",
+      "sha": "602b76cd3c49661ba7d0e644b112cd2fc2cccb2a",
+      "aheadOfMain": 0,
+      "behindMain": 0
+    }
+  ],
+  "branchOnlyCommits": [
+    {
+      "sha": "de131157d1a53cdd7f2f415684f9447a5e311dff",
+      "author": "thanhvihuu2005",
+      "authorDate": "2026-11-20T22:51:41+07:00",
+      "committerDate": "2026-11-20T22:52:22+07:00",
+      "subject": "feat(mock-data): seed realistic headache clinical timeline, prescription and cabinet for Vi Huu Thanh demo",
+      "status": "Not reachable from audited main; not counted as accepted work."
+    },
+    {
+      "sha": "5517b4c9b7e1e5200f7b1086f8a5f91bd5cbbf8a",
+      "author": "nguyenthaison2408",
+      "authorDate": "2026-11-20T15:53:15+07:00",
+      "committerDate": "2026-11-20T15:53:15+07:00",
+      "subject": "fix: show persisted patient records and family identity in cloud mode",
+      "status": "Not reachable from audited main; not counted as accepted work."
+    },
+    {
+      "sha": "0e5ed9004c44de50892fe114d6f0cfeea7597da5",
+      "author": "Nguyen Thai Son",
+      "authorDate": "2026-11-19T23:57:59+07:00",
+      "committerDate": "2026-11-19T23:57:59+07:00",
+      "subject": "docs: finalize submission package and PowerPoint deck",
+      "status": "Not reachable from audited main; not counted as accepted work."
+    },
+    {
+      "sha": "16e6ffdd7baa48ca82afa184e1f761456ba424c0",
+      "author": "Nguyen Thai Son",
+      "authorDate": "2026-11-19T19:52:33+07:00",
+      "committerDate": "2026-11-19T19:52:33+07:00",
+      "subject": "docs: align report package with course requirements",
+      "status": "Not reachable from audited main; not counted as accepted work."
+    }
+  ]
+}

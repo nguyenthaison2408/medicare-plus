@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -22,8 +22,19 @@ import {
   formatRelativeDate,
 } from '../data/mockData';
 import { useAppContext, FamilyMemberItem } from '../context/AppContext';
+import {
+  fetchConsultMessagesCloud,
+  resolveConsultDoctor,
+  sendConsultMessageCloud,
+  subscribeConsultMessagesCloud,
+  type ConsultMessageItem,
+} from '../services/clinicChat';
 import { openGoogleMapsDirections } from '../utils/mapNavigation';
 import { shareAppointmentTicket } from '../utils/shareUtils';
+import {
+  isBookingEmailConfigured,
+  sendBookingConfirmationEmail,
+} from '../services/clinicEmail';
 import {
   AppHeader,
   AppButton,
@@ -48,9 +59,69 @@ export const BookingSuccessScreen: React.FC<{
   paymentMethod?: string;
 }> = ({ onViewAppointments, onGoHome, onNavigate, paymentMethod }) => {
   const { latestBooking } = useAppContext();
+  const [copied, setCopied] = useState(false);
+  const [zoomQr, setZoomQr] = useState(false);
+  const [emailSending, setEmailSending] = useState(false);
+  const [emailStatus, setEmailStatus] = useState<'idle' | 'sent' | 'error'>('idle');
+  const [emailFeedback, setEmailFeedback] = useState('');
   const doctor = latestBooking.doctor || DOCTORS[0];
   const activePayment = paymentMethod || latestBooking.paymentMethod || 'at_clinic_bhyt';
   const isBHYT = activePayment === 'at_clinic_bhyt';
+
+  const handleSendBookingEmail = async (isAuto = false) => {
+    if (!latestBooking.code || !latestBooking.patientEmail || emailSending) return;
+    setEmailSending(true);
+    if (!isAuto) setEmailFeedback('');
+    try {
+      const res = await sendBookingConfirmationEmail(latestBooking, {
+        isAutoSend: isAuto,
+      });
+      setEmailStatus('sent');
+      setEmailFeedback(`Đã gửi phiếu hẹn điện tử kèm mã QR tới ${res.toEmail}`);
+    } catch (err) {
+      setEmailStatus('error');
+      setEmailFeedback(
+        err instanceof Error ? err.message : 'Không gửi được email xác nhận.'
+      );
+    } finally {
+      setEmailSending(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!latestBooking.code || !latestBooking.patientEmail) return;
+    if (!isBookingEmailConfigured()) return;
+    let active = true;
+    const autoSend = async () => {
+      try {
+        const res = await sendBookingConfirmationEmail(latestBooking, {
+          isAutoSend: true,
+        });
+        if (!active) return;
+        setEmailStatus('sent');
+        setEmailFeedback(`Đã tự động gửi phiếu hẹn kèm mã QR tới ${res.toEmail}`);
+      } catch (err) {
+        if (!active) return;
+        setEmailStatus('error');
+        setEmailFeedback(
+          err instanceof Error ? err.message : 'Chưa gửi được email xác nhận.'
+        );
+      }
+    };
+    void autoSend();
+    return () => {
+      active = false;
+    };
+  }, [latestBooking]);
+
+  const handleCopyCode = () => {
+    if (!latestBooking.code) return;
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(latestBooking.code).catch(() => {});
+    }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2500);
+  };
 
   const paymentLabel = CLOUD_MODE ? 'Thanh toán tại cơ sở y tế' :
     activePayment === 'vietqr'
@@ -228,6 +299,39 @@ export const BookingSuccessScreen: React.FC<{
                 {latestBooking.symptoms || 'Chưa cập nhật'}
               </Text>
             </View>
+
+            {latestBooking.patientEmail ? (
+              <View style={{ marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: COLORS.border, gap: 8 }}>
+                {emailFeedback ? (
+                  <Text
+                    accessibilityRole="alert"
+                    style={{
+                      fontSize: 13,
+                      fontWeight: '600',
+                      color: emailStatus === 'sent' ? COLORS.secondary : COLORS.error,
+                    }}
+                  >
+                    {emailStatus === 'sent' ? '✓ ' : '⚠ '}
+                    {emailFeedback}
+                  </Text>
+                ) : null}
+                <AppButton
+                  title={
+                    emailStatus === 'sent'
+                      ? 'Gửi lại phiếu hẹn qua Email'
+                      : 'Gửi phiếu hẹn kèm QR về Email'
+                  }
+                  variant={emailStatus === 'sent' ? 'outline' : 'tonal'}
+                  size="sm"
+                  leftIcon="mail-outline"
+                  loading={emailSending}
+                  disabled={emailSending}
+                  onPress={() => {
+                    void handleSendBookingEmail(false);
+                  }}
+                />
+              </View>
+            ) : null}
           </View>
         </AnimatedEntry>
 
@@ -239,11 +343,48 @@ export const BookingSuccessScreen: React.FC<{
               variant="blue"
               icon="qr-code-outline"
             />
-            <View style={styles.qrMockBox}>
-              {latestBooking.code ? <QRCode value={latestBooking.code} size={148} color={COLORS.textPrimary} backgroundColor="#FFFFFF" /> : <Text>Chưa có phiếu hẹn.</Text>}
+            <TouchableOpacity
+              activeOpacity={0.88}
+              onPress={() => setZoomQr(true)}
+              style={[styles.qrMockBox, { backgroundColor: '#FFFFFF', padding: 12, borderRadius: RADIUS.md, marginVertical: 10 }]}
+            >
+              {latestBooking.code ? (
+                <QRCode
+                  value={latestBooking.code}
+                  size={168}
+                  color={COLORS.textPrimary}
+                  backgroundColor="#FFFFFF"
+                />
+              ) : (
+                <Text>Chưa có phiếu hẹn.</Text>
+              )}
+            </TouchableOpacity>
+
+            <Text style={{ fontSize: 16, fontWeight: '800', color: COLORS.primary, letterSpacing: 0.8, textAlign: 'center' }} selectable>
+              {latestBooking.code || 'Chưa có mã phiếu hẹn'}
+            </Text>
+
+            <View style={{ flexDirection: 'row', gap: 8, marginTop: 10, alignItems: 'center' }}>
+              <AppButton
+                title={copied ? '✓ Đã chép mã' : 'Sao chép mã'}
+                variant={copied ? 'primary' : 'outline'}
+                size="sm"
+                leftIcon={copied ? 'checkmark-outline' : 'copy-outline'}
+                fullWidth={false}
+                onPress={handleCopyCode}
+              />
+              <AppButton
+                title="Phóng to QR"
+                variant="tonal"
+                size="sm"
+                leftIcon="expand-outline"
+                fullWidth={false}
+                onPress={() => setZoomQr(true)}
+              />
             </View>
-            <Text style={styles.heroSub}>
-              {CLOUD_MODE ? 'Quét mã tại quầy tiếp đón để đối chiếu lịch hẹn.' : 'Quét mã tại Kiosk tự động hoặc Quầy tiếp đón số 2 để nhận số vào phòng khám mà không cần xếp hàng.'}
+
+            <Text style={[styles.heroSub, { marginTop: 10 }]}>
+              {CLOUD_MODE ? 'Xuất trình mã QR này tại quầy tiếp đón hoặc để bác sĩ quét kiểm tra lịch hẹn.' : 'Quét mã tại Kiosk tự động hoặc Quầy tiếp đón để nhận số vào phòng khám mà không cần xếp hàng.'}
             </Text>
             <Badge
               label={CLOUD_MODE ? 'Tiếp đón vào đúng ngày hẹn' : 'Hợp lệ check-in trước 15 phút (từ 09:15)'}
@@ -345,6 +486,38 @@ export const BookingSuccessScreen: React.FC<{
           onPress={onGoHome}
         />
       </ScrollView>
+
+      {zoomQr && (
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', alignItems: 'center', zIndex: 9999, padding: 24 }]}>
+          <View style={{ backgroundColor: '#FFFFFF', borderRadius: RADIUS.lg, padding: 24, alignItems: 'center', gap: 12, maxWidth: 340, width: '100%' }}>
+            <Text style={{ fontSize: 17, fontWeight: '700', color: COLORS.primary, textAlign: 'center' }}>
+              MÃ QR CHECK-IN TIẾP ĐÓN
+            </Text>
+            <Text style={{ fontSize: 13, color: COLORS.textSecondary, textAlign: 'center' }}>
+              Hướng màn hình về phía camera máy tính của Bác sĩ hoặc Quầy tiếp đón để quét mã
+            </Text>
+            <View style={{ padding: 12, backgroundColor: '#FFFFFF', borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.border }}>
+              {latestBooking.code ? (
+                <QRCode
+                  value={latestBooking.code}
+                  size={220}
+                  color="#000000"
+                  backgroundColor="#FFFFFF"
+                />
+              ) : null}
+            </View>
+            <Text style={{ fontSize: 15, fontWeight: '800', color: COLORS.primary, letterSpacing: 0.8 }} selectable>
+              {latestBooking.code}
+            </Text>
+            <AppButton
+              title="Đóng phóng to"
+              variant="primary"
+              onPress={() => setZoomQr(false)}
+              style={{ width: '100%', marginTop: 8 }}
+            />
+          </View>
+        </View>
+      )}
     </View>
   );
 };
@@ -355,18 +528,46 @@ export const BookingSuccessScreen: React.FC<{
 export const FamilyProfilesScreen: React.FC<{
   onBack?: () => void;
   onSelectChild?: () => void;
+  onSelectMember?: (member: FamilyMemberItem) => void;
   onAddMember?: () => void;
+  onEditMember?: (member: FamilyMemberItem) => void;
   onNavigate?: (routeKey: string) => void;
   onBookForMember?: (member: FamilyMemberItem) => void;
-}> = ({ onBack, onSelectChild, onAddMember, onNavigate, onBookForMember }) => {
-  const { familyMembers, patientProfile, cloudProfile } = useAppContext();
-  const [familyNotice, setFamilyNotice] = useState('');
+}> = ({
+  onBack,
+  onSelectChild,
+  onSelectMember,
+  onAddMember,
+  onEditMember,
+  onNavigate,
+  onBookForMember,
+}) => {
+  const { familyMembers, patientProfile, deleteFamilyMember } = useAppContext();
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [familyActionNotice, setFamilyActionNotice] = useState('');
+  const bhytMemberCount = familyMembers.filter((m) => Boolean(m.bhyt?.trim())).length;
+
+  const handleDeleteMember = async (member: FamilyMemberItem) => {
+    if (deletingId) return;
+    setDeletingId(member.id);
+    setFamilyActionNotice('');
+    try {
+      await deleteFamilyMember(member.id);
+      setFamilyActionNotice(`Đã xóa hồ sơ của ${member.name}.`);
+    } catch (error) {
+      setFamilyActionNotice(
+        error instanceof Error ? error.message : 'Không thể xóa hồ sơ người thân.'
+      );
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   return (
     <View style={styles.screen}>
       <AppHeader
         title="Quản Lý Hồ Sơ Người Thân"
-        subtitle={CLOUD_MODE ? 'Thông tin người thân của bạn' : 'MediCare Plus Family • BHYT & lịch khám tập trung'}
+        subtitle="MediCare Plus Family • BHYT & lịch khám tập trung"
         onBack={onBack}
         rightActions={[{ icon: 'person-add-outline', onPress: onAddMember }]}
       />
@@ -375,11 +576,14 @@ export const FamilyProfilesScreen: React.FC<{
         <View style={[styles.card, SHADOWS.sm]}>
           <View style={styles.rowBetween}>
             <Badge label="Chủ hộ • Đang xem" variant="primarySolid" />
-            <Badge label={CLOUD_MODE ? 'Hồ sơ trực tuyến' : 'Đã đồng bộ VssID'} variant="teal" />
+            <Badge
+              label={patientProfile.bhytCode ? `BHYT: ${patientProfile.bhytCode.split(' ')[0]}` : 'Tài khoản chính'}
+              variant="teal"
+            />
           </View>
           <View style={[styles.docRow, { marginTop: 10 }]}>
             <Image
-              source={{ uri: PATIENT_PROFILE.avatar }}
+              source={{ uri: patientProfile.avatar || PATIENT_PROFILE.avatar }}
               style={styles.avatarMd}
             />
             <View style={{ flex: 1, minWidth: 0, marginLeft: 12 }}>
@@ -387,7 +591,12 @@ export const FamilyProfilesScreen: React.FC<{
                 {patientProfile.name} (Bản thân)
               </Text>
               <Text style={styles.docSub} numberOfLines={1}>
-                {CLOUD_MODE ? `Điện thoại: ${cloudProfile?.phone || 'Chưa cập nhật'}` : `${patientProfile.age} tuổi • ${patientProfile.patientCode} • Nhóm máu ${patientProfile.bloodType}`}
+                {[
+                  patientProfile.dob ? `Sinh: ${patientProfile.dob}` : null,
+                  `Nhóm máu: ${patientProfile.bloodType || 'Chưa cập nhật'}`,
+                ]
+                  .filter(Boolean)
+                  .join(' • ')}
               </Text>
             </View>
           </View>
@@ -399,51 +608,92 @@ export const FamilyProfilesScreen: React.FC<{
           style={[styles.heroCard, SHADOWS.md]}
         >
           <View style={styles.rowBetween}>
-            <Badge label={CLOUD_MODE ? 'Thông tin gia đình' : 'MediCare Plus AI Family Care'} variant="glass" icon="people-outline" />
+            <Badge
+              label={CLOUD_MODE ? 'Đồng bộ Supabase Cloud' : 'MediCare Plus AI Family Care'}
+              variant="glass"
+              icon="sparkles"
+            />
             <Text style={styles.whiteSub}>{familyMembers.length + 1} thành viên</Text>
           </View>
-          <Text style={styles.whiteBody}>
-            {CLOUD_MODE ? 'Các hồ sơ dưới đây được lưu cho tài khoản của bạn. Chưa có lịch nhắc khám riêng cho người thân.' : 'Nhắc nhở minh họa: Bé Bảo Nam có lịch tiêm trong 5 ngày tới. Mẹ Trần Thị Lan cần đo huyết áp định kỳ sáng mai.'}
-          </Text>
-          {!CLOUD_MODE && <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
+          {CLOUD_MODE ? (
+            <Text style={styles.whiteBody}>
+              Đang quản lý <Text style={{ fontWeight: '800' }}>{familyMembers.length} hồ sơ người thân</Text> trên
+              đám mây ({bhytMemberCount} hồ sơ có mã thẻ BHYT tự nhập). Bạn có thể chọn thành viên
+              bên dưới để điền thông tin đặt khám; chi phí BHYT chỉ là ước tính chờ cơ sở y tế đối chiếu.
+            </Text>
+          ) : (
+            <Text style={styles.whiteBody}>
+              Nhắc nhở y tế: <Text style={{ fontWeight: '800' }}>Bé Bảo Nam</Text>{' '}
+              có lịch tiêm nhắc Sởi - Quai bị - Rubella trong 5 ngày tới. Mẹ{' '}
+              <Text style={{ fontWeight: '800' }}>Trần Thị Lan</Text> cần đo huyết
+              áp định kỳ sáng mai (07:30).
+            </Text>
+          )}
+          <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
             <AppButton
-              title="Nhắc huyết áp"
+              title="Thêm người thân"
               variant="white"
               size="sm"
               fullWidth={false}
               style={{ flex: 1 }}
-              onPress={() => onNavigate?.('medLog')}
+              onPress={() => onAddMember?.()}
             />
-            <AppButton
-              title="Đặt lịch tiêm"
-              variant="secondary"
-              size="sm"
-              fullWidth={false}
-              style={{ flex: 1 }}
-              onPress={() => {
-                if (onBookForMember && familyMembers[0]) {
-                  onBookForMember(familyMembers[0]);
-                } else {
-                  onNavigate?.('bookingSlot');
-                }
-              }}
-            />
-          </View>}
+            {familyMembers[0] ? (
+              <AppButton
+                title={`Đặt khám: ${familyMembers[0].name}`}
+                variant="secondary"
+                size="sm"
+                fullWidth={false}
+                style={{ flex: 1 }}
+                onPress={() => {
+                  if (onBookForMember) {
+                    onBookForMember(familyMembers[0]);
+                  } else {
+                    onNavigate?.('bookingSlot');
+                  }
+                }}
+              />
+            ) : null}
+          </View>
         </LinearGradient>
 
         <SectionHeader
           title={`Hồ Sơ Thành Viên (${familyMembers.length} thành viên phụ)`}
-          subtitle={CLOUD_MODE ? 'Hồ sơ đã lưu trực tuyến' : 'Đồng bộ thời gian thực'}
+          subtitle={CLOUD_MODE ? 'Lưu trữ bảo mật với Supabase RLS' : 'Đồng bộ thời gian thực'}
           actionText="+ Thêm mới"
           onActionPress={onAddMember}
         />
 
-        {familyNotice ? <Text accessibilityRole="alert" style={{ color: COLORS.textSecondary }}>{familyNotice}</Text> : null}
-          {familyMembers.map((mem) => (
+        {familyActionNotice ? (
+          <View style={[styles.memberNoteBox, { marginBottom: 12 }]}>
+            <Ionicons name="information-circle-outline" size={16} color={COLORS.primary} />
+            <Text style={styles.memberNoteText}>{familyActionNotice}</Text>
+          </View>
+        ) : null}
+
+        {familyMembers.length === 0 ? (
+          <View style={[styles.card, SHADOWS.sm, { alignItems: 'center', paddingVertical: 24 }]}>
+            <Ionicons name="people-outline" size={40} color={COLORS.textMuted} />
+            <Text style={[styles.docName, { marginTop: 10, textAlign: 'center' }]}>
+              Chưa có hồ sơ người thân nào
+            </Text>
+            <Text style={[styles.docSub, { textAlign: 'center', marginTop: 4 }]}>
+              Thêm hồ sơ con cái, cha mẹ hoặc vợ/chồng để quản lý thẻ BHYT và đặt lịch khám tập trung.
+            </Text>
+          </View>
+        ) : null}
+
+        {familyMembers.map((mem) => (
           <View key={mem.id} style={[styles.card, SHADOWS.sm]}>
             <TouchableOpacity
               activeOpacity={0.85}
-              onPress={CLOUD_MODE ? () => setFamilyNotice(`Chưa có bệnh án riêng của ${mem.name}.`) : onSelectChild}
+              onPress={() => {
+                if (onSelectMember) {
+                  onSelectMember(mem);
+                } else {
+                  onSelectChild?.();
+                }
+              }}
               accessibilityRole="button"
               accessibilityLabel={`Hồ sơ ${mem.name}, ${mem.relation}`}
             >
@@ -464,31 +714,65 @@ export const FamilyProfilesScreen: React.FC<{
               <Text style={styles.docSub}>
                 {mem.relation} • {mem.code} • Nhóm máu {mem.blood}
               </Text>
+              {mem.bhyt ? (
+                <Text style={[styles.docSub, { color: COLORS.primary, fontWeight: '600', marginTop: 2 }]}>
+                  Mã BHYT: {mem.bhyt}
+                </Text>
+              ) : null}
+              {mem.allergies ? (
+                <Text style={[styles.docSub, { color: COLORS.error, marginTop: 2 }]}>
+                  Dị ứng: {mem.allergies}
+                </Text>
+              ) : null}
               <View style={styles.memberNoteBox}>
                 <Ionicons
                   name="medical-outline"
                   size={14}
                   color={COLORS.secondary}
                 />
-                <Text style={styles.memberNoteText} numberOfLines={1}>
+                <Text style={styles.memberNoteText} numberOfLines={2}>
                   {mem.note}
                 </Text>
               </View>
             </TouchableOpacity>
-            <View style={{ marginTop: 10 }}>
+            <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
               <AppButton
-                title={`Đặt lịch khám cho ${mem.name}`}
+                title="Đặt lịch khám"
                 variant="tonal"
                 size="sm"
                 leftIcon="calendar-outline"
+                fullWidth={false}
+                style={{ flex: 2 }}
                 onPress={() => {
-                  if (CLOUD_MODE) {
-                    setFamilyNotice('Đặt lịch trực tuyến hiện chỉ hỗ trợ chủ tài khoản. Chưa hỗ trợ đặt khám cho người thân.');
-                  } else if (onBookForMember) {
+                  if (onBookForMember) {
                     onBookForMember(mem);
                   } else {
                     onNavigate?.('bookingSlot');
                   }
+                }}
+              />
+              {onEditMember ? (
+                <AppButton
+                  title="Sửa"
+                  variant="outline"
+                  size="sm"
+                  leftIcon="create-outline"
+                  fullWidth={false}
+                  style={{ flex: 1 }}
+                  onPress={() => onEditMember(mem)}
+                />
+              ) : null}
+              <AppButton
+                title="Xóa"
+                variant="danger"
+                size="sm"
+                leftIcon="trash-outline"
+                fullWidth={false}
+                loading={deletingId === mem.id}
+                disabled={deletingId !== null}
+                style={{ flex: 1 }}
+                onPress={() => {
+                  void handleDeleteMember(mem);
                 }}
               />
             </View>
@@ -508,18 +792,47 @@ export const FamilyProfilesScreen: React.FC<{
 };
 
 // ============================================================================
-// SCREEN 15: [1:3822] CHI TIẾT BỆNH ÁN NGƯỜI THÂN - BÉ BẢO NAM
+// SCREEN 15: [1:3822] CHI TIẾT BỆNH ÁN NGƯỜI THÂN
 // ============================================================================
-export const ChildEHRDetailScreen: React.FC<{ onBack?: () => void }> = ({
-  onBack,
-}) => {
+export const ChildEHRDetailScreen: React.FC<{
+  member?: FamilyMemberItem | null;
+  onBack?: () => void;
+  onEditMember?: (member: FamilyMemberItem) => void;
+  onBookForMember?: (member: FamilyMemberItem) => void;
+}> = ({ member, onBack, onEditMember, onBookForMember }) => {
+  const { familyMembers, appointments } = useAppContext();
   const [tab, setTab] = useState('exam');
+  const activeMember = CLOUD_MODE
+    ? familyMembers.find(item => item.id === member?.id) || null
+    : member || familyMembers[0] || null;
+  const memberName = activeMember?.name || 'Nguyễn Bảo Nam';
+  const memberRelation = activeMember?.rawRelation || activeMember?.relation || 'Con trai • 4 tuổi';
+  const memberCode = activeMember?.code || '#BN-992104';
+  const memberBlood = activeMember?.blood || 'O+';
+  const memberDob = activeMember?.dob || (CLOUD_MODE ? '' : '18/09/2020');
+  const memberGender = activeMember?.gender || 'Chưa cập nhật';
+  const memberBhyt = activeMember?.bhyt || 'Chưa cập nhật';
+  const memberAllergies = activeMember?.allergies || (CLOUD_MODE ? 'Chưa cập nhật' : 'Không ghi nhận dị ứng');
+  const memberNote = activeMember?.note || 'Hồ sơ sức khỏe theo dõi định kỳ';
+
+  const memberAppointments = CLOUD_MODE ? [] : appointments.filter(
+    (a) =>
+      activeMember &&
+      a.patientName &&
+      a.patientName.trim().toLowerCase() === activeMember.name.trim().toLowerCase()
+  );
+
+  if (CLOUD_MODE && !activeMember) return <View style={styles.screen}>
+    <AppHeader title="Hồ sơ người thân" onBack={onBack} />
+    <Text style={styles.checkItemText}>Vui lòng chọn hồ sơ thuộc tài khoản hiện tại. Hồ sơ có thể đã bị xóa hoặc phiên đăng nhập đã thay đổi.</Text>
+  </View>;
+
   return (
     <View style={styles.screen}>
       <AppHeader
-        title="Bệnh Án Nhi Đồng - Bé Bảo Nam"
-        subtitle="Con trai • 4 tuổi • Mã EHR: #BN-992104"
-        badgeText="NHI ĐỒNG"
+        title={`Hồ Sơ Y Tế - ${memberName}`}
+        subtitle={`${memberRelation} • Mã EHR: ${memberCode}`}
+        badgeText={activeMember?.badge || 'THÀNH VIÊN'}
         onBack={onBack}
       />
       <ScrollView contentContainerStyle={styles.scrollPad}>
@@ -528,50 +841,64 @@ export const ChildEHRDetailScreen: React.FC<{ onBack?: () => void }> = ({
           <View style={styles.rowBetween}>
             <View style={{ flex: 1, minWidth: 0, marginRight: 8 }}>
               <Text style={styles.docName} numberOfLines={1}>
-                Nguyễn Bảo Nam
+                {memberName}
               </Text>
               <Text style={styles.docSub}>
-                Nam (18/09/2020) • Nhóm máu O+
+                {memberGender !== 'Chưa cập nhật' ? `${memberGender} • ` : ''}
+                {memberDob ? `Sinh: ${memberDob} • ` : ''}Nhóm máu {memberBlood}
               </Text>
             </View>
-            <Badge label="Chuẩn WHO" variant="teal" />
+            <Badge label={activeMember?.bhyt ? 'Đã có BHYT' : 'Hồ sơ gia đình'} variant="teal" />
           </View>
 
-          <View style={styles.vitals3Grid}>
-            <View style={styles.vitalBox}>
-              <Text style={styles.capLabel} numberOfLines={1}>
-                Chiều cao
-              </Text>
-              <Text style={styles.vitalBig} numberOfLines={1}>
-                104 cm
-              </Text>
-              <Text style={styles.vitalTag} numberOfLines={1}>
-                Chuẩn WHO
-              </Text>
-            </View>
-            <View style={styles.vitalBox}>
-              <Text style={styles.capLabel} numberOfLines={1}>
-                Cân nặng
-              </Text>
-              <Text style={styles.vitalBig} numberOfLines={1}>
-                16.5 kg
-              </Text>
-              <Text style={styles.vitalTag} numberOfLines={1}>
-                +0.4kg/quý
-              </Text>
-            </View>
-            <View style={styles.vitalBox}>
-              <Text style={styles.capLabel} numberOfLines={1}>
-                BMI Thể trạng
-              </Text>
-              <Text style={styles.vitalBig} numberOfLines={1}>
-                15.2
-              </Text>
-              <Text style={styles.vitalTag} numberOfLines={1}>
-                Phát triển tốt
-              </Text>
-            </View>
+          <View style={[styles.memberNoteBox, { marginTop: 10 }]}>
+            <Ionicons name="card-outline" size={16} color={COLORS.primary} />
+            <Text style={styles.memberNoteText}>
+              Mã thẻ BHYT: {memberBhyt}
+              {activeMember?.phone ? ` • SĐT: ${activeMember.phone}` : ''}
+            </Text>
           </View>
+
+          <View style={[styles.memberNoteBox, { marginTop: 8 }]}>
+            <Ionicons name="alert-circle-outline" size={16} color={COLORS.error} />
+            <Text style={styles.memberNoteText}>
+              Tiền sử dị ứng: {memberAllergies}
+            </Text>
+          </View>
+
+          <View style={[styles.memberNoteBox, { marginTop: 8 }]}>
+            <Ionicons name="document-text-outline" size={16} color={COLORS.secondary} />
+            <Text style={styles.memberNoteText}>
+              Ghi chú sức khỏe: {memberNote}
+            </Text>
+          </View>
+
+          {activeMember ? (
+            <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
+              {onBookForMember ? (
+                <AppButton
+                  title="Đặt lịch khám"
+                  variant="primary"
+                  size="sm"
+                  leftIcon="calendar-outline"
+                  fullWidth={false}
+                  style={{ flex: 1 }}
+                  onPress={() => onBookForMember(activeMember)}
+                />
+              ) : null}
+              {onEditMember ? (
+                <AppButton
+                  title="Chỉnh sửa hồ sơ"
+                  variant="outline"
+                  size="sm"
+                  leftIcon="create-outline"
+                  fullWidth={false}
+                  style={{ flex: 1 }}
+                  onPress={() => onEditMember(activeMember)}
+                />
+              ) : null}
+            </View>
+          ) : null}
         </View>
 
         <SegmentedControl
@@ -579,79 +906,85 @@ export const ChildEHRDetailScreen: React.FC<{ onBack?: () => void }> = ({
           selectedKey={tab}
           onSelect={setTab}
           options={[
-            { key: 'exam', label: 'Khám gần nhất' },
-            { key: 'vaccine', label: 'Sổ tiêm chủng (18 mũi)' },
-            { key: 'growth', label: 'Biểu đồ WHO' },
+            { key: 'exam', label: `Lịch sử khám (${memberAppointments.length})` },
+            { key: 'vaccine', label: 'Theo dõi & Dự phòng' },
+            { key: 'growth', label: 'Chỉ số thể trạng' },
           ]}
           style={{ marginBottom: 14 }}
         />
 
-        {tab === 'vaccine' && (
-          /* Vaccine Immunization Tracker Card */
+        {tab === 'exam' && (
           <View style={[styles.card, SHADOWS.sm]}>
             <SectionHeader
-              title="Lịch Tiêm Chủng Mở Rộng & Dịch Vụ"
-              leftIcon="shield-checkmark-outline"
-              badgeText="Sắp tới"
-              badgeVariant="warning"
+              title="Lịch hẹn & Lần khám của thành viên"
+              subtitle={
+                memberAppointments.length > 0
+                  ? `Có ${memberAppointments.length} lịch khám gắn với ${memberName}`
+                  : 'Đồng bộ từ lịch sử đặt khám của gia đình'
+              }
             />
-            <View style={styles.memberNoteBox}>
-              <Ionicons name="calendar" size={16} color={COLORS.primary} />
-              <View style={{ flex: 1, marginLeft: 8 }}>
+            {memberAppointments.length > 0 ? (
+              memberAppointments.map((apt) => (
+                <View key={apt.id} style={[styles.memberNoteBox, { marginTop: 8 }]}>
+                  <Ionicons name="medkit-outline" size={16} color={COLORS.primary} />
+                  <View style={{ flex: 1, marginLeft: 8 }}>
+                    <Text style={styles.docName}>
+                      {apt.doctor.name} • {apt.statusBadge}
+                    </Text>
+                    <Text style={styles.docSub}>
+                      {apt.dateLabel} • Mã phiếu: {apt.code}
+                    </Text>
+                    {apt.symptoms ? (
+                      <Text style={styles.checkItemText}>
+                        Triệu chứng / Lý do khám: {apt.symptoms}
+                      </Text>
+                    ) : null}
+                  </View>
+                </View>
+              ))
+            ) : CLOUD_MODE ? (
+              <Text style={styles.checkItemText}>
+                Chưa có liên kết định danh bệnh án riêng cho {memberName}. Lịch đặt hộ vẫn được xem trong mục Lịch khám; không gán bệnh án chỉ dựa vào tên trùng nhau.
+              </Text>
+            ) : (
+              <>
                 <Text style={styles.docName}>
-                  Mũi nhắc MMR II (Sởi - Quai bị - Rubella)
+                  Khám tổng quát định kỳ & Tư vấn dinh dưỡng
                 </Text>
-                <Text style={styles.docSub}>
-                  Dự kiến: 03/11/2024 • Trung tâm Tiêm chủng Nhi đồng MediCare Plus
+                <Text style={styles.checkItemText}>
+                  Tim phổi bình thường, phản xạ vận động tốt. Khuyến nghị duy trì chế độ dinh dưỡng cân bằng và tái khám định kỳ.
                 </Text>
-              </View>
-            </View>
-            <View style={[styles.memberNoteBox, { marginTop: 8 }]}>
-              <Ionicons
-                name="checkmark-circle"
-                size={16}
-                color={COLORS.secondary}
-              />
-              <View style={{ flex: 1, marginLeft: 8 }}>
-                <Text style={styles.docName}>Vắc-xin Cúm mùa Tứ giá (Influvac)</Text>
-                <Text style={styles.docSub}>
-                  Đã tiêm: 12/08/2024 • Lô: #INF-2024-88A • Không phản ứng phụ
-                </Text>
-              </View>
-            </View>
+              </>
+            )}
           </View>
         )}
 
-        {tab === 'exam' && (
-          /* Latest Pediatric Examination */
+        {tab === 'vaccine' && (
           <View style={[styles.card, SHADOWS.sm]}>
             <SectionHeader
-              title="Lần khám Nhi khoa gần nhất"
-              subtitle="10/09/2024 • BS. CKI. Lê Hoàng Yến"
+              title="Theo dõi Tiêm chủng & Chăm sóc dự phòng"
+              leftIcon="shield-checkmark-outline"
+              badgeText={CLOUD_MODE ? 'Ghi chú gia đình' : 'Sắp tới'}
+              badgeVariant={CLOUD_MODE ? 'teal' : 'warning'}
             />
-            <Text style={styles.docName}>
-              Khám tổng quát định kỳ & Tư vấn dinh dưỡng 4 tuổi
-            </Text>
             <Text style={styles.checkItemText}>
-              Tim phổi bình thường, phản xạ vận động tốt. Khuyến nghị bổ sung
-              Vitamin D3 400 IU/ngày và tăng cường rau xanh, cá hồi.
+              {memberNote}
             </Text>
           </View>
         )}
 
         {tab === 'growth' && (
-          /* WHO Growth Chart — Existing vitals data + Coming Soon notice */
           <View style={[styles.card, SHADOWS.sm]}>
             <SectionHeader
-              title="Biểu đồ WHO"
-              badgeText="Sắp ra mắt"
-              badgeVariant="surface"
+              title="Thông tin sinh học & Nhóm máu"
+              badgeText={memberBlood}
+              badgeVariant="teal"
             />
             <Text style={styles.docName}>
-              104 cm (Chuẩn WHO) • 16.5 kg (+0.4kg/quý) • BMI 15.2 (Phát triển tốt)
+              Nhóm máu: {memberBlood} • Giới tính: {memberGender}
             </Text>
             <Text style={styles.checkItemText}>
-              Biểu đồ theo dõi chiều cao và cân nặng trực quan đang được phát triển.
+              Tiền sử dị ứng: {memberAllergies}. Bạn có thể cập nhật nhóm máu, tiền sử dị ứng và ghi chú sức khỏe bằng nút &quot;Chỉnh sửa hồ sơ&quot;.
             </Text>
           </View>
         )}
@@ -663,15 +996,38 @@ export const ChildEHRDetailScreen: React.FC<{ onBack?: () => void }> = ({
 // ============================================================================
 // SCREEN 16: [1:4230] THÊM MỚI / CHỈNH SỬA HỒ SƠ NGƯỜI THÂN
 // ============================================================================
-export const AddEditFamilyMemberScreen: React.FC<{ onBack?: () => void }> = ({
-  onBack,
-}) => {
-  const { addFamilyMember, patientProfile } = useAppContext();
-  const [name, setName] = useState(CLOUD_MODE ? '' : 'NGUYỄN BẢO ANH');
-  const [dob, setDob] = useState(CLOUD_MODE ? '' : '18/06/2019');
-  const [relation, setRelation] = useState('Con cái');
+export const AddEditFamilyMemberScreen: React.FC<{
+  editingMember?: FamilyMemberItem | null;
+  onBack?: () => void;
+}> = ({ editingMember, onBack }) => {
+  const { addFamilyMember, updateFamilyMember, patientProfile } = useAppContext();
+  const isEditing = Boolean(editingMember);
+  const [name, setName] = useState(
+    editingMember?.name ?? (CLOUD_MODE ? '' : 'NGUYỄN BẢO ANH')
+  );
+  const [dob, setDob] = useState(
+    editingMember?.dob ?? (CLOUD_MODE ? '' : '18/06/2019')
+  );
+  const [relation, setRelation] = useState(
+    editingMember?.rawRelation ||
+      editingMember?.relation?.split('•')[0]?.trim() ||
+      'Con cái'
+  );
   const [showRelationDropdown, setShowRelationDropdown] = useState(false);
-  const [bhyt, setBhyt] = useState(CLOUD_MODE ? '' : 'TE1 79 234 99102');
+  const [bhyt, setBhyt] = useState(
+    editingMember?.bhyt ?? (CLOUD_MODE ? '' : 'TE1 79 234 99102')
+  );
+  const [gender, setGender] = useState(
+    editingMember?.gender && editingMember.gender !== 'Chưa cập nhật'
+      ? editingMember.gender
+      : 'Nam'
+  );
+  const [blood, setBlood] = useState(
+    editingMember?.blood || 'Chưa xét nghiệm'
+  );
+  const [phone, setPhone] = useState(editingMember?.phone || '');
+  const [allergies, setAllergies] = useState(editingMember?.allergies || '');
+  const [note, setNote] = useState(editingMember?.note || '');
   const [nameError, setNameError] = useState('');
   const [dobError, setDobError] = useState('');
 
@@ -694,12 +1050,33 @@ export const AddEditFamilyMemberScreen: React.FC<{ onBack?: () => void }> = ({
       setDobError('');
     }
     if (hasErr) return;
-    setSavingFamily(true); setFamilySaveError('');
+    setSavingFamily(true);
+    setFamilySaveError('');
+    const payload = {
+      name: name.trim(),
+      dob: dob.trim(),
+      relation,
+      bhyt: bhyt.trim(),
+      blood,
+      gender,
+      phone: phone.trim(),
+      allergies: allergies.trim(),
+      note: note.trim(),
+    };
     try {
-      await addFamilyMember({ name: name.trim(), dob: dob.trim(), relation, bhyt });
+      if (editingMember) {
+        await updateFamilyMember(editingMember.id, payload);
+      } else {
+        await addFamilyMember(payload);
+      }
       onBack?.();
-    } catch (error) { setFamilySaveError(error instanceof Error ? error.message : 'Chưa lưu được hồ sơ.'); }
-    finally { setSavingFamily(false); }
+    } catch (error) {
+      setFamilySaveError(
+        error instanceof Error ? error.message : 'Chưa lưu được hồ sơ.'
+      );
+    } finally {
+      setSavingFamily(false);
+    }
   };
 
   const RELATION_OPTIONS = [
@@ -710,6 +1087,8 @@ export const AddEditFamilyMemberScreen: React.FC<{ onBack?: () => void }> = ({
     'Ông / Bà',
     'Khác',
   ];
+  const GENDER_OPTIONS = ['Nam', 'Nữ', 'Khác'];
+  const BLOOD_OPTIONS = ['O+', 'A+', 'B+', 'AB+', 'Chưa xét nghiệm'];
 
   return (
     <KeyboardAvoidingView
@@ -717,7 +1096,7 @@ export const AddEditFamilyMemberScreen: React.FC<{ onBack?: () => void }> = ({
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <AppHeader
-        title="Thêm Hồ Sơ Người Thân"
+        title={isEditing ? 'Chỉnh Sửa Hồ Sơ Người Thân' : 'Thêm Hồ Sơ Người Thân'}
         subtitle={`Chủ tài khoản bảo trợ: ${patientProfile.name}`}
         onBack={onBack}
       />
@@ -833,6 +1212,7 @@ export const AddEditFamilyMemberScreen: React.FC<{ onBack?: () => void }> = ({
             label="Họ và tên đầy đủ (Chữ IN HOA có dấu) *"
             leftIcon="person-outline"
             value={name}
+            placeholder="NGUYỄN BẢO ANH"
             onChangeText={(txt) => {
               setName(txt);
               if (nameError) setNameError('');
@@ -840,9 +1220,10 @@ export const AddEditFamilyMemberScreen: React.FC<{ onBack?: () => void }> = ({
             error={nameError}
           />
           <AppInput
-            label="Ngày sinh *"
+            label="Ngày sinh (DD/MM/YYYY) *"
             leftIcon="calendar-outline"
             value={dob}
+            placeholder="18/06/2019"
             onChangeText={(txt) => {
               setDob(txt);
               if (dobError) setDobError('');
@@ -853,13 +1234,101 @@ export const AddEditFamilyMemberScreen: React.FC<{ onBack?: () => void }> = ({
             label="Mã số BHYT / Định danh VssID"
             leftIcon="card-outline"
             value={bhyt}
+            placeholder="VD: TE1 79 234 99102 hoặc GD4 79..."
             onChangeText={setBhyt}
+          />
+          <AppInput
+            label="Số điện thoại liên hệ (tùy chọn)"
+            leftIcon="call-outline"
+            value={phone}
+            placeholder="0912345678"
+            keyboardType="phone-pad"
+            onChangeText={setPhone}
+          />
+
+          <Text style={[styles.docSub, { marginTop: 8, marginBottom: 6, fontWeight: '600' }]}>
+            Giới tính
+          </Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+            {GENDER_OPTIONS.map((item) => (
+              <TouchableOpacity
+                key={item}
+                onPress={() => setGender(item)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: gender === item }}
+                style={{
+                  paddingHorizontal: 14,
+                  paddingVertical: 8,
+                  borderRadius: 999,
+                  borderWidth: 1,
+                  borderColor: gender === item ? COLORS.primary : COLORS.border,
+                  backgroundColor: gender === item ? COLORS.tintBlue : COLORS.surface,
+                }}
+              >
+                <Text
+                  style={{
+                    color: gender === item ? COLORS.primary : COLORS.textSecondary,
+                    fontWeight: gender === item ? '700' : '500',
+                    fontSize: 13,
+                  }}
+                >
+                  {item}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <Text style={[styles.docSub, { marginBottom: 6, fontWeight: '600' }]}>
+            Nhóm máu
+          </Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+            {BLOOD_OPTIONS.map((item) => (
+              <TouchableOpacity
+                key={item}
+                onPress={() => setBlood(item)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: blood === item }}
+                style={{
+                  paddingHorizontal: 12,
+                  paddingVertical: 8,
+                  borderRadius: 999,
+                  borderWidth: 1,
+                  borderColor: blood === item ? COLORS.secondary : COLORS.border,
+                  backgroundColor: blood === item ? '#E6FAF5' : COLORS.surface,
+                }}
+              >
+                <Text
+                  style={{
+                    color: blood === item ? COLORS.secondary : COLORS.textSecondary,
+                    fontWeight: blood === item ? '700' : '500',
+                    fontSize: 13,
+                  }}
+                >
+                  {item}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <AppInput
+            label="Tiền sử dị ứng thuốc / thức ăn (nếu có)"
+            leftIcon="alert-circle-outline"
+            value={allergies}
+            placeholder="VD: Dị ứng kháng sinh Penicillin, hải sản..."
+            onChangeText={setAllergies}
+          />
+          <AppInput
+            label="Ghi chú theo dõi sức khỏe"
+            leftIcon="medkit-outline"
+            value={note}
+            placeholder="VD: Theo dõi huyết áp định kỳ / Lịch tiêm chủng..."
+            onChangeText={setNote}
           />
         </View>
 
         {familySaveError ? <Text accessibilityRole="alert" style={{ color: COLORS.error }}>{familySaveError}</Text> : null}
         <AppButton
-          title="Lưu hồ sơ người thân"
+          title={isEditing ? 'Cập nhật hồ sơ người thân' : 'Lưu hồ sơ người thân'}
           variant="primary"
           size="lg"
           leftIcon="checkmark-circle-outline"
@@ -914,19 +1383,146 @@ const INITIAL_DOCTOR_CHAT: DoctorChatMessage[] = [
 ];
 
 export const TeleconsultationScreen: React.FC<{
+  doctor?: DoctorItem;
   onBack?: () => void;
   onFinishChat?: () => void;
   onOpenLabResults?: () => void;
-}> = ({ onBack, onFinishChat, onOpenLabResults }) => {
-  const doctor = DOCTORS[0];
-  const [messages, setMessages] =
-    useState<DoctorChatMessage[]>(INITIAL_DOCTOR_CHAT);
+}> = ({ doctor: propDoctor, onBack, onFinishChat, onOpenLabResults }) => {
+  const { latestBooking, patientProfile, cloudProfile, doctors, appointments } = useAppContext();
+  const isDoctorPortalUser = CLOUD_MODE && cloudProfile?.role === 'doctor';
+  const doctor = resolveConsultDoctor({
+    isDoctorPortalUser,
+    cloudDoctorId: cloudProfile?.doctor_id,
+    doctors,
+    selectedDoctor: propDoctor,
+    latestBookingDoctor: latestBooking.doctor,
+    fallbackDoctor: DOCTORS[0],
+  });
+
+  const [messages, setMessages] = useState<DoctorChatMessage[]>(
+    CLOUD_MODE ? [] : INITIAL_DOCTOR_CHAT
+  );
+  const [cloudMessages, setCloudMessages] = useState<ConsultMessageItem[]>([]);
+  const [selectedPatientId, setSelectedPatientId] = useState<string>('');
+  const [sending, setSending] = useState(false);
+  const [chatError, setChatError] = useState('');
   const [inputText, setInputText] = useState('');
   const chatScrollRef = useRef<React.ComponentRef<typeof ScrollView>>(null);
 
-  const handleSendMessage = (customText?: string) => {
+  useEffect(() => {
+    if (!CLOUD_MODE || !cloudProfile) return;
+    let active = true;
+    const scope = {
+      doctorId: doctor.id,
+      ...(isDoctorPortalUser ? {} : { patientId: cloudProfile.id }),
+    };
+    const refresh = async () => {
+      try {
+        const rows = await fetchConsultMessagesCloud(scope);
+        if (!active) return;
+        setCloudMessages(rows);
+        if (isDoctorPortalUser && rows.length > 0) {
+          setSelectedPatientId((prev) => prev || rows[rows.length - 1].patientId);
+        }
+        setChatError('');
+      } catch (err) {
+        if (active) {
+          setChatError(err instanceof Error ? err.message : 'Không tải được tin nhắn.');
+        }
+      }
+    };
+    void refresh();
+    const unsub = subscribeConsultMessagesCloud(() => {
+      void refresh();
+    }, scope);
+    return () => {
+      active = false;
+      unsub();
+    };
+  }, [cloudProfile, doctor.id, isDoctorPortalUser]);
+
+  // Build unique patient threads for Doctor Portal view
+  const patientThreads = React.useMemo(() => {
+    if (!isDoctorPortalUser) return [];
+    const map = new Map<string, string>();
+    for (const m of cloudMessages) {
+      if (m.patientId && m.senderRole === 'patient') {
+        map.set(m.patientId, m.senderName);
+      } else if (m.patientId && !map.has(m.patientId)) {
+        map.set(m.patientId, `Bệnh nhân #${m.patientId.slice(0, 6).toUpperCase()}`);
+      }
+    }
+    return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
+  }, [cloudMessages, isDoctorPortalUser]);
+
+  const activeThreadMessages: DoctorChatMessage[] = React.useMemo(() => {
+    if (!CLOUD_MODE) return messages;
+    const filtered = isDoctorPortalUser && selectedPatientId
+      ? cloudMessages.filter((m) => m.patientId === selectedPatientId)
+      : cloudMessages;
+    const welcomeMsg: DoctorChatMessage = {
+      id: 'welcome-cloud',
+      sender: 'doctor',
+      text: isDoctorPortalUser
+        ? `Phòng tư vấn trực tuyến của ${doctor.name} (${doctor.specialty}). Chọn bệnh nhân bên trên để xem và phản hồi tin nhắn theo thời gian thực.`
+        : `Xin chào ${patientProfile.name}, đây là kênh Tư vấn Trực tuyến với ${doctor.name} (${doctor.specialty}). Bạn có thể gửi triệu chứng, câu hỏi về đơn thuốc hoặc lịch khám tại đây.`,
+      time: 'Trực tuyến',
+    };
+    return [
+      welcomeMsg,
+      ...filtered.map((m) => ({
+        id: m.id,
+        sender: (m.senderRole === 'patient' ? 'patient' : 'doctor') as 'patient' | 'doctor',
+        text: m.text,
+        time: m.time,
+      })),
+    ];
+  }, [
+    cloudMessages,
+    doctor.name,
+    doctor.specialty,
+    isDoctorPortalUser,
+    messages,
+    patientProfile.name,
+    selectedPatientId,
+  ]);
+
+  const handleSendMessage = async (customText?: string) => {
     const content = (customText ?? inputText).trim();
-    if (!content) return;
+    if (!content || sending) return;
+
+    if (CLOUD_MODE) {
+      if (isDoctorPortalUser && !selectedPatientId && patientThreads.length === 0) {
+        setChatError('Chưa có bệnh nhân nào gửi tin nhắn trong phòng chat này.');
+        return;
+      }
+      const targetPatientId = isDoctorPortalUser
+        ? selectedPatientId || patientThreads[0]?.id
+        : cloudProfile?.id;
+      setSending(true);
+      setChatError('');
+      try {
+        const saved = await sendConsultMessageCloud({
+          doctorId: doctor.id,
+          patientId: targetPatientId,
+          content,
+          senderRole: isDoctorPortalUser ? 'doctor' : 'patient',
+          senderName: isDoctorPortalUser ? doctor.name : patientProfile.name,
+        });
+        setCloudMessages((prev) =>
+          prev.some((m) => m.id === saved.id) ? prev : [...prev, saved]
+        );
+        if (!customText) setInputText('');
+        setTimeout(() => {
+          chatScrollRef.current?.scrollToEnd({ animated: true });
+        }, 100);
+      } catch (err) {
+        setChatError(err instanceof Error ? err.message : 'Không thể gửi tin nhắn.');
+      } finally {
+        setSending(false);
+      }
+      return;
+    }
 
     const now = new Date();
     const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(
@@ -966,6 +1562,16 @@ export const TeleconsultationScreen: React.FC<{
     }, 100);
   };
 
+  const activePatientLabel = isDoctorPortalUser
+    ? patientThreads.find((p) => p.id === selectedPatientId)?.name ||
+      appointments[0]?.patientName ||
+      'Tất cả bệnh nhân'
+    : patientProfile.name;
+  const activeBookingCode =
+    (latestBooking.doctor?.id === doctor.id ? latestBooking.code : '') ||
+    appointments.find((a) => a.doctor.id === doctor.id)?.code ||
+    '#TUVAN-TRUCTUYEN';
+
   return (
     <KeyboardAvoidingView
       style={styles.screen}
@@ -989,10 +1595,48 @@ export const TeleconsultationScreen: React.FC<{
           <View style={[styles.card, SHADOWS.sm, { paddingVertical: 10 }]}>
             <View style={[styles.rowBetween, { marginBottom: 8 }]}>
               <Text style={[styles.docSub, { flex: 1 }]} numberOfLines={1}>
-                Ca tư vấn #SC-241029-8892 • BN: Nguyễn Văn Vũ
+                Ca tư vấn {activeBookingCode} • BN: {activePatientLabel}
               </Text>
-              <Badge label="Đang tư vấn" variant="teal" showDot />
+              <Badge label="Realtime • Trực tuyến" variant="teal" showDot />
             </View>
+
+            {isDoctorPortalUser && patientThreads.length > 0 ? (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={{ marginBottom: 10 }}
+              >
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  {patientThreads.map((pt) => {
+                    const active = pt.id === selectedPatientId;
+                    return (
+                      <TouchableOpacity
+                        key={pt.id}
+                        onPress={() => setSelectedPatientId(pt.id)}
+                        style={{
+                          paddingHorizontal: 12,
+                          paddingVertical: 6,
+                          borderRadius: 999,
+                          borderWidth: 1,
+                          borderColor: active ? COLORS.primary : COLORS.border,
+                          backgroundColor: active ? COLORS.tintBlue : COLORS.surface,
+                        }}
+                      >
+                        <Text
+                          style={{
+                            fontSize: 12,
+                            fontWeight: '700',
+                            color: active ? COLORS.primary : COLORS.textSecondary,
+                          }}
+                        >
+                          BN: {pt.name}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </ScrollView>
+            ) : null}
 
             <View style={{ flexDirection: 'row', gap: 8 }}>
               <AppButton
@@ -1017,9 +1661,15 @@ export const TeleconsultationScreen: React.FC<{
           </View>
         </AnimatedEntry>
 
+        {chatError ? (
+          <Text accessibilityRole="alert" style={{ color: COLORS.error, marginBottom: 8 }}>
+            {chatError}
+          </Text>
+        ) : null}
+
         {/* Chat Messages Thread */}
         <View style={{ marginVertical: 4 }}>
-          {messages.map((msg, idx) => {
+          {activeThreadMessages.map((msg, idx) => {
             const isPatient = msg.sender === 'patient';
             return (
               <AnimatedEntry key={msg.id} delay={idx < 4 ? idx * 40 : 0} distance={8} direction="up">

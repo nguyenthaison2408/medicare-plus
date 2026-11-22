@@ -1,4 +1,4 @@
-import React, {useCallback, useEffect, useState} from 'react';
+import React, {useCallback, useEffect, useRef, useState} from 'react';
 import {ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View} from 'react-native';
 import {COLORS} from '../theme';
 import {DOCTORS} from '../data/mockData';
@@ -9,27 +9,37 @@ import {cancelClinicAppointment, listClinicAppointments, loadClinicProfile, subs
   type ClinicAppointment, type ClinicProfile} from '../services/clinicCloud';
 
 function useClinicData() {
+  const {cloudProfile}=useAppContext();
+  const ownerId=cloudProfile?.id || null;
+  const generation=useRef(0);
   const [rows,setRows]=useState<ClinicAppointment[]>([]);
   const [profile,setProfile]=useState<ClinicProfile|null>(null);
+  const [loadedOwner,setLoadedOwner]=useState<string|null>(null);
   const [loading,setLoading]=useState(true);
   const [error,setError]=useState('');
   const refresh=useCallback(async()=>{
+    const request=++generation.current;
+    const expected=ownerId;
+    if(!expected){setRows([]);setProfile(null);setLoadedOwner(null);setError('');setLoading(false);return;}
+    setLoading(true);
     try {
       const [nextProfile,nextRows]=await Promise.all([loadClinicProfile(),listClinicAppointments()]);
-      setProfile(nextProfile);setRows(nextRows);setError('');
-    } catch(cause) {setError(cause instanceof Error?cause.message:'Không tải được dữ liệu.');}
-    finally {setLoading(false);}
-  },[]);
+      if(generation.current!==request)return;
+      if(nextProfile.id!==expected)throw new Error('Phiên đăng nhập đã thay đổi. Vui lòng tải lại.');
+      setProfile(nextProfile);setRows(nextRows);setLoadedOwner(expected);setError('');
+    } catch(cause) {
+      if(generation.current===request){setRows([]);setProfile(null);setLoadedOwner(expected);setError(cause instanceof Error?cause.message:'Không tải được dữ liệu.');}
+    } finally {if(generation.current===request)setLoading(false);}
+  },[ownerId]);
   useEffect(()=>{
-    let mounted=true;
-    void Promise.all([loadClinicProfile(),listClinicAppointments()]).then(([nextProfile,nextRows])=>{
-      if(mounted){setProfile(nextProfile);setRows(nextRows);setError('');}
-    }).catch(cause=>{if(mounted)setError(cause instanceof Error?cause.message:'Không tải được dữ liệu.');})
-      .finally(()=>{if(mounted)setLoading(false);});
+    const lifecycle=generation;
+    let active=true;
+    void Promise.resolve().then(()=>{if(active)void refresh();});
     const unsubscribe=subscribeClinicAppointments(()=>{void refresh();});
-    return ()=>{mounted=false;unsubscribe();};
+    return ()=>{active=false;lifecycle.current++;unsubscribe();};
   },[refresh]);
-  return {rows,profile,loading,error,refresh};
+  const belongsToCurrentUser=Boolean(ownerId && loadedOwner===ownerId);
+  return {rows:belongsToCurrentUser?rows:[],profile:belongsToCurrentUser?profile:null,loading:loading || Boolean(ownerId && !belongsToCurrentUser),error:belongsToCurrentUser?error:'',refresh};
 }
 const doctorName=(row:ClinicAppointment)=>DOCTORS.find(doctor=>doctor.id===row.doctor_id)?.name||row.doctor_id;
 const dateLabel=(row:ClinicAppointment)=>new Date(row.starts_at).toLocaleString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh'});
@@ -75,7 +85,7 @@ function CompletedVisitReview({doctorId}:{doctorId:string}) {
 }
 
 export function ClinicPatientRecordsScreen() {
-  const {rows,loading,error,refresh}=useClinicData();
+  const {rows,profile,loading,error,refresh}=useClinicData();
   const records=rows.filter(row=>clinicRecord(row));
   return <ScrollView contentContainerStyle={styles.page}>
     <Text style={styles.heading}>Bệnh án của tôi</Text>
@@ -88,7 +98,7 @@ export function ClinicPatientRecordsScreen() {
       {record.medications.length?<Text style={styles.title}>Đơn thuốc</Text>:null}
       {record.medications.map((drug,index)=><Text key={index} style={styles.copy}>{drug.name} — {drug.dosage}</Text>)}
       {record.notes?<Text style={styles.copy}>Ghi chú: {record.notes}</Text>:null}
-      {row.status==='COMPLETED'&&!records.slice(0,index).some(previous=>previous.doctor_id===row.doctor_id)?<CompletedVisitReview doctorId={row.doctor_id}/>:null}
+      {row.status==='COMPLETED'&&!records.slice(0,index).some(previous=>previous.doctor_id===row.doctor_id)?<CompletedVisitReview key={`${profile?.id}:${row.doctor_id}`} doctorId={row.doctor_id}/>:null}
     </View>;})}
   </ScrollView>;
 }

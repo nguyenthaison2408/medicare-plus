@@ -1,0 +1,347 @@
+{
+  "summary": {
+    "checkedAt": "2026-11-19T16:19:26.199Z",
+    "openIssuesUpdated": 17,
+    "closedIssue5Unchanged": true,
+    "mainProtected": true,
+    "mainCommitUnchanged": true,
+    "requiredApprovals": 1,
+    "requiredCI": [
+      {
+        "context": "code-quality-and-test (22.x)",
+        "app_id": 15368
+      },
+      {
+        "context": "code-quality-and-test (24.x)",
+        "app_id": 15368
+      }
+    ],
+    "issuesWithDevelopmentLinks": [
+      {
+        "issue": 1,
+        "prs": [
+          19,
+          20
+        ]
+      },
+      {
+        "issue": 2,
+        "prs": [
+          20,
+          21
+        ]
+      },
+      {
+        "issue": 3,
+        "prs": [
+          20
+        ]
+      },
+      {
+        "issue": 6,
+        "prs": [
+          20,
+          21
+        ]
+      },
+      {
+        "issue": 7,
+        "prs": [
+          20,
+          21
+        ]
+      },
+      {
+        "issue": 8,
+        "prs": [
+          20
+        ]
+      },
+      {
+        "issue": 9,
+        "prs": [
+          20,
+          21
+        ]
+      },
+      {
+        "issue": 10,
+        "prs": [
+          20,
+          21
+        ]
+      },
+      {
+        "issue": 11,
+        "prs": [
+          20,
+          21
+        ]
+      },
+      {
+        "issue": 13,
+        "prs": [
+          20,
+          21
+        ]
+      }
+    ],
+    "pr22State": "open",
+    "pr22MergeableState": "blocked",
+    "pr22WorkReferencesPresent": true,
+    "boardCounts": {
+      "In Progress": 9,
+      "In Review": 6,
+      "Backlog": 1,
+      "Done": 2,
+      "Ready": 1
+    },
+    "items": 19,
+    "sourceStoryPoints": 136,
+    "sprint6StoryPoints": 123,
+    "originalStatusesPreserved": true,
+    "emailIterationCleared": true,
+    "pullRequestLinkedWorkflowEnabled": false,
+    "roleContributionsUnchanged": "40% / 20% / 20% / 20%",
+    "changedCodeCommits": false
+  },
+  "items": [
+    {
+      "number": 14,
+      "title": "[SP5-02] Triển khai HTTPS/APK và UAT với người dùng thử",
+      "status": "In Progress",
+      "assignees": "nguyenthaison2408 and thanhvihuu2005",
+      "sprint": "Sprint 6 - Hoàn thiện báo cáo",
+      "points": 8,
+      "priority": "P0 - Bắt buộc trước báo cáo",
+      "milestone": "Sprint 5: Load Test k6, UAT & Project Packaging",
+      "linkedPRs": []
+    },
+    {
+      "number": 13,
+      "title": "[SP5-01] Kiểm thử k6: Tra cứu 100 VU và tranh chấp đặt lịch 50 yêu cầu",
+      "status": "In Progress",
+      "assignees": "nguyenthaison2408 and thanhvihuu2005",
+      "sprint": "Sprint 6 - Hoàn thiện báo cáo",
+      "points": 5,
+      "priority": "P0 - Bắt buộc trước báo cáo",
+      "milestone": "Sprint 5: Load Test k6, UAT & Project Packaging",
+      "linkedPRs": [
+        "20",
+        "21"
+      ]
+    },
+    {
+      "number": 9,
+      "title": "[SP3-02] Hoàn thiện Cổng thông tin Bệnh nhân & Sinh Phiếu Khám Điện Tử",
+      "status": "In Review",
+      "assignees": "thanhvuvn",
+      "sprint": "Sprint 6 - Hoàn thiện báo cáo",
+      "points": 8,
+      "priority": "P0 - Bắt buộc trước báo cáo",
+      "milestone": "Sprint 3: Concurrency Locking & Patient Web",
+      "linkedPRs": [
+        "20",
+        "21"
+      ]
+    },
+    {
+      "number": 15,
+      "title": "[SP5-03] Hoàn Thiện Báo Cáo Tổng Kết Kỹ Thuật 7 Chương & Bộ Slide Bảo Vệ 16 Phút",
+      "status": "In Progress",
+      "assignees": "nguyenthaison2408",
+      "sprint": "Sprint 6 - Hoàn thiện báo cáo",
+      "points": 5,
+      "priority": "P0 - Bắt buộc trước báo cáo",
+      "milestone": "Sprint 5: Load Test k6, UAT & Project Packaging",
+      "linkedPRs": []
+    },
+    {
+      "number": 12,
+      "title": "[SP4-03] Tự Động Hóa Gửi Thông Báo Xác Nhận Đặt Hẹn Qua Email",
+      "status": "Backlog",
+      "assignees": "myth0ss",
+      "sprint": "",
+      "points": 5,
+      "priority": "P2 - Giai đoạn sau",
+      "milestone": "Sprint 4: QR Check-in & Doctor EMR Console",
+      "linkedPRs": []
+    },
+    {
+      "number": 11,
+      "title": "[SP4-02] Xây dựng Dashboard Bác sĩ & Quản trị Bệnh Án Điện Tử (EMR)",
+      "status": "In Progress",
+      "assignees": "myth0ss and thanhvuvn",
+      "sprint": "Sprint 6 - Hoàn thiện báo cáo",
+      "points": 8,
+      "priority": "P0 - Bắt buộc trước báo cáo",
+      "milestone": "Sprint 4: QR Check-in & Doctor EMR Console",
+      "linkedPRs": [
+        "20",
+        "21"
+      ]
+    },
+    {
+      "number": 10,
+      "title": "[SP4-01] [BIẾN CỐ CR-01] Xử lý Thay Đổi Phạm Vi: Module Tiếp Đón Bằng Mã QR Tại Quầy",
+      "status": "In Progress",
+      "assignees": "myth0ss, nguyenthaison2408, and thanhvuvn",
+      "sprint": "Sprint 6 - Hoàn thiện báo cáo",
+      "points": 13,
+      "priority": "P0 - Bắt buộc trước báo cáo",
+      "milestone": "Sprint 4: QR Check-in & Doctor EMR Console",
+      "linkedPRs": [
+        "20",
+        "21"
+      ]
+    },
+    {
+      "number": 2,
+      "title": "[SP1-02] Thiết kế Sơ đồ CSDL Quan hệ PostgreSQL & Script Migrations",
+      "status": "In Review",
+      "assignees": "myth0ss and nguyenthaison2408",
+      "sprint": "Sprint 6 - Hoàn thiện báo cáo",
+      "points": 8,
+      "priority": "P0 - Bắt buộc trước báo cáo",
+      "milestone": "Sprint 1: Baseline Architecture & Auth API",
+      "linkedPRs": [
+        "20",
+        "21"
+      ]
+    },
+    {
+      "number": 5,
+      "title": "[SP2-01] Xây dựng API Danh mục Bác sĩ, Chuyên khoa & Ca làm việc",
+      "status": "Done",
+      "assignees": "thanhvuvn",
+      "sprint": "Sprint 2",
+      "points": 8,
+      "priority": "",
+      "milestone": "Sprint 2: Core Booking Engine MVP",
+      "linkedPRs": []
+    },
+    {
+      "number": 6,
+      "title": "[SP2-02] Xây dựng Module Lõi Đặt Lịch Khám (Appointment Engine MVP)",
+      "status": "In Review",
+      "assignees": "myth0ss and nguyenthaison2408",
+      "sprint": "Sprint 6 - Hoàn thiện báo cáo",
+      "points": 13,
+      "priority": "P0 - Bắt buộc trước báo cáo",
+      "milestone": "Sprint 2: Core Booking Engine MVP",
+      "linkedPRs": [
+        "20",
+        "21"
+      ]
+    },
+    {
+      "number": 8,
+      "title": "[SP3-01] [R-01] Chống trùng lịch bằng PostgreSQL Row Lock và Unique Constraint",
+      "status": "In Progress",
+      "assignees": "myth0ss and nguyenthaison2408",
+      "sprint": "Sprint 6 - Hoàn thiện báo cáo",
+      "points": 13,
+      "priority": "P0 - Bắt buộc trước báo cáo",
+      "milestone": "Sprint 3: Concurrency Locking & Patient Web",
+      "linkedPRs": [
+        "20"
+      ]
+    },
+    {
+      "number": 7,
+      "title": "[SP2-03] Giao diện chọn bác sĩ và lịch khám responsive (Expo/React Native Web)",
+      "status": "In Review",
+      "assignees": "myth0ss and thanhvuvn",
+      "sprint": "Sprint 6 - Hoàn thiện báo cáo",
+      "points": 13,
+      "priority": "P0 - Bắt buộc trước báo cáo",
+      "milestone": "Sprint 2: Core Booking Engine MVP",
+      "linkedPRs": [
+        "20",
+        "21"
+      ]
+    },
+    {
+      "number": 3,
+      "title": "[SP1-03] Xây dựng Module Xác thực Người dùng & Phân quyền RBAC (JWT)",
+      "status": "In Progress",
+      "assignees": "myth0ss and nguyenthaison2408",
+      "sprint": "Sprint 6 - Hoàn thiện báo cáo",
+      "points": 8,
+      "priority": "P0 - Bắt buộc trước báo cáo",
+      "milestone": "Sprint 1: Baseline Architecture & Auth API",
+      "linkedPRs": [
+        "20"
+      ]
+    },
+    {
+      "number": 4,
+      "title": "[SP1-04] Lập Kế hoạch Điều lệ Dự án (Project Charter) & Ma trận RACI",
+      "status": "In Review",
+      "assignees": "nguyenthaison2408",
+      "sprint": "Sprint 6 - Hoàn thiện báo cáo",
+      "points": 5,
+      "priority": "P0 - Bắt buộc trước báo cáo",
+      "milestone": "Sprint 1: Baseline Architecture & Auth API",
+      "linkedPRs": []
+    },
+    {
+      "number": 1,
+      "title": "[SP1-01] Thiết lập Kiến trúc Hệ thống & Đường ống CI/CD GitHub Actions",
+      "status": "In Review",
+      "assignees": "nguyenthaison2408 and thanhvihuu2005",
+      "sprint": "Sprint 6 - Hoàn thiện báo cáo",
+      "points": 5,
+      "priority": "P0 - Bắt buộc trước báo cáo",
+      "milestone": "Sprint 1: Baseline Architecture & Auth API",
+      "linkedPRs": [
+        "19",
+        "20"
+      ]
+    },
+    {
+      "number": 16,
+      "title": "[RELEASE] Đóng Gói Phiên Bản Chính Thức MediCare Plus v1.0.0 (Production Release & Cloud Live)",
+      "status": "In Progress",
+      "assignees": "nguyenthaison2408 and thanhvihuu2005",
+      "sprint": "Sprint 6 - Hoàn thiện báo cáo",
+      "points": 3,
+      "priority": "P0 - Bắt buộc trước báo cáo",
+      "milestone": "Sprint 5: Load Test k6, UAT & Project Packaging",
+      "linkedPRs": []
+    },
+    {
+      "number": 17,
+      "title": "[AUDIT] Đóng Gói & Thẩm Định Gói Bằng Chứng Quản Trị Dự Án 7 Hạng Mục & Thư Mục Google Drive VKU",
+      "status": "In Progress",
+      "assignees": "nguyenthaison2408",
+      "sprint": "Sprint 6 - Hoàn thiện báo cáo",
+      "points": 5,
+      "priority": "P0 - Bắt buộc trước báo cáo",
+      "milestone": "Sprint 5: Load Test k6, UAT & Project Packaging",
+      "linkedPRs": []
+    },
+    {
+      "number": 18,
+      "title": "[DEMO] Tổng Duyệt Kịch Bản Thuyết Trình 16 Phút & Live Demo Bảo Vệ Trước Hội Đồng Chuyên Môn",
+      "status": "Ready",
+      "assignees": "myth0ss, nguyenthaison2408, thanhvihuu2005, and thanhvuvn",
+      "sprint": "Sprint 6 - Hoàn thiện báo cáo",
+      "points": 3,
+      "priority": "P0 - Bắt buộc trước báo cáo",
+      "milestone": "Sprint 5: Load Test k6, UAT & Project Packaging",
+      "linkedPRs": []
+    },
+    {
+      "number": 19,
+      "title": "[Sprint 3] [TechLead-CI] feat: enhance CI typecheck pipeline & booking controller validation",
+      "status": "Done",
+      "assignees": "nguyenthaison2408 and thanhvihuu2005",
+      "sprint": "Sprint 6 - Hoàn thiện báo cáo",
+      "points": 0,
+      "priority": "",
+      "milestone": "Sprint 3: Concurrency Locking & Patient Web",
+      "linkedPRs": []
+    }
+  ]
+}

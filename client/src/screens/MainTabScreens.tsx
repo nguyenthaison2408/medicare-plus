@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   Alert,
   Linking,
   Modal,
+  Image,
   StyleSheet,
   RefreshControl,
 } from 'react-native';
@@ -26,7 +27,10 @@ import {
 } from '../data/mockData';
 import { useAppContext } from '../context/AppContext';
 import { CLOUD_MODE } from '../services/supabaseClient';
-import { ClinicPatientRecordsScreen, ClinicPatientProfileScreen } from './ClinicPatientScreens';
+import { ClinicPatientRecordsScreen } from './ClinicPatientScreens';
+import { refineFollowUp } from '../services/aiConversation';
+import { runClinicalTriage } from '../services/aiTriageEngine';
+import { checkEHRSafetyGuardrails } from '../services/aiSafetyGuardrails';
 import {
   HomeGreetingHeader,
   SearchBar,
@@ -45,12 +49,15 @@ import {
   LabImagingCard,
   MedicalHistoryTimeline,
   AppButton,
+  AppInput,
   AIReminderCard,
   AppointmentCard,
   AIMedicalTriageBanner,
   AIChatBubble,
   AITypingIndicator,
   AIClinicalResponseCard,
+  type FollowUpOptionItem,
+  type FollowUpQuestionItem,
   QuickPromptChips,
   ChatBottomInputBar,
   ProfileHeaderCard,
@@ -120,7 +127,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   onOpenProfile,
   onNavigate,
 }) => {
-  const { appointments, doctors, hospitals, patientProfile } = useAppContext();
+  const {
+    appointments,
+    doctors,
+    hospitals,
+    patientProfile,
+    refreshHospitalCatalog,
+  } = useAppContext();
   const [search, setSearch] = useState('');
   const [selectedSpecialty, setSelectedSpecialty] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -129,11 +142,15 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   const [notificationsVisible, setNotificationsVisible] = useState(false);
   const insets = useSafeAreaInsets();
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     setRefreshing(true);
-    setTimeout(() => {
+    try {
+      await refreshHospitalCatalog();
+    } catch {
+      // AppContext keeps the existing catalog and exposes the load error.
+    } finally {
       setRefreshing(false);
-    }, 850);
+    }
   };
 
   // Filter and sort upcoming appointments (nearest first) to show on Home
@@ -387,12 +404,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
         {/* Promo Banner placed below Doctors for organic reading flow */}
         <AnimatedEntry delay={60}>
-          <PressableScale
+          <SmartPromoBanner
             onPress={() => onBookDoctor(DOCTORS[0])}
             style={{ marginBottom: SPACING.lg }}
-          >
-            <SmartPromoBanner />
-          </PressableScale>
+          />
         </AnimatedEntry>
 
         {/* Hospitals near you */}
@@ -402,10 +417,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             badgeText="TP. Hồ Chí Minh"
             badgeVariant="teal"
             badgeIcon="navigate"
-            actionText="Xem bản đồ"
+            actionText={hospitals.length > 0 ? 'Xem bản đồ' : undefined}
             onActionPress={() => {
-              setSelectedMapHospital(hospitals[0]);
-              setMapModalVisible(true);
+              const firstHospital = hospitals[0];
+              if (firstHospital) {
+                setSelectedMapHospital(firstHospital);
+                setMapModalVisible(true);
+              }
             }}
           />
           {refreshing ? (
@@ -433,11 +451,18 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         initialHospital={selectedMapHospital}
         onClose={() => setMapModalVisible(false)}
         onBookAtHospital={(hosp) => {
-          const matchedDoc =
-            DOCTORS.find((d) =>
-              d.hospital.toLowerCase().includes(hosp.name.toLowerCase()) ||
-              hosp.name.toLowerCase().includes(d.hospital.toLowerCase())
-            ) || DOCTORS[0];
+          const hospitalName = hosp.name.trim().toLocaleLowerCase('vi-VN');
+          const matchedDoc = doctors.find(
+            (doctor) =>
+              doctor.hospital.trim().toLocaleLowerCase('vi-VN') === hospitalName
+          );
+          if (!matchedDoc) {
+            Alert.alert(
+              'Chưa có bác sĩ',
+              'Cơ sở này chưa có bác sĩ khả dụng để đặt lịch. Vui lòng chọn cơ sở khác.'
+            );
+            return;
+          }
           onBookDoctor(matchedDoc);
         }}
       />
@@ -615,7 +640,11 @@ export const EHRScreen: React.FC<EHRScreenProps> = ({
     null
   );
 
-  if (CLOUD_MODE) return <ClinicPatientRecordsScreen />;
+  if (CLOUD_MODE) return <View style={styles.screen}>
+    <AppHeader title="Hồ sơ bệnh án điện tử" subtitle="Bệnh án đã lưu trên Supabase"
+      rightActions={[{icon:'people-outline',onPress:()=>onNavigate('familyProfiles')}]} />
+    <ClinicPatientRecordsScreen />
+  </View>;
 
   return (
     <View style={styles.screen}>
@@ -780,12 +809,14 @@ export const EHRScreen: React.FC<EHRScreenProps> = ({
 
 export interface AppointmentsScreenProps {
   onSelectDoctor: (doctor: DoctorItem) => void;
+  onFocusDoctor?: (doctor: DoctorItem) => void;
   onBookNew: () => void;
   onNavigate: (routeKey: string) => void;
 }
 
 export const AppointmentsScreen: React.FC<AppointmentsScreenProps> = ({
   onSelectDoctor,
+  onFocusDoctor,
   onBookNew,
   onNavigate,
 }) => {
@@ -854,9 +885,11 @@ export const AppointmentsScreen: React.FC<AppointmentsScreenProps> = ({
 
         {statusTab === 'upcoming' && (
           <>
-            <AnimatedEntry delay={20} direction="up">
-              <AIReminderCard style={{ marginBottom: 14 }} />
-            </AnimatedEntry>
+            {upcomingList.length > 0 && (
+              <AnimatedEntry delay={20} direction="up">
+                <AIReminderCard style={{ marginBottom: 14 }} />
+              </AnimatedEntry>
+            )}
 
             {upcomingList.length > 0 ? (
               upcomingList.map((apt, idx) => (
@@ -866,6 +899,7 @@ export const AppointmentsScreen: React.FC<AppointmentsScreenProps> = ({
                       appointment={apt}
                       onPrimaryPress={(item) => {
                         selectAppointmentTicket(item);
+                        onFocusDoctor?.(item.doctor);
                         if (item.mode === 'video') {
                           onNavigate('teleconsult');
                         } else {
@@ -1046,129 +1080,74 @@ interface AIChatThreadItem {
     specialtyIcon: keyof typeof Ionicons.glyphMap;
     urgencyLevel: 'emergency' | 'soon' | 'routine';
     doctors: DoctorItem[];
+    followUpQuestions?: FollowUpQuestionItem[];
+    homeCareAdvice?: string[];
+    allergyWarning?: string;
+    contextId?: number;
   };
 }
 
 const analyzeMedicalSymptom = (
-  rawText: string
+  rawText: string,
+  allergies?: string[],
+  catalog?: DoctorItem[]
 ): Omit<AIChatThreadItem, 'id' | 'sender' | 'time'> => {
-  const q = rawText.toLowerCase();
-
-  // 1. Dấu hiệu cấp cứu (Red Flags)
-  if (
-    q.includes('cấp cứu') ||
-    q.includes('khó thở') ||
-    q.includes('đau ngực dữ dội') ||
-    q.includes('tê yếu') ||
-    q.includes('méo miệng') ||
-    q.includes('nói đớ') ||
-    q.includes('co giật') ||
-    q.includes('ngất')
-  ) {
+  // 1. Dấu hiệu CẤP CỨU ĐỎ (Red Flag) PHẢI LUÔN CÓ ƯU TIÊN CAO NHẤT!
+  // Tuyệt đối không để câu hỏi về thuốc hay dị ứng đè bẹp triệu chứng nguy kịch!
+  const triageResult = runClinicalTriage(rawText, { availableDoctors: catalog });
+  if (triageResult.urgencyLevel === 'emergency') {
     return {
       clinicalCard: {
         urgencyLevel: 'emergency',
-        analysisText:
-          'CẢNH BÁO ĐỎ: Các dấu hiệu như đau ngực dữ dội, khó thở, tê yếu nửa người, méo miệng, nói đớ hoặc sốt cao co giật là tình trạng cấp cứu nội/ngoại khoa tối khẩn. Vui lòng gọi 115 hoặc nhờ người thân đưa đến Khoa Cấp cứu gần nhất ngay lập tức.',
-        specialtyName: 'Cấp Cứu & Thần Kinh - Tim Mạch',
-        specialtyDesc: 'Can thiệp đột quỵ & tim mạch khẩn cấp 24/7',
-        specialtyIcon: 'medkit',
-        doctors: [DOCTORS[1], DOCTORS[0]],
+        analysisText: triageResult.analysisText,
+        specialtyName: triageResult.specialtyName,
+        specialtyDesc: triageResult.specialtyDesc,
+        specialtyIcon: triageResult.specialtyIcon as keyof typeof Ionicons.glyphMap,
+        doctors: triageResult.recommendedDoctors || [],
+        followUpQuestions: triageResult.followUpQuestions,
+        homeCareAdvice: triageResult.homeCareAdvice,
       },
     };
   }
 
-  // 2. Hỏi về thuốc giảm đau & cảnh báo dị ứng hồ sơ EHR
-  if (q.includes('thuốc') || q.includes('giảm đau') || q.includes('liều')) {
+  // 2. Phân tích an toàn Dược & Tiền sử dị ứng EHR (chỉ khi không phải cấp cứu)
+  const safety = checkEHRSafetyGuardrails(rawText, { allergies });
+  if (safety.hasAlert && safety.alertMessage) {
+    if (safety.alertType === 'allergy') {
+      return {
+        clinicalCard: {
+          urgencyLevel: triageResult.urgencyLevel === 'routine' ? 'soon' : triageResult.urgencyLevel,
+          analysisText:
+            triageResult.analysisText ||
+            'Hệ thống ghi nhận bạn đang quan tâm đến việc dùng thuốc giảm đau trong khi có tiền sử dị ứng thuốc trên hồ sơ bệnh án điện tử.',
+          specialtyName: triageResult.specialtyName || 'Dược Lâm Sàng & Khám Nội',
+          specialtyDesc: triageResult.specialtyDesc || 'Tư vấn sử dụng thuốc an toàn & kiểm soát đau',
+          specialtyIcon: (triageResult.specialtyIcon as keyof typeof Ionicons.glyphMap) || 'medkit',
+          doctors: triageResult.recommendedDoctors || [],
+          allergyWarning: safety.alertMessage,
+          homeCareAdvice: [
+            'Chỉ sử dụng thuốc khi có ý kiến của bác sĩ điều trị hoặc dược sĩ.',
+            'Theo dõi sát các dấu hiệu nổi mẩn, khó thở nếu lỡ uống nhầm thuốc dị ứng.',
+          ],
+        },
+      };
+    }
     return {
-      text: `Lưu ý an toàn dược lâm sàng: Hồ sơ bệnh án của bạn có ghi nhận tiền sử DỊ ỨNG NHÓM NSAIDs (Ibuprofen). Bạn tuyệt đối không tự ý mua các thuốc giảm đau kháng viêm nhóm NSAIDs. Nếu cần giảm đau tạm thời, hãy tham khảo ý kiến bác sĩ chuyên khoa trước khi dùng Paracetamol đúng liều lượng theo cân nặng.`,
+      text: safety.alertMessage,
     };
   }
 
-  // 3. Hỏi về chế độ ăn uống / kiêng cử
-  if (q.includes('kiêng') || q.includes('ăn uống') || q.includes('sinh hoạt')) {
-    return {
-      text: 'Hướng dẫn chăm sóc & sinh hoạt tại nhà:\n• Hạn chế cà phê, trà đặc, rượu bia và thức ăn chế biến sẵn chứa nhiều muối/bột ngọt.\n• Uống đủ 1.8 – 2 lít nước ấm mỗi ngày.\n• Áp dụng quy tắc 20-20-20 khi nhìn màn hình máy tính và ngủ trước 23:00.',
-    };
-  }
-
-  // 4. Triệu chứng Tim mạch & Huyết áp
-  if (
-    q.includes('tim') ||
-    q.includes('tức ngực') ||
-    q.includes('hồi hộp') ||
-    q.includes('đánh trống ngực') ||
-    q.includes('huyết áp') ||
-    q.includes('mạch nhanh')
-  ) {
-    return {
-      clinicalCard: {
-        urgencyLevel: 'soon',
-        analysisText:
-          'Triệu chứng tức ngực, hồi hộp đánh trống ngực hoặc dao động huyết áp cần được kiểm tra điện tâm đồ (ECG) và siêu âm tim Doppler để loại trừ rối loạn nhịp hoặc thiếu máu cơ tim cục bộ.',
-        specialtyName: 'Tim Mạch',
-        specialtyDesc: 'Tăng huyết áp, mạch vành & rối loạn nhịp tim',
-        specialtyIcon: 'heart',
-        doctors: [DOCTORS[1]],
-      },
-    };
-  }
-
-  // 5. Triệu chứng Mắt / Nhãn khoa
-  if (
-    q.includes('mắt') ||
-    q.includes('nhìn mờ') ||
-    q.includes('mỏi mắt') ||
-    q.includes('khô mắt') ||
-    q.includes('nhức mắt') ||
-    q.includes('thị lực')
-  ) {
-    return {
-      clinicalCard: {
-        urgencyLevel: 'routine',
-        analysisText:
-          'Tình trạng mỏi mắt, khô rát hoặc nhìn mờ khi làm việc máy tính kéo dài thường liên quan đến Hội chứng thị giác màn hình (CVS) hoặc thay đổi độ khúc xạ. Bạn nên khám chuyên khoa Mắt để đo khúc xạ và soi đáy mắt.',
-        specialtyName: 'Mắt (Nhãn Khoa)',
-        specialtyDesc: 'Khúc xạ, khô mắt kỹ thuật số & võng mạc',
-        specialtyIcon: 'eye',
-        doctors: [DOCTORS[2]],
-      },
-    };
-  }
-
-  // 6. Triệu chứng Cột sống & Ngoại thần kinh
-  if (
-    q.includes('đau lưng') ||
-    q.includes('cột sống') ||
-    q.includes('thoát vị') ||
-    q.includes('cổ vai gáy') ||
-    q.includes('thần kinh tọa') ||
-    q.includes('tê chân') ||
-    q.includes('tê tay')
-  ) {
-    return {
-      clinicalCard: {
-        urgencyLevel: 'soon',
-        analysisText:
-          'Đau vùng cổ vai gáy hoặc đau thắt lưng lan xuống tay/chân là dấu hiệu gợi ý chèn ép rễ thần kinh hoặc thoát vị đĩa đệm cột sống. Bạn nên khám chuyên khoa Ngoại Thần kinh để đánh giá vận động và chụp cộng hưởng từ (MRI) khi cần.',
-        specialtyName: 'Ngoại Thần Kinh & Cột Sống',
-        specialtyDesc: 'Thoát vị đĩa đệm, đau thần kinh tọa & cột sống',
-        specialtyIcon: 'fitness',
-        doctors: [DOCTORS[3], DOCTORS[0]],
-      },
-    };
-  }
-
-  // 7. Mặc định / Triệu chứng Nội thần kinh (Đau đầu, chóng mặt, mất ngủ)
+  // 3. Phân tầng thông thường bằng AI Triage Engine
   return {
     clinicalCard: {
-      urgencyLevel: 'soon',
-      analysisText:
-        'Dựa trên mô tả triệu chứng của bạn, hệ thống định hướng sàng lọc ban đầu thuộc nhóm bệnh lý Nội Thần kinh (đau đầu vận mạch Migraine, rối loạn tiền đình hoặc căng thẳng thần kinh). Bạn nên đặt lịch khám để bác sĩ chuyên khoa thăm khám trực tiếp.',
-      specialtyName: 'Nội Thần Kinh',
-      specialtyDesc: 'Đau đầu, chóng mặt, rối loạn tiền đình & mất ngủ',
-      specialtyIcon: 'pulse',
-      doctors: [DOCTORS[0], DOCTORS[3]],
+      urgencyLevel: triageResult.urgencyLevel,
+      analysisText: triageResult.analysisText,
+      specialtyName: triageResult.specialtyName,
+      specialtyDesc: triageResult.specialtyDesc,
+      specialtyIcon: triageResult.specialtyIcon as keyof typeof Ionicons.glyphMap,
+      doctors: triageResult.recommendedDoctors || [],
+      followUpQuestions: triageResult.followUpQuestions,
+      homeCareAdvice: triageResult.homeCareAdvice,
     },
   };
 };
@@ -1176,13 +1155,27 @@ const analyzeMedicalSymptom = (
 export const AIAssistantScreen: React.FC<AIAssistantScreenProps> = ({
   onBookDoctor,
 }) => {
-  const { patientProfile } = useAppContext();
+  const { patientProfile, doctors } = useAppContext();
+  const conversationGeneration = useRef(0);
   const displayName = patientProfile.name || PATIENT_PROFILE.name;
   const [inputMsg, setInputMsg] = useState('');
-  const [showSampleThread, setShowSampleThread] = useState(true);
+  const [showSampleThread, setShowSampleThread] = useState(!CLOUD_MODE);
   const [isTyping, setIsTyping] = useState(false);
   const [extraMessages, setExtraMessages] = useState<AIChatThreadItem[]>([]);
+  const [currentTriageContext, setCurrentTriageContext] = useState<{
+    id: number;
+    specialtyName: string;
+    specialtyDesc: string;
+    specialtyIcon: keyof typeof Ionicons.glyphMap;
+    urgencyLevel: 'emergency' | 'soon' | 'routine';
+    doctors: DoctorItem[];
+    homeCareAdvice?: string[];
+    remainingFollowUps: FollowUpQuestionItem[];
+    accumulatedRisk: number;
+  } | null>(null);
   const chatScrollRef = useRef<React.ComponentRef<typeof ScrollView>>(null);
+
+  useEffect(() => () => { conversationGeneration.current += 1; }, []);
 
   const getCurrentTimeStr = () => {
     const now = new Date();
@@ -1195,6 +1188,8 @@ export const AIAssistantScreen: React.FC<AIAssistantScreenProps> = ({
     const content = (customText ?? inputMsg).trim();
     if (!content || isTyping) return;
     const timeStr = getCurrentTimeStr();
+    const generation = ++conversationGeneration.current;
+    setCurrentTriageContext(null);
 
     setExtraMessages((prev) => [
       ...prev,
@@ -1202,16 +1197,31 @@ export const AIAssistantScreen: React.FC<AIAssistantScreenProps> = ({
     ]);
     if (!customText) setInputMsg('');
 
-    // TODO: Replace simulated typing timeout and local symptom triage with real AI triage backend API
     setIsTyping(true);
     setTimeout(() => {
       chatScrollRef.current?.scrollToEnd({ animated: true });
     }, 80);
 
-    const analysisResult = analyzeMedicalSymptom(content);
+    const patientAllergies = CLOUD_MODE ? [] : patientProfile.allergies;
+    const analysisResult = analyzeMedicalSymptom(content, patientAllergies, doctors);
 
     setTimeout(() => {
+      if (conversationGeneration.current !== generation) return;
       setIsTyping(false);
+      if (analysisResult.clinicalCard) {
+        setCurrentTriageContext({
+          id: generation,
+          specialtyName: analysisResult.clinicalCard.specialtyName,
+          specialtyDesc: analysisResult.clinicalCard.specialtyDesc,
+          specialtyIcon: analysisResult.clinicalCard.specialtyIcon,
+          urgencyLevel: analysisResult.clinicalCard.urgencyLevel,
+          doctors: analysisResult.clinicalCard.doctors,
+          homeCareAdvice: analysisResult.clinicalCard.homeCareAdvice,
+          remainingFollowUps: analysisResult.clinicalCard.followUpQuestions || [],
+          accumulatedRisk: 0,
+        });
+      }
+
       setExtraMessages((prev) => [
         ...prev,
         {
@@ -1219,11 +1229,43 @@ export const AIAssistantScreen: React.FC<AIAssistantScreenProps> = ({
           sender: 'ai',
           time: getCurrentTimeStr(),
           ...analysisResult,
+          ...(analysisResult.clinicalCard ? { clinicalCard: { ...analysisResult.clinicalCard, contextId: generation } } : {}),
         },
       ]);
       setTimeout(() => {
         chatScrollRef.current?.scrollToEnd({ animated: true });
       }, 100);
+    }, 500);
+  };
+
+  const handleSelectFollowUp = (
+    opt: FollowUpOptionItem, question: FollowUpQuestionItem, contextId?: number
+  ) => {
+    if (isTyping) return;
+    const next = refineFollowUp(currentTriageContext, contextId, question.id, opt.value);
+    if (!next) return;
+    const generation = conversationGeneration.current;
+    setIsTyping(true);
+    setCurrentTriageContext(next);
+    setExtraMessages(prev => [...prev, {
+      id: `usr-${prev.length + 1}`, sender: 'user',
+      text: `Trả lời: ${opt.label} (${question.question})`, time: getCurrentTimeStr(),
+    }]);
+    setTimeout(() => {
+      if (conversationGeneration.current !== generation) return;
+      setIsTyping(false);
+      setExtraMessages(prev => [...prev, {
+        id: `ai-${prev.length + 1}`, sender: 'ai', time: getCurrentTimeStr(),
+        clinicalCard: {
+          ...next,
+          contextId: next.id,
+          analysisText: `Đã ghi nhận: "${opt.label}". ${next.urgencyLevel === 'soon'
+            ? 'Giữ khuyến nghị khám sớm để được bác sĩ đánh giá trực tiếp.'
+            : 'Thông tin này bổ sung cho mô tả ban đầu; tiếp tục theo dõi và khám theo khuyến nghị.'}`,
+          followUpQuestions: next.remainingFollowUps,
+        },
+      }]);
+      chatScrollRef.current?.scrollToEnd({ animated: true });
     }, 500);
   };
 
@@ -1242,6 +1284,8 @@ export const AIAssistantScreen: React.FC<AIAssistantScreenProps> = ({
             icon: 'refresh-outline',
             label: 'Làm mới cuộc trò chuyện',
             onPress: () => {
+              conversationGeneration.current += 1;
+              setCurrentTriageContext(null);
               setShowSampleThread(false);
               setIsTyping(false);
               setExtraMessages([]);
@@ -1289,6 +1333,10 @@ export const AIAssistantScreen: React.FC<AIAssistantScreenProps> = ({
               specialtyIcon={m.clinicalCard.specialtyIcon}
               urgencyLevel={m.clinicalCard.urgencyLevel}
               doctors={m.clinicalCard.doctors}
+              followUpQuestions={m.clinicalCard.followUpQuestions}
+              homeCareAdvice={m.clinicalCard.homeCareAdvice}
+              allergyWarning={m.clinicalCard.allergyWarning}
+              onSelectFollowUp={(opt, question) => handleSelectFollowUp(opt, question, m.clinicalCard?.contextId)}
               onBookDoctor={onBookDoctor}
               onEmergencyCall={() => Linking.openURL('tel:115')}
             />
@@ -1341,7 +1389,7 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
   onNavigate,
   onSwitchTab,
 }) => {
-  const { appointments, familyMembers, takenMap, resetAppData, patientProfile } = useAppContext();
+  const { appointments, familyMembers, takenMap, resetAppData, patientProfile, updatePatientProfile } = useAppContext();
   const [pillReminder, setPillReminder] = useState(true);
   const [aptAlert, setAptAlert] = useState(true);
   const [labAlert, setLabAlert] = useState(true);
@@ -1350,14 +1398,129 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
   const [biometric, setBiometric] = useState(true);
   const [resetToast, setResetToast] = useState(false);
 
+  // Edit Profile Modal State
+  const [editProfileVisible, setEditProfileVisible] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [editDob, setEditDob] = useState('');
+  const [editGender, setEditGender] = useState('');
+  const [editBloodType, setEditBloodType] = useState('');
+  const [editEmergency, setEditEmergency] = useState('');
+  const [editBhytCode, setEditBhytCode] = useState('');
+  const [editBhytHospital, setEditBhytHospital] = useState('');
+  const [editBhytExpiry, setEditBhytExpiry] = useState('');
+  const [editAvatar, setEditAvatar] = useState('');
+  const [editError, setEditError] = useState('');
+  const [editSaving, setEditSaving] = useState(false);
+  const [profileToast, setProfileToast] = useState<string | null>(null);
+
+  const pickAvatarFromDevice = (onPicked: (dataUri: string) => void) => {
+    if (Platform.OS !== 'web' || typeof document === 'undefined') {
+      Alert.alert(
+        'Chọn ảnh đại diện',
+        'Tính năng tải ảnh trực tiếp từ máy tính đang hỗ trợ trên trình duyệt Web.'
+      );
+      return;
+    }
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      if (file.size > 5 * 1024 * 1024) {
+        setEditError('Ảnh tải lên không vượt quá 5MB.');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = typeof reader.result === 'string' ? reader.result : '';
+        if (!result) return;
+        const img = new window.Image();
+        img.onload = () => {
+          const maxDim = 320;
+          const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.max(1, Math.round(img.width * scale));
+          canvas.height = Math.max(1, Math.round(img.height * scale));
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            onPicked(canvas.toDataURL('image/jpeg', 0.85));
+          } else {
+            onPicked(result);
+          }
+        };
+        img.onerror = () => onPicked(result);
+        img.src = result;
+      };
+      reader.readAsDataURL(file);
+    };
+    input.click();
+  };
+
+  const handleQuickAvatarUpload = () => {
+    pickAvatarFromDevice(async (dataUri) => {
+      try {
+        await updatePatientProfile({
+          name: patientProfile.name || 'Bệnh nhân',
+          avatar: dataUri,
+        });
+        setProfileToast('Đã cập nhật ảnh đại diện mới từ máy của bạn.');
+      } catch (err) {
+        setProfileToast(
+          err instanceof Error ? err.message : 'Không thể cập nhật ảnh đại diện.'
+        );
+      }
+    });
+  };
+
+  const openEditProfile = () => {
+    setEditName(patientProfile.name || '');
+    setEditPhone(patientProfile.phone || '');
+    setEditDob(patientProfile.dob || '');
+    setEditGender(patientProfile.gender && patientProfile.gender !== 'Chưa cập nhật' ? patientProfile.gender : '');
+    setEditBloodType(patientProfile.bloodType && patientProfile.bloodType !== 'Chưa cập nhật' ? patientProfile.bloodType : '');
+    setEditEmergency(patientProfile.emergencyContact || '');
+    setEditBhytCode(patientProfile.bhytCode || '');
+    setEditBhytHospital(patientProfile.bhytHospital || '');
+    setEditBhytExpiry(patientProfile.bhytExpiry || '');
+    setEditAvatar(patientProfile.avatar || PATIENT_PROFILE.avatar);
+    setEditError('');
+    setEditProfileVisible(true);
+  };
+
+  const handleSaveProfile = async () => {
+    setEditError('');
+    setEditSaving(true);
+    try {
+      await updatePatientProfile({
+        name: editName,
+        phone: editPhone,
+        dob: editDob,
+        gender: editGender,
+        bloodType: editBloodType,
+        emergencyContact: editEmergency,
+        bhytCode: editBhytCode,
+        bhytHospital: editBhytHospital,
+        bhytExpiry: editBhytExpiry,
+        avatar: editAvatar,
+      });
+      setEditProfileVisible(false);
+      setProfileToast('Đã lưu thông tin hồ sơ cá nhân thành công.');
+    } catch (err) {
+      setEditError(err instanceof Error ? err.message : 'Không thể lưu hồ sơ. Vui lòng thử lại.');
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
   const upcomingCount = appointments.filter(
     (a) => a.status === 'upcoming'
   ).length;
   const totalDoses = Object.keys(takenMap).length || 3;
   const takenCount = Object.values(takenMap).filter(Boolean).length;
   const adherencePct = Math.round((takenCount / totalDoses) * 100);
-
-  if (CLOUD_MODE) return <ClinicPatientProfileScreen onLogout={onLogout} />;
 
   return (
     <View style={styles.screen}>
@@ -1377,30 +1540,21 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
       >
         <ProfileHeaderCard
           profile={patientProfile}
-          onEditPress={() =>
-            Alert.alert(
-              'Hồ sơ cá nhân đã xác thực',
-              `Hồ sơ ${patientProfile.name}\nMã tài khoản: ${patientProfile.patientCode}\nThông tin định danh và BHYT cần được đối chiếu tại cơ sở y tế.`
-            )
-          }
+          onEditPress={openEditProfile}
+          onAvatarPress={handleQuickAvatarUpload}
           onQrPress={() => onNavigate('bookingSuccess')}
           style={{ marginBottom: 16 }}
         />
 
         <VssIDInsuranceCard
           profile={patientProfile}
-          onDetailPress={() =>
-            Alert.alert(
-              'Chi tiết thẻ BHYT điện tử',
-              `Mã thẻ: ${patientProfile.bhytCode || 'Chưa cập nhật'}\nNơi ĐKKCB ban đầu: ${patientProfile.bhytHospital || 'Chưa cập nhật'}\nHạn thẻ: ${patientProfile.bhytExpiry || 'Chưa xác minh'}`
-            )
-          }
+          onDetailPress={openEditProfile}
           style={{ marginBottom: 18 }}
         />
 
         <SectionHeader
           title="Tổng quan điều trị"
-          actionText="Cập nhật 15 phút trước"
+          actionText="Xem bệnh án"
           onActionPress={() => onSwitchTab('records')}
         />
         {/* 2x2 Summary Stats Grid */}
@@ -1423,7 +1577,7 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
               Lịch hẹn sắp tới
             </Text>
             <Text style={styles.statBoxSub} numberOfLines={1}>
-              10:30 Thứ Năm (Nội thần kinh)
+              {upcomingCount > 0 ? 'Đã xác nhận lịch khám' : 'Chưa có lịch hẹn mới'}
             </Text>
           </TouchableOpacity>
 
@@ -1448,13 +1602,13 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
               Toa thuốc đang uống
             </Text>
             <Text style={styles.statBoxSub} numberOfLines={1}>
-              {totalDoses} cữ/ngày • Còn 5 ngày
+              {totalDoses} cữ/ngày • Theo dõi uống thuốc
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             activeOpacity={0.85}
-            onPress={() => onNavigate('labImagingResults')}
+            onPress={() => onSwitchTab('records')}
             style={[styles.statBox, SHADOWS.sm]}
           >
             <View style={styles.statBoxTop}>
@@ -1467,18 +1621,18 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
                 color={COLORS.textMuted}
               />
             </View>
-            <Text style={styles.statBigNum}>12</Text>
+            <Text style={styles.statBigNum}>{appointments.length}</Text>
             <Text style={styles.statBoxTitle} numberOfLines={1}>
               Hồ sơ bệnh án
             </Text>
             <Text style={styles.statBoxSub} numberOfLines={1}>
-              MRI, X-Quang & Huyết học
+              Lịch sử khám & Đơn thuốc
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             activeOpacity={0.85}
-            onPress={() => onNavigate('doctorDetail')}
+            onPress={() => onNavigate('familyProfiles')}
             style={[styles.statBox, SHADOWS.sm]}
           >
             <View style={styles.statBoxTop}>
@@ -1491,12 +1645,12 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
                 color={COLORS.textMuted}
               />
             </View>
-            <Text style={styles.statBigNum}>3</Text>
+            <Text style={styles.statBigNum}>{familyMembers.length + 1}</Text>
             <Text style={styles.statBoxTitle} numberOfLines={1}>
-              Bác sĩ phụ trách
+              Hồ sơ gia đình
             </Text>
             <Text style={styles.statBoxSub} numberOfLines={1}>
-              Chuyên khoa & Tư vấn AI
+              1 chủ hộ + {familyMembers.length} người thân
             </Text>
           </TouchableOpacity>
         </View>
@@ -1673,7 +1827,7 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
 
         <Text style={styles.versionFooter}>
           MediCare Plus Mobile App • v1.0.0 (Build 2026.11){'\n'}
-          Tiêu chuẩn an toàn dữ liệu y tế HL7/FHIR & Bộ Y Tế Việt Nam
+          {!CLOUD_MODE && 'Tiêu chuẩn an toàn dữ liệu y tế HL7/FHIR & Bộ Y Tế Việt Nam'}
         </Text>
       </ScrollView>
 
@@ -1683,6 +1837,243 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
         message="Bộ nhớ lưu trữ trên thiết bị (AsyncStorage) đã được làm mới."
         onDismiss={() => setResetToast(false)}
       />
+
+      <ToastBanner
+        visible={!!profileToast}
+        title="Cập nhật hồ sơ"
+        message={profileToast || ''}
+        onDismiss={() => setProfileToast(null)}
+      />
+
+      {/* Modal Chỉnh sửa hồ sơ cá nhân & BHYT */}
+      <Modal
+        visible={editProfileVisible}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setEditProfileVisible(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={styles.profileModalBackdrop}
+        >
+          <View style={[styles.profileModalSheet, SHADOWS.lg]}>
+            <View style={styles.profileModalHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.profileModalTitle}>Chỉnh sửa hồ sơ cá nhân</Text>
+                <Text style={styles.profileModalSub}>
+                  Cập nhật thông tin định danh và thẻ BHYT của bạn
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setEditProfileVisible(false)}
+                style={styles.profileModalCloseBtn}
+                accessibilityRole="button"
+                accessibilityLabel="Đóng"
+              >
+                <Ionicons name="close" size={20} color={COLORS.textPrimary} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={{ paddingBottom: 16 }}
+            >
+              {!!editError && (
+                <View style={styles.profileModalErrorBox}>
+                  <Ionicons name="alert-circle" size={16} color={COLORS.error} />
+                  <Text style={styles.profileModalErrorText}>{editError}</Text>
+                </View>
+              )}
+
+              {/* Avatar Upload Section */}
+              <View style={{ alignItems: 'center', marginBottom: 16 }}>
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={() => pickAvatarFromDevice((uri) => setEditAvatar(uri))}
+                  style={{ position: 'relative' }}
+                >
+                  <Image
+                    source={{ uri: editAvatar || patientProfile.avatar }}
+                    style={{
+                      width: 88,
+                      height: 88,
+                      borderRadius: 44,
+                      borderWidth: 3,
+                      borderColor: COLORS.primaryContainer,
+                      backgroundColor: COLORS.tintBlue,
+                    }}
+                  />
+                  <View
+                    style={{
+                      position: 'absolute',
+                      right: 0,
+                      bottom: 0,
+                      width: 28,
+                      height: 28,
+                      borderRadius: 14,
+                      backgroundColor: COLORS.primary,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderWidth: 2,
+                      borderColor: COLORS.surface,
+                    }}
+                  >
+                    <Ionicons name="camera" size={14} color="#FFFFFF" />
+                  </View>
+                </TouchableOpacity>
+                <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
+                  <AppButton
+                    title="Chọn ảnh từ máy"
+                    variant="tonal"
+                    size="sm"
+                    leftIcon="image-outline"
+                    fullWidth={false}
+                    onPress={() => pickAvatarFromDevice((uri) => setEditAvatar(uri))}
+                  />
+                  <AppButton
+                    title="Ảnh mặc định"
+                    variant="outline"
+                    size="sm"
+                    fullWidth={false}
+                    onPress={() => setEditAvatar(PATIENT_PROFILE.avatar)}
+                  />
+                </View>
+              </View>
+
+              <AppInput
+                label="Họ và tên *"
+                leftIcon="person-outline"
+                value={editName}
+                onChangeText={setEditName}
+                placeholder="Nguyễn Văn Vũ"
+              />
+              <AppInput
+                label="Số điện thoại"
+                leftIcon="call-outline"
+                value={editPhone}
+                onChangeText={setEditPhone}
+                placeholder="0912345678"
+                keyboardType="phone-pad"
+              />
+              <AppInput
+                label="Ngày sinh"
+                leftIcon="calendar-outline"
+                value={editDob}
+                onChangeText={setEditDob}
+                placeholder="15/06/1994"
+              />
+
+              <Text style={styles.profileModalFieldLabel}>Giới tính</Text>
+              <View style={styles.profileModalChipRow}>
+                {['Nam', 'Nữ', 'Khác'].map((g) => {
+                  const active = editGender === g;
+                  return (
+                    <TouchableOpacity
+                      key={g}
+                      onPress={() => setEditGender(g)}
+                      style={[
+                        styles.profileModalChip,
+                        active && styles.profileModalChipActive,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.profileModalChipText,
+                          active && styles.profileModalChipTextActive,
+                        ]}
+                      >
+                        {g}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              <Text style={styles.profileModalFieldLabel}>Nhóm máu</Text>
+              <View style={styles.profileModalChipRow}>
+                {['O+', 'A+', 'B+', 'AB+', 'O-', 'A-', 'B-', 'AB-'].map((bt) => {
+                  const active = editBloodType === bt;
+                  return (
+                    <TouchableOpacity
+                      key={bt}
+                      onPress={() => setEditBloodType(bt)}
+                      style={[
+                        styles.profileModalChip,
+                        active && styles.profileModalChipActive,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.profileModalChipText,
+                          active && styles.profileModalChipTextActive,
+                        ]}
+                      >
+                        {bt}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              <AppInput
+                label="Liên hệ khẩn cấp"
+                leftIcon="heart-outline"
+                value={editEmergency}
+                onChangeText={setEditEmergency}
+                placeholder="Nguyễn Thị Mai (Vợ - 0987 654 321)"
+              />
+
+              <Text style={[styles.profileModalFieldLabel, { marginTop: 8, color: COLORS.secondary }]}>
+                Thông tin Thẻ BHYT (VssID)
+              </Text>
+              <AppInput
+                label="Mã thẻ BHYT (VD: DN4 79 234 82390)"
+                leftIcon="shield-checkmark-outline"
+                value={editBhytCode}
+                onChangeText={setEditBhytCode}
+                placeholder="DN4 79 234 82390"
+                autoCapitalize="characters"
+              />
+              <AppInput
+                label="Nơi ĐKKCB ban đầu"
+                leftIcon="business-outline"
+                value={editBhytHospital}
+                onChangeText={setEditBhytHospital}
+                placeholder="BV Đại học Y Dược TP.HCM"
+              />
+              <AppInput
+                label="Thời hạn thẻ BHYT"
+                leftIcon="time-outline"
+                value={editBhytExpiry}
+                onChangeText={setEditBhytExpiry}
+                placeholder="31/12/2026"
+              />
+            </ScrollView>
+
+            <View style={styles.profileModalFooter}>
+              <AppButton
+                title="Hủy"
+                variant="outline"
+                size="md"
+                fullWidth={false}
+                style={{ flex: 1 }}
+                onPress={() => setEditProfileVisible(false)}
+              />
+              <AppButton
+                title={editSaving ? 'Đang lưu...' : 'Lưu hồ sơ'}
+                variant="primary"
+                size="md"
+                leftIcon="checkmark-circle-outline"
+                fullWidth={false}
+                style={{ flex: 1.4 }}
+                loading={editSaving}
+                onPress={handleSaveProfile}
+              />
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 };
@@ -1951,6 +2342,97 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
     textAlign: 'center',
     marginTop: 18,
+  },
+  profileModalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  profileModalSheet: {
+    backgroundColor: COLORS.surface,
+    borderTopLeftRadius: RADIUS.xl,
+    borderTopRightRadius: RADIUS.xl,
+    padding: SPACING.lg,
+    maxHeight: '90%',
+  },
+  profileModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+  },
+  profileModalTitle: {
+    fontSize: TYPOGRAPHY.size.lg,
+    fontWeight: '800',
+    color: COLORS.textPrimary,
+  },
+  profileModalSub: {
+    fontSize: TYPOGRAPHY.size.xs,
+    color: COLORS.textSecondary,
+    marginTop: 2,
+  },
+  profileModalCloseBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: COLORS.surfaceContainerLow,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  profileModalErrorBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: COLORS.errorSurface,
+    borderRadius: RADIUS.md,
+    padding: 10,
+    marginBottom: 12,
+  },
+  profileModalErrorText: {
+    flex: 1,
+    fontSize: TYPOGRAPHY.size.xs,
+    color: COLORS.error,
+    fontWeight: '600',
+  },
+  profileModalFieldLabel: {
+    fontSize: TYPOGRAPHY.size.xs,
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+    marginBottom: 8,
+    marginTop: 4,
+  },
+  profileModalChipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 14,
+  },
+  profileModalChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: RADIUS.full,
+    backgroundColor: COLORS.surfaceContainerLow,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  profileModalChipActive: {
+    backgroundColor: COLORS.tintBlue,
+    borderColor: COLORS.primary,
+  },
+  profileModalChipText: {
+    fontSize: TYPOGRAPHY.size.xs,
+    fontWeight: '700',
+    color: COLORS.textSecondary,
+  },
+  profileModalChipTextActive: {
+    color: COLORS.primary,
+  },
+  profileModalFooter: {
+    flexDirection: 'row',
+    gap: 10,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.divider,
   },
 });
 

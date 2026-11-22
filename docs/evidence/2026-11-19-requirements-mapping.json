@@ -1,0 +1,54 @@
+{
+  "sourceKind": "Summary of course requirements supplied by the user; not a signed approval or full original handout",
+  "course": "Quản trị Dự án Phần mềm, VKU",
+  "lecturer": "TS. Nguyễn Thanh Tuấn",
+  "workingFormat": "Word/XLSX per user; report Markdown/PDF removed",
+  "submissionFormat": {
+    "reports": "PDF",
+    "riskRegister": "04_Risk_Register_Evolution.xlsx",
+    "slides": "PDF, 8–10 slides"
+  },
+  "chapterCount": 7,
+  "reportPages": {
+    "min": 15,
+    "max": 25
+  },
+  "roles": [
+    "PM/Scrum Master",
+    "Technical Lead/System Architect",
+    "Backend Engineer",
+    "Frontend/Mobile Engineer",
+    "QA/Test Engineer"
+  ],
+  "teamSize": {
+    "min": 3,
+    "max": 5,
+    "actual": 4
+  },
+  "combinedRoles": "Nguyễn Từ Anh Nguyên: Frontend/Mobile và QA, 20% gộp",
+  "file07": {
+    "required": false,
+    "reason": "User explicitly confirmed optional and asked not to create",
+    "stakeholderEvidenceStillTrackedIn": "Chapter 7"
+  },
+  "rubric": {
+    "planning": 30,
+    "methodology": 20,
+    "execution": 30,
+    "presentation": 20,
+    "authenticityGate": "Pass/Fail; source states a maximum 5.0/10 if failed"
+  },
+  "submission": {
+    "oneDriveFolder": true,
+    "permission": "Anyone with the link can view",
+    "oneSubmission": true,
+    "submitted": false
+  },
+  "evidenceLimits": [
+    "No verified public HTTPS application URL or APK.",
+    "No verified stakeholder acceptance.",
+    "main protected:false at saved verification time.",
+    "Only one daily Board snapshot; no historical velocity/burndown.",
+    "CPM durations are declared assumptions, not measured work hours."
+  ]
+}

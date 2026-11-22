@@ -11,7 +11,12 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 let lastAutoSentCode = '';
 
 export function getBookingEmailConfig(
-  env: Record<string, string | undefined> = process.env
+  env: Record<string, string | undefined> = {
+    EXPO_PUBLIC_BOOKING_EMAIL_WEBHOOK_URL: process.env.EXPO_PUBLIC_BOOKING_EMAIL_WEBHOOK_URL,
+    EXPO_PUBLIC_EMAILJS_SERVICE_ID: process.env.EXPO_PUBLIC_EMAILJS_SERVICE_ID,
+    EXPO_PUBLIC_EMAILJS_TEMPLATE_ID: process.env.EXPO_PUBLIC_EMAILJS_TEMPLATE_ID,
+    EXPO_PUBLIC_EMAILJS_PUBLIC_KEY: process.env.EXPO_PUBLIC_EMAILJS_PUBLIC_KEY,
+  }
 ): BookingEmailConfig {
   return {
     webhookUrl: (env.EXPO_PUBLIC_BOOKING_EMAIL_WEBHOOK_URL || '').trim() || undefined,
@@ -195,13 +200,16 @@ export async function sendBookingConfirmationEmail(
     }
     let parsed: { ok?: boolean; error?: string } | null = null;
     try {
-      const text = await response.text();
-      if (text) parsed = JSON.parse(text);
+      parsed = JSON.parse(await response.text());
     } catch {
-      // Non-JSON 200 OK from webhook is acceptable
+      throw new Error('Dịch vụ email chưa xác nhận gửi thành công. Vui lòng thử lại.');
     }
-    if (parsed && parsed.ok === false) {
-      throw new Error(parsed.error || 'Webhook từ chối gửi email xác nhận.');
+    if (!parsed || parsed.ok !== true) {
+      throw new Error(
+        typeof parsed?.error === 'string' && parsed.error.trim()
+          ? parsed.error
+          : 'Dịch vụ email chưa xác nhận gửi thành công. Vui lòng thử lại.'
+      );
     }
     if (options?.isAutoSend) {
       lastAutoSentCode = bookingCode;

@@ -222,3 +222,14 @@ test('sendBookingConfirmationEmail sends escaped HTML ticket to webhook and reje
  assert.equal(sentUrl,'https://script.google.com/macros/s/test/exec');
  assert.equal(sentBody.booking_code,'MC-9087523588FE41F9B9356658097059FF');
 });
+
+test('webhook must explicitly confirm delivery and a failed acknowledgement remains retryable',async()=>{
+ const emailApi=vm.runInNewContext(clean(read('client/src/services/clinicEmail.ts'))+';({sendBookingConfirmationEmail})',{process:{env:{}}});
+ const ticket={code:'MC-ACK-QA',patientEmail:'qa@example.invalid',doctor:{name:'QA'}};
+ for(const response of ['<html>Script execution error</html>','', '{}', 'null', '[]', '{"ok":false,"error":"Quota exceeded"}', '{"ok":"true"}']) {
+  await assert.rejects(emailApi.sendBookingConfirmationEmail(ticket,{config:{webhookUrl:'https://qa.invalid'},isAutoSend:true,fetchImpl:async()=>({ok:true,status:200,text:async()=>response})}));
+ }
+ let retries=0;
+ const result=await emailApi.sendBookingConfirmationEmail(ticket,{config:{webhookUrl:'https://qa.invalid'},isAutoSend:true,fetchImpl:async()=>{retries++;return{ok:true,status:200,text:async()=>'{"ok":true}'};}});
+ assert.equal(retries,1);assert.equal(result.sent,true);
+});

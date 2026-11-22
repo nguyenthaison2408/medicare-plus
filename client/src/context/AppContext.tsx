@@ -27,6 +27,7 @@ import {
   fetchBhytConfigsCloud,
   upsertBhytConfigCloud,
   deleteBhytConfigCloud,
+  updateDoctorAvatarCloud,
   type DoctorScheduleItem,
   type DoctorShiftType,
   type BhytConfigItem,
@@ -103,6 +104,7 @@ export interface NewDoctorInput {
   feeNumeric: number;
   experienceYears: number;
   licenseCode: string;
+  avatar?: string;
 }
 
 export interface NewHospitalInput {
@@ -207,6 +209,7 @@ interface AppContextValue {
   doctors: DoctorItem[];
   addDoctor: (input: NewDoctorInput) => DoctorItem;
   approveDoctor: (doctorId: string) => void;
+  updateDoctorAvatar: (doctorId: string, avatarUrl: string) => Promise<void>;
   hospitals: HospitalItem[];
   addHospital: (input: NewHospitalInput) => Promise<HospitalItem>;
   refreshHospitalCatalog: () => Promise<void>;
@@ -503,6 +506,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
                       name: cd.name || existing.name,
                       specialty: cd.specialty || existing.specialty,
                       hospital: cd.hospital || existing.hospital,
+                      avatar: cd.avatar_url?.trim() || existing.avatar,
                     };
                   }
                   return {
@@ -570,6 +574,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
                   name: cd.name || existing.name,
                   specialty: cd.specialty || existing.specialty,
                   hospital: cd.hospital || existing.hospital,
+                  avatar: cd.avatar_url?.trim() || existing.avatar,
                 };
               }
               return {
@@ -1173,9 +1178,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
       feeNumeric: input.feeNumeric,
       bhytSupport: 'Hỗ trợ BHYT theo quy định',
       availableText: 'Chờ duyệt CCHN',
-      avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(
-        name
-      )}&background=E0EAFF&color=006194&size=200`,
+      avatar:
+        input.avatar?.trim() ||
+        `https://ui-avatars.com/api/?name=${encodeURIComponent(
+          name
+        )}&background=E0EAFF&color=006194&size=200`,
       verified: false,
       bio: `Mã chứng chỉ hành nghề: ${input.licenseCode.trim()}. Hồ sơ đang chờ quản trị viên xác thực.`,
       strengths: [input.specialty],
@@ -1191,6 +1198,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
           ? { ...d, verified: true, availableText: 'Lịch trống: Ngày mai' }
           : d
       )
+    );
+  };
+
+  const updateDoctorAvatar = async (doctorId: string, avatarUrl: string): Promise<void> => {
+    const cleanUrl = avatarUrl.trim();
+    if (!cleanUrl) {
+      throw new Error('Vui lòng chọn ảnh hoặc nhập đường dẫn ảnh bác sĩ.');
+    }
+    if (CLOUD_MODE) {
+      const expectedUser = cloudUserIdRef.current;
+      if (!expectedUser) throw new Error('Vui lòng đăng nhập lại.');
+      const savedUrl = await updateDoctorAvatarCloud(doctorId, cleanUrl);
+      if (cloudUserIdRef.current !== expectedUser) throw new Error('Phiên đăng nhập đã thay đổi.');
+      setDoctors((prev) =>
+        prev.map((d) => (d.id === doctorId ? { ...d, avatar: savedUrl } : d))
+      );
+      return;
+    }
+    setDoctors((prev) =>
+      prev.map((d) => (d.id === doctorId ? { ...d, avatar: cleanUrl } : d))
     );
   };
 
@@ -1603,6 +1630,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         doctors,
         addDoctor,
         approveDoctor,
+        updateDoctorAvatar,
         hospitals,
         addHospital,
         refreshHospitalCatalog,

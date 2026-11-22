@@ -598,7 +598,6 @@ export const FamilyProfilesScreen: React.FC<{
                   .filter(Boolean)
                   .join(' • ')}
               </Text>
-              </Text>
             </View>
           </View>
         </View>

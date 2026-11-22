@@ -41,6 +41,7 @@ try{
   for(const role of ['doctor','reception','admin']){await as(ids[role]);await check(role+' has no blanket family access',async()=>assert.equal((await db.query('select * from clinic_family_members')).rows.length,0));}
   await as(null);await check('anonymous family read denied',async()=>denied(()=>db.query('select * from clinic_family_members')));
   await as(ids.b);await check('cannot transfer family ownership',async()=>denied(()=>db.query('update clinic_family_members set owner_id=$1 where id=$2',[ids.a,family.id])));
+  await check('owner can update extended family member medical fields',async()=>{const updated=(await db.query("update clinic_family_members set gender='Nữ',phone='0912345678',blood_group='A+',allergies='Penicillin',note='Theo dõi định kỳ' where id=$1 returning gender,phone,blood_group,allergies,updated_at",[family.id])).rows[0];assert.equal(updated.gender,'Nữ');assert.equal(updated.phone,'0912345678');assert.equal(updated.blood_group,'A+');assert.equal(updated.allergies,'Penicillin');assert.ok(updated.updated_at);});
   await check('owner can edit and delete family member',async()=>{assert.equal((await db.query("update clinic_family_members set note='Owner edit' where id=$1 returning id",[family.id])).rows.length,1);assert.equal((await db.query('delete from clinic_family_members where id=$1 returning id',[family.id])).rows.length,1);});
  }
  if(tables.includes('clinic_medicine_cabinet')){
@@ -171,6 +172,20 @@ try{
    assert.equal((await db.query("update clinic_bhyt_configs set in_network_rate=100 where id='bhyt-cn' returning id")).rows.length,1);
    assert.equal((await db.query("delete from clinic_bhyt_configs where id='bhyt-cn' returning id")).rows.length,1);
   });
+ }
+ if(tables.includes('clinic_consult_messages')){
+  await as(ids.a);
+  const msg=(await db.query("insert into clinic_consult_messages(patient_id,doctor_id,sender_id,sender_role,sender_name,content) values($1,'doc-1',$1,'patient','Test a','Bác sĩ ơi em bị đau đầu') returning id",[ids.a])).rows[0];
+  await check('patient can send and read own consultation message',async()=>assert.equal((await db.query('select id from clinic_consult_messages')).rows.length,1));
+  await as(ids.b);
+  await check('another patient cannot read consultation messages',async()=>assert.equal((await db.query('select id from clinic_consult_messages')).rows.length,0));
+  await check('patient cannot spoof sender_id or patient_id in consultation messages',async()=>denied(()=>db.query("insert into clinic_consult_messages(patient_id,doctor_id,sender_id,sender_role,sender_name,content) values($1,'doc-1',$2,'patient','Spoof','Fake')",[ids.a,ids.b])));
+  await as(ids.doctor);
+  await check('assigned doctor can read and reply to consultation thread',async()=>{assert.equal((await db.query('select id from clinic_consult_messages')).rows.length,1);const reply=(await db.query("insert into clinic_consult_messages(patient_id,doctor_id,sender_id,sender_role,sender_name,content) values($1,'doc-1',$2,'doctor','BS. Trang','Chào bạn, bác sĩ đã nhận được thông tin') returning id",[ids.a,ids.doctor])).rows[0];assert.ok(reply.id);});
+  await check('doctor cannot send message on behalf of another doctor_id',async()=>denied(()=>db.query("insert into clinic_consult_messages(patient_id,doctor_id,sender_id,sender_role,sender_name,content) values($1,'doc-2',$2,'doctor','BS. Trang','Wrong doc')",[ids.a,ids.doctor])));
+  await as(ids.a);
+  await check('patient receives doctor reply in thread',async()=>assert.equal((await db.query('select id from clinic_consult_messages')).rows.length,2));
+  assert.ok(msg.id);
  }
  console.log(count+' PostgreSQL extension checks passed.');
 }finally{await db.close();}

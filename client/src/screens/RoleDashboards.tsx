@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { CameraView, useCameraPermissions } from 'expo-camera';
 import { COLORS, GRADIENTS, LAYOUT, RADIUS, SHADOWS, SPACING, TYPOGRAPHY } from '../theme';
 import {
   DOCTORS,
@@ -28,7 +29,13 @@ import {
   type BhytConfigItem,
 } from '../services/clinicAdmin';
 import { CLOUD_MODE } from '../services/supabaseClient';
-import { ClinicStaffScreen } from './ClinicStaffScreen';
+import {
+  fetchConsultMessagesCloud,
+  sendConsultMessageCloud,
+  subscribeConsultMessagesCloud,
+  type ConsultMessageItem,
+} from '../services/clinicChat';
+import { ClinicStaffScreen, extractBookingCode } from './ClinicStaffScreen';
 import {
   AppHeader,
   AppButton,
@@ -43,6 +50,7 @@ import {
   WeeklyLoadChart,
   SegmentBreakdownBar,
   SpecialtyDistributionChart,
+  ChatBottomInputBar,
   getAppointmentDateKey,
   formatVnd,
 } from '../components';
@@ -112,6 +120,7 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({
   const [bhytInRate, setBhytInRate] = useState('80');
   const [bhytOutRate, setBhytOutRate] = useState('40');
   const [bhytSaving, setBhytSaving] = useState(false);
+  const [bhytError, setBhytError] = useState('');
 
   // Biểu mẫu thêm bác sĩ
   const [showAddDoc, setShowAddDoc] = useState(false);
@@ -1337,18 +1346,35 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({
   );
 
   const handleSaveBhytRule = async () => {
+    setBhytError('');
+    const trimmedPrefix = bhytPrefix.trim().toUpperCase();
+    const trimmedGroup = bhytGroupName.trim();
+    if (!trimmedPrefix || trimmedPrefix.length < 2) {
+      const msg = 'Vui lòng nhập mã đầu thẻ BHYT hợp lệ (tối thiểu 2 ký tự, VD: TE, HT, DN).';
+      setBhytError(msg);
+      Alert.alert('Thiếu thông tin BHYT', msg);
+      return;
+    }
+    if (!trimmedGroup || trimmedGroup.length < 2) {
+      const msg = 'Vui lòng nhập tên nhóm đối tượng hưởng BHYT.';
+      setBhytError(msg);
+      Alert.alert('Thiếu thông tin BHYT', msg);
+      return;
+    }
+    const inRate = Number(bhytInRate);
+    const outRate = Number(bhytOutRate);
+    if (Number.isNaN(inRate) || inRate < 0 || inRate > 100 || Number.isNaN(outRate) || outRate < 0 || outRate > 100) {
+      const msg = 'Mức hưởng BHYT phải nằm trong khoảng 0 đến 100%.';
+      setBhytError(msg);
+      Alert.alert('Tỷ lệ không hợp lệ', msg);
+      return;
+    }
     setBhytSaving(true);
     try {
-      const inRate = Number(bhytInRate);
-      const outRate = Number(bhytOutRate);
-      if (Number.isNaN(inRate) || inRate < 0 || inRate > 100 || Number.isNaN(outRate) || outRate < 0 || outRate > 100) {
-        Alert.alert('Tỷ lệ không hợp lệ', 'Mức hưởng BHYT phải nằm trong khoảng 0 đến 100%.');
-        return;
-      }
       await saveBhytConfig({
-        id: bhytEditId || `bhyt-${bhytPrefix.trim().toLowerCase()}-${Date.now()}`,
-        prefixCode: bhytPrefix,
-        groupName: bhytGroupName,
+        id: bhytEditId || `bhyt-${trimmedPrefix.toLowerCase()}-${Date.now()}`,
+        prefixCode: trimmedPrefix,
+        groupName: trimmedGroup,
         inNetworkRate: inRate,
         outNetworkRate: outRate,
         active: true,
@@ -1358,9 +1384,12 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({
       setBhytGroupName('');
       setBhytInRate('80');
       setBhytOutRate('40');
+      setBhytError('');
       setAdminToast('Đã lưu chính sách mức hưởng BHYT.');
     } catch (err) {
-      Alert.alert('Lỗi cấu hình BHYT', err instanceof Error ? err.message : 'Không thể lưu cấu hình BHYT.');
+      const msg = err instanceof Error ? err.message : 'Không thể lưu cấu hình BHYT.';
+      setBhytError(msg);
+      Alert.alert('Lỗi cấu hình BHYT', msg);
     } finally {
       setBhytSaving(false);
     }
@@ -1484,6 +1513,25 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({
             />
           </View>
         </View>
+        {bhytError ? (
+          <View
+            accessibilityRole="alert"
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 6,
+              backgroundColor: COLORS.errorContainer,
+              borderRadius: RADIUS.sm,
+              padding: 10,
+              marginBottom: 10,
+            }}
+          >
+            <Ionicons name="alert-circle" size={16} color={COLORS.error} />
+            <Text style={{ flex: 1, fontSize: TYPOGRAPHY.size.xs, color: COLORS.error, fontWeight: '600' }}>
+              {bhytError}
+            </Text>
+          </View>
+        ) : null}
         <View style={{ flexDirection: 'row', gap: 8 }}>
           {bhytEditId && (
             <AppButton
@@ -1626,7 +1674,7 @@ export interface DoctorDashboardScreenProps {
   onNavigate?: (routeKey: string) => void;
 }
 
-type DoctorTab = 'schedule' | 'patients' | 'prescribe' | 'profile';
+type DoctorTab = 'schedule' | 'patients' | 'prescribe' | 'chat' | 'profile';
 
 export const DoctorDashboardScreen: React.FC<DoctorDashboardScreenProps> = ({
   onLogout,
@@ -1636,6 +1684,7 @@ export const DoctorDashboardScreen: React.FC<DoctorDashboardScreenProps> = ({
     appointments,
     completeAppointment,
     checkInAppointment,
+    checkInByCode,
     doctors,
     doctorSchedules,
     prescriptions,
@@ -1644,6 +1693,38 @@ export const DoctorDashboardScreen: React.FC<DoctorDashboardScreenProps> = ({
     setDiagnosisNote,
     cloudProfile,
   } = useAppContext();
+
+  const [cameraPermission, requestCameraPermission] = useCameraPermissions();
+  const [doctorCameraVisible, setDoctorCameraVisible] = useState(false);
+  const [doctorCameraFacing, setDoctorCameraFacing] = useState<'front' | 'back'>(Platform.OS === 'web' ? 'front' : 'back');
+  const [manualCodeInput, setManualCodeInput] = useState('');
+  const [showManualCodeInput, setShowManualCodeInput] = useState(false);
+  const [isCheckingInCode, setIsCheckingInCode] = useState(false);
+  const [checkInError, setCheckInError] = useState('');
+  const doctorScanHandled = useRef(false);
+
+  const handleDoctorCheckIn = async (code: string) => {
+    if (!code) return;
+    setIsCheckingInCode(true);
+    setCheckInError('');
+    try {
+      const success = await checkInByCode(code);
+      if (success) {
+        setDoctorCameraVisible(false);
+        setShowManualCodeInput(false);
+        setManualCodeInput('');
+        setCheckInError('');
+        setToastMessage(`Đã tiếp đón bệnh nhân (Mã: ${code}) thành công!`);
+        Alert.alert('Tiếp đón thành công', `Bệnh nhân với mã ${code} đã được đánh dấu ĐÃ CÓ MẶT.`);
+      } else {
+        setCheckInError(
+          `Không thể tiếp đón mã "${code}". Vui lòng kiểm tra lại mã phiếu hẹn hoặc ngày khám hôm nay.`
+        );
+      }
+    } finally {
+      setIsCheckingInCode(false);
+    }
+  };
 
   // Xác định bác sĩ đang làm việc từ Supabase Profile hoặc danh mục
   const doctor = (cloudProfile?.doctor_id && doctors.find((d) => d.id === cloudProfile.doctor_id))
@@ -1669,6 +1750,33 @@ export const DoctorDashboardScreen: React.FC<DoctorDashboardScreenProps> = ({
   const [checkingId, setCheckingId] = useState<string | null>(null);
   const [queueStatuses, setQueueStatuses] = useState<Record<string, string>>({});
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [chatMessages, setChatMessages] = useState<ConsultMessageItem[]>([]);
+  const [activeChatPatientId, setActiveChatPatientId] = useState<string | null>(null);
+  const [chatSearchQuery, setChatSearchQuery] = useState('');
+  const [chatDraft, setChatDraft] = useState('');
+  const [chatSending, setChatSending] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    const scope = { doctorId: doctor.id };
+    const refreshChat = async () => {
+      try {
+        const rows = await fetchConsultMessagesCloud(scope);
+        if (!active) return;
+        setChatMessages(rows);
+      } catch {
+        // ignore background chat poll errors
+      }
+    };
+    void refreshChat();
+    const unsub = subscribeConsultMessagesCloud(() => {
+      void refreshChat();
+    }, scope);
+    return () => {
+      active = false;
+      unsub();
+    };
+  }, [doctor.id]);
 
   // Lọc lịch hẹn của chính bác sĩ này từ Supabase database
   const doctorAppointments = appointments.filter(
@@ -1740,7 +1848,126 @@ export const DoctorDashboardScreen: React.FC<DoctorDashboardScreenProps> = ({
       <SectionHeader
         title="Hàng đợi bệnh nhân hôm nay"
         subtitle={`Đồng bộ trực tiếp từ cơ sở dữ liệu Supabase • ${doctor.hospital}`}
+        actionText="Phòng Chat Tư vấn"
+        onActionPress={() => setActiveTab('chat')}
       />
+
+      {/* Doctor Quick QR Scanner & Manual Check-in */}
+      <View style={[styles.card, SHADOWS.sm, { marginBottom: 12 }]}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+          <View style={{ flex: 1, minWidth: 180 }}>
+            <Text style={styles.docName}>Tiếp đón bệnh nhân vào khám</Text>
+            <Text style={styles.docSub}>Quét mã QR từ điện thoại bệnh nhân hoặc nhập mã phiếu hẹn</Text>
+          </View>
+          <View style={{ flexDirection: 'row', gap: 6 }}>
+            <AppButton
+              title={doctorCameraVisible ? 'Tắt máy ảnh' : 'Quét QR'}
+              variant="primary"
+              size="sm"
+              leftIcon="qr-code-outline"
+              fullWidth={false}
+              onPress={async () => {
+                if (doctorCameraVisible) {
+                  setDoctorCameraVisible(false);
+                  return;
+                }
+                try {
+                  const perm = cameraPermission?.granted ? cameraPermission : await requestCameraPermission();
+                  if (!perm.granted) {
+                    Alert.alert('Quyền máy ảnh', 'Vui lòng cấp quyền camera hoặc nhập mã phiếu hẹn trực tiếp.');
+                    setShowManualCodeInput(true);
+                    return;
+                  }
+                  doctorScanHandled.current = false;
+                  setDoctorCameraVisible(true);
+                } catch {
+                  Alert.alert('Máy ảnh', 'Không khởi động được camera. Vui lòng nhập mã phiếu hẹn.');
+                  setShowManualCodeInput(true);
+                }
+              }}
+            />
+            <AppButton
+              title="Nhập mã"
+              variant="outline"
+              size="sm"
+              leftIcon="keypad-outline"
+              fullWidth={false}
+              onPress={() => setShowManualCodeInput(prev => !prev)}
+            />
+          </View>
+        </View>
+
+        {doctorCameraVisible && (
+          <View style={{ marginTop: 12, gap: 8 }}>
+            <CameraView
+              style={{ height: 260, borderRadius: RADIUS.md, overflow: 'hidden' }}
+              facing={doctorCameraFacing}
+              barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
+              onMountError={() => {
+                setDoctorCameraVisible(false);
+                Alert.alert('Lỗi camera', 'Không thể mở luồng camera. Bạn có thể nhập mã phiếu hẹn trực tiếp bên dưới.');
+                setShowManualCodeInput(true);
+              }}
+              onBarcodeScanned={({ data }) => {
+                if (doctorScanHandled.current) return;
+                doctorScanHandled.current = true;
+                const parsed = extractBookingCode(data);
+                if (!parsed) {
+                  Alert.alert('Mã không hợp lệ', `Mã QR không đúng định dạng (${(data || '').slice(0, 24)}...).`);
+                  doctorScanHandled.current = false;
+                  return;
+                }
+                void handleDoctorCheckIn(parsed);
+              }}
+            />
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 8 }}>
+              <AppButton
+                title={`Đổi camera (${doctorCameraFacing === 'back' ? 'Sau' : 'Trước'})`}
+                variant="tonal"
+                size="sm"
+                fullWidth={false}
+                style={{ flex: 1 }}
+                onPress={() => setDoctorCameraFacing(prev => prev === 'back' ? 'front' : 'back')}
+              />
+              <AppButton
+                title="Đóng camera"
+                variant="outline"
+                size="sm"
+                fullWidth={false}
+                style={{ flex: 1 }}
+                onPress={() => setDoctorCameraVisible(false)}
+              />
+            </View>
+          </View>
+        )}
+
+        {showManualCodeInput && (
+          <View style={{ marginTop: 12, gap: 8, paddingTop: 12, borderTopWidth: 1, borderTopColor: COLORS.border }}>
+            <AppInput
+              label="Nhập mã phiếu hẹn bệnh nhân"
+              placeholder="MC-..."
+              value={manualCodeInput}
+              onChangeText={(txt) => {
+                setManualCodeInput(txt);
+                if (checkInError) setCheckInError('');
+              }}
+              autoCapitalize="characters"
+              error={checkInError}
+            />
+            <AppButton
+              title="Xác nhận tiếp đón"
+              variant="primary"
+              size="sm"
+              loading={isCheckingInCode}
+              disabled={!manualCodeInput.trim() || isCheckingInCode}
+              onPress={() => {
+                const parsed = extractBookingCode(manualCodeInput) || manualCodeInput.trim();
+                void handleDoctorCheckIn(parsed);
+              }}
+            />
+          </View>
+        )}
+      </View>
 
       {todayAppointments.length === 0 ? (
         <AnimatedEntry delay={100} direction="up">
@@ -1812,6 +2039,18 @@ export const DoctorDashboardScreen: React.FC<DoctorDashboardScreenProps> = ({
                   onPress={() => {
                     setSelectedPatientApt(pt);
                     setActiveTab('prescribe');
+                  }}
+                />
+                <AppButton
+                  title="Chat"
+                  variant="tonal"
+                  size="sm"
+                  leftIcon="chatbubbles-outline"
+                  fullWidth={false}
+                  onPress={() => {
+                    setSelectedPatientApt(pt);
+                    setActiveChatPatientId(`apt-${pt.id}`);
+                    setActiveTab('chat');
                   }}
                 />
               </View>
@@ -2021,6 +2260,755 @@ export const DoctorDashboardScreen: React.FC<DoctorDashboardScreenProps> = ({
     </KeyboardAvoidingView>
   );
 
+  interface MessengerThread {
+    patientId: string;
+    patientName: string;
+    initials: string;
+    subtitle: string;
+    lastMessageText: string;
+    lastMessageTime: string;
+    lastSenderRole: 'patient' | 'doctor' | 'admin' | 'system';
+    unreadCount: number;
+    messages: ConsultMessageItem[];
+    appointment?: AppointmentItem;
+    sortTimestamp: string;
+  }
+
+  const getInitials = (fullName: string) => {
+    const parts = (fullName || 'BN').trim().split(/\s+/);
+    if (parts.length >= 2) {
+      return `${parts[parts.length - 2][0] || ''}${parts[parts.length - 1][0] || ''}`.toUpperCase();
+    }
+    return (fullName || 'BN').slice(0, 2).toUpperCase();
+  };
+
+  const messengerThreads: MessengerThread[] = (() => {
+    const map = new Map<string, MessengerThread>();
+
+    // 1. Gom các cuộc hội thoại từ tin nhắn thực tế (clinic_consult_messages)
+    for (const msg of chatMessages) {
+      const pid = msg.patientId || 'unknown-patient';
+      const existing = map.get(pid);
+      const inferredName =
+        msg.patientName ||
+        (msg.senderRole === 'patient' ? msg.senderName : existing?.patientName) ||
+        `Bệnh nhân #${pid.slice(0, 6).toUpperCase()}`;
+      const nextMessages = existing ? [...existing.messages, msg] : [msg];
+      const unreadCount =
+        (existing?.unreadCount || 0) + (msg.senderRole === 'patient' ? 1 : 0);
+      map.set(pid, {
+        patientId: pid,
+        patientName: inferredName,
+        initials: getInitials(inferredName),
+        subtitle: existing?.subtitle || 'Tư vấn trực tuyến qua MediCare Plus',
+        lastMessageText: msg.text,
+        lastMessageTime: msg.time,
+        lastSenderRole: msg.senderRole,
+        unreadCount: msg.senderRole === 'doctor' ? 0 : unreadCount,
+        messages: nextMessages,
+        appointment: existing?.appointment,
+        sortTimestamp: msg.createdAt,
+      });
+    }
+
+    // 2. Ghép thêm các bệnh nhân có lịch khám với bác sĩ này để bác sĩ chủ động nhắn tin
+    for (const apt of doctorAppointments) {
+      const pName = (apt.patientName || 'Bệnh nhân').trim();
+      const realPatientId = apt.patientId?.trim();
+      const matchedEntry = Array.from(map.values()).find(
+        (t) =>
+          (realPatientId && t.patientId === realPatientId) ||
+          t.patientName.trim().toLowerCase() === pName.toLowerCase() ||
+          t.patientId === `apt-${apt.id}`
+      );
+      if (matchedEntry) {
+        matchedEntry.appointment = matchedEntry.appointment || apt;
+        matchedEntry.subtitle = `Mã phiếu: ${apt.code}${apt.patientPhone ? ` • SĐT: ${apt.patientPhone}` : ''}`;
+      } else if (realPatientId) {
+        map.set(realPatientId, {
+          patientId: realPatientId,
+          patientName: pName,
+          initials: getInitials(pName),
+          subtitle: `Mã phiếu: ${apt.code}${apt.patientPhone ? ` • SĐT: ${apt.patientPhone}` : ''}`,
+          lastMessageText: apt.symptoms
+            ? `Triệu chứng đặt khám: ${apt.symptoms}`
+            : 'Đã đặt lịch khám • Nhấn để nhắn tin tư vấn',
+          lastMessageTime: apt.timeRange?.split(',')[0] || 'Lịch hẹn',
+          lastSenderRole: 'system',
+          unreadCount: apt.mode === 'video' ? 1 : 0,
+          messages: [],
+          appointment: apt,
+          sortTimestamp: `0000-${apt.id}`,
+        });
+      }
+    }
+
+    return Array.from(map.values()).sort((a, b) =>
+      b.sortTimestamp.localeCompare(a.sortTimestamp)
+    );
+  })();
+
+  const unreadThreadCount = messengerThreads.filter(
+    (t) => t.lastSenderRole === 'patient' || t.unreadCount > 0
+  ).length;
+
+  const filteredThreads = messengerThreads.filter((t) => {
+    const q = chatSearchQuery.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      t.patientName.toLowerCase().includes(q) ||
+      t.lastMessageText.toLowerCase().includes(q) ||
+      t.subtitle.toLowerCase().includes(q)
+    );
+  });
+
+  const activeThread =
+    messengerThreads.find((t) => t.patientId === activeChatPatientId) || null;
+
+  const handleDoctorSendChat = async (customText?: string) => {
+    const content = (customText ?? chatDraft).trim();
+    if (!content || !activeThread || chatSending) return;
+    setChatSending(true);
+    try {
+      const saved = await sendConsultMessageCloud({
+        doctorId: doctor.id,
+        patientId: activeThread.patientId,
+        patientName: activeThread.patientName,
+        appointmentId: activeThread.appointment?.id || null,
+        content,
+        senderRole: 'doctor',
+        senderName: doctor.name,
+      });
+      setChatMessages((prev) =>
+        prev.some((m) => m.id === saved.id) ? prev : [...prev, saved]
+      );
+      if (!customText) setChatDraft('');
+    } catch (err) {
+      setToastMessage(
+        err instanceof Error ? err.message : 'Không thể gửi tin nhắn tư vấn.'
+      );
+    } finally {
+      setChatSending(false);
+    }
+  };
+
+  const renderDoctorChat = () => {
+    // CHI TIẾT CUỘC TRÒ CHUYỆN (MESSENGER CONVERSATION VIEW)
+    if (activeThread) {
+      return (
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          {/* Messenger Top Bar */}
+          <View
+            style={[
+              styles.card,
+              SHADOWS.sm,
+              {
+                marginHorizontal: SPACING.md,
+                marginTop: SPACING.sm,
+                marginBottom: 6,
+                paddingVertical: 10,
+                paddingHorizontal: 12,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 10,
+              },
+            ]}
+          >
+            <TouchableOpacity
+              onPress={() => setActiveChatPatientId(null)}
+              accessibilityRole="button"
+              accessibilityLabel="Quay lại danh sách hộp thư"
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                paddingVertical: 6,
+                paddingRight: 8,
+              }}
+            >
+              <Ionicons name="arrow-back" size={20} color={COLORS.primary} />
+            </TouchableOpacity>
+
+            <View style={{ position: 'relative' }}>
+              <View
+                style={{
+                  width: 42,
+                  height: 42,
+                  borderRadius: 21,
+                  backgroundColor: COLORS.tintBlue,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Text
+                  style={{
+                    color: COLORS.primary,
+                    fontWeight: '800',
+                    fontSize: 15,
+                  }}
+                >
+                  {activeThread.initials}
+                </Text>
+              </View>
+              <View
+                style={{
+                  position: 'absolute',
+                  bottom: 0,
+                  right: 0,
+                  width: 12,
+                  height: 12,
+                  borderRadius: 6,
+                  backgroundColor: '#22C55E',
+                  borderWidth: 2,
+                  borderColor: COLORS.surface,
+                }}
+              />
+            </View>
+
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={styles.docName} numberOfLines={1}>
+                {activeThread.patientName}
+              </Text>
+              <Text style={styles.docSub} numberOfLines={1}>
+                {activeThread.subtitle}
+              </Text>
+            </View>
+
+            {activeThread.appointment ? (
+              <AppButton
+                title="Kê đơn"
+                variant="tonal"
+                size="sm"
+                leftIcon="medkit-outline"
+                fullWidth={false}
+                onPress={() => {
+                  setSelectedPatientApt(activeThread.appointment!);
+                  setActiveTab('prescribe');
+                }}
+              />
+            ) : null}
+          </View>
+
+          {/* Messages Scroll Area */}
+          <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={styles.scrollPad}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            {activeThread.appointment?.symptoms ? (
+              <View style={[styles.symptomBox, { marginBottom: 14 }]}>
+                <Text style={styles.symptomLabel}>
+                  Thông tin ca tư vấn • {activeThread.appointment.code}:
+                </Text>
+                <Text style={styles.symptomText}>
+                  {activeThread.appointment.symptoms}
+                </Text>
+              </View>
+            ) : null}
+
+            {activeThread.messages.length === 0 ? (
+              <View
+                style={[
+                  styles.card,
+                  SHADOWS.sm,
+                  { alignItems: 'center', paddingVertical: 24 },
+                ]}
+              >
+                <Ionicons
+                  name="chatbubble-ellipses-outline"
+                  size={36}
+                  color={COLORS.primary}
+                />
+                <Text
+                  style={[
+                    styles.docName,
+                    { marginTop: 8, textAlign: 'center' },
+                  ]}
+                >
+                  Bắt đầu tư vấn với {activeThread.patientName}
+                </Text>
+                <Text
+                  style={[
+                    styles.docSub,
+                    { textAlign: 'center', marginTop: 4 },
+                  ]}
+                >
+                  Chọn một mẫu câu phản hồi nhanh bên dưới hoặc gõ tin nhắn để gửi trực tiếp tới ứng dụng của bệnh nhân.
+                </Text>
+              </View>
+            ) : (
+              activeThread.messages.map((msg) => {
+                const isDoctorMsg = msg.senderRole === 'doctor';
+                return (
+                  <View
+                    key={msg.id}
+                    style={{
+                      flexDirection: 'row',
+                      justifyContent: isDoctorMsg ? 'flex-end' : 'flex-start',
+                      alignItems: 'flex-end',
+                      marginBottom: 12,
+                      gap: 8,
+                    }}
+                  >
+                    {!isDoctorMsg ? (
+                      <View
+                        style={{
+                          width: 32,
+                          height: 32,
+                          borderRadius: 16,
+                          backgroundColor: COLORS.tintBlue,
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        <Text
+                          style={{
+                            color: COLORS.primary,
+                            fontWeight: '800',
+                            fontSize: 12,
+                          }}
+                        >
+                          {activeThread.initials}
+                        </Text>
+                      </View>
+                    ) : null}
+
+                    <View
+                      style={{
+                        maxWidth: '78%',
+                        paddingHorizontal: 14,
+                        paddingVertical: 10,
+                        borderRadius: 18,
+                        borderBottomRightRadius: isDoctorMsg ? 4 : 18,
+                        borderBottomLeftRadius: isDoctorMsg ? 18 : 4,
+                        backgroundColor: isDoctorMsg
+                          ? COLORS.primary
+                          : COLORS.surface,
+                        borderWidth: isDoctorMsg ? 0 : 1,
+                        borderColor: COLORS.border,
+                      }}
+                    >
+                      {!isDoctorMsg ? (
+                        <Text
+                          style={{
+                            fontSize: 11,
+                            fontWeight: '700',
+                            color: COLORS.primary,
+                            marginBottom: 2,
+                          }}
+                        >
+                          {activeThread.patientName}
+                        </Text>
+                      ) : null}
+                      <Text
+                        style={{
+                          fontSize: 14,
+                          lineHeight: 20,
+                          color: isDoctorMsg ? '#FFFFFF' : COLORS.textPrimary,
+                        }}
+                      >
+                        {msg.text}
+                      </Text>
+                      <Text
+                        style={{
+                          fontSize: 10,
+                          marginTop: 4,
+                          alignSelf: 'flex-end',
+                          color: isDoctorMsg
+                            ? 'rgba(255,255,255,0.82)'
+                            : COLORS.textMuted,
+                        }}
+                      >
+                        {msg.time} {isDoctorMsg ? '• Đã gửi' : ''}
+                      </Text>
+                    </View>
+                  </View>
+                );
+              })
+            )}
+
+            {/* Quick Reply Chips for Doctor */}
+            <Text
+              style={[
+                styles.docSub,
+                { fontWeight: '700', marginTop: 8, marginBottom: 8 },
+              ]}
+            >
+              PHẢN HỒI NHANH CỦA BÁC SĨ:
+            </Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+              {[
+                'Chào bạn, bác sĩ đã nhận được thông tin và đang xem hồ sơ của bạn.',
+                'Bạn nhớ uống thuốc đúng liều, nghỉ ngơi và theo dõi thêm nhé!',
+                'Nếu triệu chứng không giảm, bạn đặt lịch đến viện để bác sĩ khám trực tiếp nhé.',
+              ].map((quickReply) => (
+                <TouchableOpacity
+                  key={quickReply}
+                  onPress={() => {
+                    void handleDoctorSendChat(quickReply);
+                  }}
+                  style={{
+                    paddingHorizontal: 12,
+                    paddingVertical: 8,
+                    borderRadius: 16,
+                    backgroundColor: COLORS.tintBlue,
+                    borderWidth: 1,
+                    borderColor: COLORS.border,
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      color: COLORS.primary,
+                      fontWeight: '600',
+                    }}
+                  >
+                    {quickReply}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </ScrollView>
+
+          <ChatBottomInputBar
+            value={chatDraft}
+            onChangeText={setChatDraft}
+            onSend={() => {
+              void handleDoctorSendChat();
+            }}
+          />
+        </KeyboardAvoidingView>
+      );
+    }
+
+    // DANH SÁCH HỘP THƯ BỆNH NHÂN (MESSENGER INBOX LIST VIEW)
+    return (
+      <ScrollView
+        contentContainerStyle={styles.scrollPad}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Messenger Header Banner */}
+        <LinearGradient
+          colors={GRADIENTS.heroCard}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[styles.heroBanner, SHADOWS.md]}
+        >
+          <View style={styles.heroTop}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <View style={{ position: 'relative' }}>
+                <Image
+                  source={{ uri: doctor.avatar }}
+                  style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: 22,
+                    borderWidth: 2,
+                    borderColor: '#FFFFFF',
+                  }}
+                />
+                <View
+                  style={{
+                    position: 'absolute',
+                    bottom: 0,
+                    right: 0,
+                    width: 12,
+                    height: 12,
+                    borderRadius: 6,
+                    backgroundColor: '#22C55E',
+                    borderWidth: 2,
+                    borderColor: '#FFFFFF',
+                  }}
+                />
+              </View>
+              <View>
+                <Text style={styles.heroName}>Phòng Chat Tư Vấn</Text>
+                <Text style={styles.heroEmail}>
+                  {doctor.name} • Đồng bộ Realtime
+                </Text>
+              </View>
+            </View>
+            <Badge
+              label={
+                unreadThreadCount > 0
+                  ? `${unreadThreadCount} tin mới`
+                  : `${messengerThreads.length} hội thoại`
+              }
+              variant="teal"
+              showDot
+            />
+          </View>
+        </LinearGradient>
+
+        {/* Messenger Search Bar */}
+        <AppInput
+          label="Tìm kiếm hộp thư bệnh nhân"
+          leftIcon="search-outline"
+          placeholder="Nhập tên bệnh nhân, mã lịch hẹn hoặc nội dung tin nhắn..."
+          value={chatSearchQuery}
+          onChangeText={setChatSearchQuery}
+        />
+
+        {/* Messenger Active Now Strip (Bệnh nhân đang kết nối) */}
+        {messengerThreads.length > 0 ? (
+          <View style={{ marginBottom: 16 }}>
+            <Text
+              style={[
+                styles.docSub,
+                { fontWeight: '700', marginBottom: 10 },
+              ]}
+            >
+              ĐANG KẾT NỐI ({messengerThreads.length} BỆNH NHÂN)
+            </Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View style={{ flexDirection: 'row', gap: 14 }}>
+                {messengerThreads.map((thread) => {
+                  const hasUnread = thread.lastSenderRole === 'patient';
+                  return (
+                    <TouchableOpacity
+                      key={`story-${thread.patientId}`}
+                      onPress={() => setActiveChatPatientId(thread.patientId)}
+                      style={{ alignItems: 'center', width: 68 }}
+                    >
+                      <View style={{ position: 'relative' }}>
+                        <View
+                          style={{
+                            width: 54,
+                            height: 54,
+                            borderRadius: 27,
+                            backgroundColor: hasUnread
+                              ? COLORS.primary
+                              : COLORS.tintBlue,
+                            borderWidth: hasUnread ? 2.5 : 1.5,
+                            borderColor: hasUnread
+                              ? '#38BDF8'
+                              : COLORS.border,
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                        >
+                          <Text
+                            style={{
+                              color: hasUnread ? '#FFFFFF' : COLORS.primary,
+                              fontWeight: '800',
+                              fontSize: 16,
+                            }}
+                          >
+                            {thread.initials}
+                          </Text>
+                        </View>
+                        <View
+                          style={{
+                            position: 'absolute',
+                            bottom: 1,
+                            right: 1,
+                            width: 14,
+                            height: 14,
+                            borderRadius: 7,
+                            backgroundColor: '#22C55E',
+                            borderWidth: 2,
+                            borderColor: COLORS.surface,
+                          }}
+                        />
+                      </View>
+                      <Text
+                        style={{
+                          fontSize: 11,
+                          fontWeight: hasUnread ? '800' : '600',
+                          color: COLORS.textPrimary,
+                          marginTop: 5,
+                          textAlign: 'center',
+                        }}
+                        numberOfLines={1}
+                      >
+                        {thread.patientName.split(' ').slice(-2).join(' ')}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </ScrollView>
+          </View>
+        ) : null}
+
+        <SectionHeader
+          title="Tin nhắn gần đây"
+          subtitle="Nhấn vào bệnh nhân để mở cửa sổ chat tư vấn 1-1"
+        />
+
+        {filteredThreads.length === 0 ? (
+          <View
+            style={[
+              styles.card,
+              SHADOWS.sm,
+              { alignItems: 'center', paddingVertical: 32 },
+            ]}
+          >
+            <Ionicons
+              name="chatbubbles-outline"
+              size={44}
+              color={COLORS.textSecondary}
+            />
+            <Text
+              style={[styles.docName, { marginTop: 12, textAlign: 'center' }]}
+            >
+              Chưa có cuộc trò chuyện nào
+            </Text>
+            <Text
+              style={[
+                styles.docSub,
+                { textAlign: 'center', marginTop: 4, maxWidth: 320 },
+              ]}
+            >
+              Khi bệnh nhân gửi tin nhắn tư vấn hoặc đặt lịch khám với bạn, hộp thư của họ sẽ tự động xuất hiện tại đây như Messenger.
+            </Text>
+          </View>
+        ) : (
+          filteredThreads.map((thread) => {
+            const isWaitingReply = thread.lastSenderRole === 'patient';
+            return (
+              <TouchableOpacity
+                key={thread.patientId}
+                activeOpacity={0.85}
+                onPress={() => setActiveChatPatientId(thread.patientId)}
+                style={[
+                  styles.card,
+                  SHADOWS.sm,
+                  {
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 12,
+                    paddingVertical: 14,
+                    borderLeftWidth: isWaitingReply ? 4 : 1,
+                    borderLeftColor: isWaitingReply
+                      ? COLORS.primary
+                      : COLORS.border,
+                  },
+                ]}
+              >
+                {/* Messenger Avatar */}
+                <View style={{ position: 'relative' }}>
+                  <View
+                    style={{
+                      width: 52,
+                      height: 52,
+                      borderRadius: 26,
+                      backgroundColor: isWaitingReply
+                        ? COLORS.primary
+                        : COLORS.tintBlue,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color: isWaitingReply ? '#FFFFFF' : COLORS.primary,
+                        fontWeight: '800',
+                        fontSize: 16,
+                      }}
+                    >
+                      {thread.initials}
+                    </Text>
+                  </View>
+                  <View
+                    style={{
+                      position: 'absolute',
+                      bottom: 0,
+                      right: 0,
+                      width: 14,
+                      height: 14,
+                      borderRadius: 7,
+                      backgroundColor: '#22C55E',
+                      borderWidth: 2,
+                      borderColor: COLORS.surface,
+                    }}
+                  />
+                </View>
+
+                {/* Conversation Details */}
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <View style={styles.heroTop}>
+                    <Text
+                      style={[
+                        styles.docName,
+                        {
+                          flex: 1,
+                          fontWeight: isWaitingReply ? '800' : '700',
+                        },
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {thread.patientName}
+                    </Text>
+                    <Text
+                      style={{
+                        fontSize: 11,
+                        fontWeight: isWaitingReply ? '700' : '500',
+                        color: isWaitingReply
+                          ? COLORS.primary
+                          : COLORS.textMuted,
+                      }}
+                    >
+                      {thread.lastMessageTime}
+                    </Text>
+                  </View>
+
+                  <Text
+                    style={[
+                      styles.docSub,
+                      {
+                        marginTop: 2,
+                        color: isWaitingReply
+                          ? COLORS.textPrimary
+                          : COLORS.textSecondary,
+                        fontWeight: isWaitingReply ? '700' : '400',
+                      },
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {thread.lastSenderRole === 'doctor'
+                      ? `Bạn: ${thread.lastMessageText}`
+                      : thread.lastMessageText}
+                  </Text>
+
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      marginTop: 6,
+                    }}
+                  >
+                    <Text
+                      style={{ fontSize: 11, color: COLORS.textMuted }}
+                      numberOfLines={1}
+                    >
+                      {thread.subtitle}
+                    </Text>
+                    {isWaitingReply ? (
+                      <Badge
+                        label={`Tin nhắn mới (${thread.unreadCount || 1})`}
+                        variant="blue"
+                        showDot
+                      />
+                    ) : thread.lastSenderRole === 'doctor' ? (
+                      <Badge label="Đã trả lời" variant="teal" />
+                    ) : (
+                      <Badge label="Bấm để nhắn tin" variant="surface" />
+                    )}
+                  </View>
+                </View>
+              </TouchableOpacity>
+            );
+          })
+        )}
+      </ScrollView>
+    );
+  };
+
   const renderDoctorProfile = () => (
     <ScrollView
       contentContainerStyle={styles.scrollPad}
@@ -2069,16 +3057,18 @@ export const DoctorDashboardScreen: React.FC<DoctorDashboardScreenProps> = ({
         {(activeTab === 'patients' || activeTab === 'prescribe') && (CLOUD_MODE
           ? <ClinicStaffScreen key={selectedPatientApt?.id || 'queue'} embedded onLogout={onLogout} onComplete={completeAppointment} initialAppointmentId={selectedPatientApt?.id} />
           : activeTab === 'patients' ? renderPatientsEHR() : renderPrescribe())}
+        {activeTab === 'chat' && renderDoctorChat()}
         {activeTab === 'profile' && renderDoctorProfile()}
       </View>
 
       {/* Doctor Bottom Bar */}
       <View style={[styles.roleTabBar, SHADOWS.md]}>
         {[
-          { key: 'schedule', label: 'Ca trực', icon: 'calendar' },
-          { key: 'patients', label: 'Bệnh án EHR', icon: 'folder-open' },
-          { key: 'prescribe', label: 'Kê đơn thuốc', icon: 'document-text' },
-          { key: 'profile', label: 'Hồ sơ BS', icon: 'person' },
+          { key: 'schedule', label: 'Ca trực', icon: 'calendar', badge: 0 },
+          { key: 'patients', label: 'Bệnh án EHR', icon: 'folder-open', badge: 0 },
+          { key: 'prescribe', label: 'Kê đơn thuốc', icon: 'document-text', badge: 0 },
+          { key: 'chat', label: 'Phòng Chat', icon: 'chatbubbles', badge: unreadThreadCount },
+          { key: 'profile', label: 'Hồ sơ BS', icon: 'person', badge: 0 },
         ].map((t) => {
           const active = activeTab === t.key;
           return (
@@ -2090,12 +3080,40 @@ export const DoctorDashboardScreen: React.FC<DoctorDashboardScreenProps> = ({
               accessibilityLabel={t.label}
               accessibilityState={{ selected: active }}
             >
-              <Ionicons
-                name={t.icon as any}
-                size={20}
-                color={active ? COLORS.primary : COLORS.textSecondary}
-                importantForAccessibility="no"
-              />
+              <View style={{ position: 'relative' }}>
+                <Ionicons
+                  name={t.icon as any}
+                  size={20}
+                  color={active ? COLORS.primary : COLORS.textSecondary}
+                  importantForAccessibility="no"
+                />
+                {t.badge > 0 ? (
+                  <View
+                    style={{
+                      position: 'absolute',
+                      top: -5,
+                      right: -10,
+                      minWidth: 16,
+                      height: 16,
+                      borderRadius: 8,
+                      backgroundColor: COLORS.error,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      paddingHorizontal: 3,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color: '#FFFFFF',
+                        fontSize: 9,
+                        fontWeight: '800',
+                      }}
+                    >
+                      {t.badge}
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
               <Text
                 style={[
                   styles.roleTabLabel,

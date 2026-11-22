@@ -8,7 +8,17 @@ export function routeForClinicRole(role: string): 'main' | 'doctorPortal' | 'adm
 export function parseClinicAuthCallback(incoming: string): {code?: string; accessToken?: string; refreshToken?: string} | null {
   let url: URL;
   try { url = new URL(incoming); } catch { return null; }
-  if (url.protocol !== 'medicareplus:' || url.hostname !== 'auth-callback' || (url.pathname !== '' && url.pathname !== '/')) return null;
+  const isStandaloneCallback =
+    url.protocol === 'medicareplus:' &&
+    url.hostname === 'auth-callback' &&
+    (url.pathname === '' || url.pathname === '/');
+  const isExpoGoCallback =
+    url.protocol === 'exp:' &&
+    (url.pathname === '' ||
+      url.pathname === '/' ||
+      url.pathname === '/--/auth-callback' ||
+      url.pathname === '/--/auth-callback/');
+  if (!isStandaloneCallback && !isExpoGoCallback) return null;
   const fragment = new URLSearchParams(url.hash.slice(1));
   if (url.searchParams.has('error') || fragment.has('error')) throw new Error('Đăng nhập Google chưa hoàn tất. Vui lòng thử lại.');
   const code = url.searchParams.get('code');

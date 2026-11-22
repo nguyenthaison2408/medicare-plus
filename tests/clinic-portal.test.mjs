@@ -244,3 +244,27 @@ test('registration verification delegates to Supabase and never trusts client-ge
  sdk.auth.verifyOtp=async()=>({data:{session:null,user:null},error:{message:'expired'}});
  await assert.rejects(api.verifyClinicRegistrationOtp('qa@example.invalid','482910'));
 });
+
+function patientDataHarness(){
+ const raw=read('client/src/screens/ClinicPatientScreens.tsx');
+ const source=stripTypeScriptTypes(raw.slice(raw.indexOf('function useClinicData() {'),raw.indexOf('const doctorName=')));
+ let owner='patient-a',sIndex=0,rIndex=0,cIndex=0,cleanup,effectDeps;
+ const states=[],refs=[],callbacks=[],requests=[];
+ const deferred=()=>{let resolve;const promise=new Promise(r=>{resolve=r;});return{promise,resolve};};
+ const vmEnv={useAppContext:()=>({cloudProfile:owner?{id:owner}:null}),useState:init=>{const i=sIndex++;if(!(i in states))states[i]=init;return[states[i],value=>{states[i]=typeof value==='function'?value(states[i]):value;}];},useRef:init=>{const i=rIndex++;return refs[i]||(refs[i]={current:init});},useCallback:(fn,deps)=>{const i=cIndex++;if(!callbacks[i]||callbacks[i].deps[0]!==deps[0])callbacks[i]={fn,deps};return callbacks[i].fn;},useEffect:(fn,deps)=>{if(!effectDeps||effectDeps[0]!==deps[0]){cleanup?.();effectDeps=deps;cleanup=fn();}},loadClinicProfile:()=>{const d=deferred();requests.push({kind:'profile',owner,...d});return d.promise;},listClinicAppointments:()=>{const d=deferred();requests.push({kind:'rows',owner,...d});return d.promise;},subscribeClinicAppointments:()=>()=>{}};
+ const hook=vm.runInNewContext(source+';useClinicData',vmEnv);
+ return{render:()=>{sIndex=rIndex=cIndex=0;return hook();},switchTo:id=>{owner=id;},resolve:(id,kind,value)=>{const q=requests.find(x=>x.owner===id&&x.kind===kind&&!x.done);assert.ok(q);q.done=true;q.resolve(value);},unmount:()=>cleanup?.()};
+}
+const settlePatientData=()=>new Promise(r=>setImmediate(r));
+test('cloud records hide previous account immediately and reject its delayed refresh',async()=>{
+ const h=patientDataHarness();let v=h.render();await settlePatientData();h.resolve('patient-a','profile',{id:'patient-a'});h.resolve('patient-a','rows',[{id:'a-private'}]);await settlePatientData();v=h.render();assert.equal(v.rows[0].id,'a-private');
+ void v.refresh();h.switchTo('patient-b');v=h.render();assert.equal(v.rows.length,0);assert.equal(v.profile,null);await settlePatientData();
+ h.resolve('patient-a','profile',{id:'patient-a'});h.resolve('patient-a','rows',[{id:'a-late-private'}]);await settlePatientData();assert.equal(h.render().rows.length,0);
+ h.resolve('patient-b','profile',{id:'patient-b'});h.resolve('patient-b','rows',[{id:'b-private'}]);await settlePatientData();assert.equal(h.render().rows[0].id,'b-private');
+});
+test('cloud records refuse a profile for another authenticated owner',async()=>{
+ const h=patientDataHarness();h.render();await settlePatientData();h.resolve('patient-a','profile',{id:'patient-b'});h.resolve('patient-a','rows',[{id:'wrong-user'}]);await settlePatientData();const v=h.render();assert.equal(v.rows.length,0);assert.equal(v.profile,null);assert.ok(v.error);
+});
+test('cloud records ignore loads completed after screen unmount',async()=>{
+ const h=patientDataHarness();h.render();await settlePatientData();h.unmount();h.resolve('patient-a','profile',{id:'patient-a'});h.resolve('patient-a','rows',[{id:'late'}]);await settlePatientData();const v=h.render();assert.equal(v.rows.length,0);assert.equal(v.profile,null);
+});

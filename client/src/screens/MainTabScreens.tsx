@@ -27,6 +27,7 @@ import {
 } from '../data/mockData';
 import { useAppContext } from '../context/AppContext';
 import { CLOUD_MODE } from '../services/supabaseClient';
+import { ClinicPatientRecordsScreen } from './ClinicPatientScreens';
 import { refineFollowUp } from '../services/aiConversation';
 import { runClinicalTriage } from '../services/aiTriageEngine';
 import { checkEHRSafetyGuardrails } from '../services/aiSafetyGuardrails';
@@ -638,6 +639,12 @@ export const EHRScreen: React.FC<EHRScreenProps> = ({
   const [toastInfo, setToastInfo] = useState<{ title: string; msg: string } | null>(
     null
   );
+
+  if (CLOUD_MODE) return <View style={styles.screen}>
+    <AppHeader title="Hồ sơ bệnh án điện tử" subtitle="Bệnh án đã lưu trên Supabase"
+      rightActions={[{icon:'people-outline',onPress:()=>onNavigate('familyProfiles')}]} />
+    <ClinicPatientRecordsScreen />
+  </View>;
 
   return (
     <View style={styles.screen}>

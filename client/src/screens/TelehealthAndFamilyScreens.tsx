@@ -13,6 +13,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import QRCode from 'react-native-qrcode-svg';
 import { CLOUD_MODE } from '../services/supabaseClient';
+import { ClinicPatientRecordsScreen } from './ClinicPatientScreens';
 import { COLORS, GRADIENTS, LAYOUT, RADIUS, SHADOWS, SPACING, TYPOGRAPHY } from '../theme';
 import {
   DOCTORS,
@@ -617,8 +618,8 @@ export const FamilyProfilesScreen: React.FC<{
           {CLOUD_MODE ? (
             <Text style={styles.whiteBody}>
               Đang quản lý <Text style={{ fontWeight: '800' }}>{familyMembers.length} hồ sơ người thân</Text> trên
-              đám mây ({bhytMemberCount} hồ sơ đã liên kết mã thẻ BHYT). Bạn có thể chọn bất kỳ thành viên nào
-              bên dưới để đặt lịch khám và tự động tính quyền lợi BHYT.
+              đám mây ({bhytMemberCount} hồ sơ có mã thẻ BHYT tự nhập). Bạn có thể chọn thành viên
+              bên dưới để điền thông tin đặt khám; chi phí BHYT chỉ là ước tính chờ cơ sở y tế đối chiếu.
             </Text>
           ) : (
             <Text style={styles.whiteBody}>
@@ -801,23 +802,30 @@ export const ChildEHRDetailScreen: React.FC<{
 }> = ({ member, onBack, onEditMember, onBookForMember }) => {
   const { familyMembers, appointments } = useAppContext();
   const [tab, setTab] = useState('exam');
-  const activeMember = member || familyMembers[0] || null;
+  const activeMember = CLOUD_MODE
+    ? familyMembers.find(item => item.id === member?.id) || null
+    : member || familyMembers[0] || null;
   const memberName = activeMember?.name || 'Nguyễn Bảo Nam';
   const memberRelation = activeMember?.rawRelation || activeMember?.relation || 'Con trai • 4 tuổi';
   const memberCode = activeMember?.code || '#BN-992104';
   const memberBlood = activeMember?.blood || 'O+';
-  const memberDob = activeMember?.dob || '18/09/2020';
+  const memberDob = activeMember?.dob || (CLOUD_MODE ? '' : '18/09/2020');
   const memberGender = activeMember?.gender || 'Chưa cập nhật';
   const memberBhyt = activeMember?.bhyt || 'Chưa cập nhật';
-  const memberAllergies = activeMember?.allergies || 'Không ghi nhận dị ứng';
+  const memberAllergies = activeMember?.allergies || (CLOUD_MODE ? 'Chưa cập nhật' : 'Không ghi nhận dị ứng');
   const memberNote = activeMember?.note || 'Hồ sơ sức khỏe theo dõi định kỳ';
 
-  const memberAppointments = appointments.filter(
+  const memberAppointments = CLOUD_MODE ? [] : appointments.filter(
     (a) =>
       activeMember &&
       a.patientName &&
       a.patientName.trim().toLowerCase() === activeMember.name.trim().toLowerCase()
   );
+
+  if (CLOUD_MODE && !activeMember) return <View style={styles.screen}>
+    <AppHeader title="Hồ sơ người thân" onBack={onBack} />
+    <Text style={styles.checkItemText}>Vui lòng chọn hồ sơ thuộc tài khoản hiện tại. Hồ sơ có thể đã bị xóa hoặc phiên đăng nhập đã thay đổi.</Text>
+  </View>;
 
   return (
     <View style={styles.screen}>
@@ -936,7 +944,7 @@ export const ChildEHRDetailScreen: React.FC<{
               ))
             ) : CLOUD_MODE ? (
               <Text style={styles.checkItemText}>
-                Chưa có lượt khám nào được đặt cho {memberName}. Nhấn &quot;Đặt lịch khám&quot; ở trên để đặt lịch với bác sĩ chuyên khoa.
+                Chưa có liên kết định danh bệnh án riêng cho {memberName}. Lịch đặt hộ vẫn được xem trong mục Lịch khám; không gán bệnh án chỉ dựa vào tên trùng nhau.
               </Text>
             ) : (
               <>
@@ -1800,6 +1808,11 @@ export const PostConsultSummaryScreen: React.FC<{
     } catch (error) { setReviewError(error instanceof Error ? error.message : 'Chưa gửi được đánh giá.'); }
     finally { setSavingReview(false); }
   };
+
+  if (CLOUD_MODE) return <View style={styles.screen}>
+    <AppHeader title="Kết quả khám đã lưu" onBack={onBack} />
+    <ClinicPatientRecordsScreen />
+  </View>;
 
   return (
     <View style={styles.screen}>

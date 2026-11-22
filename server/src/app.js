@@ -1,3 +1,9 @@
+try {
+  process.loadEnvFile();
+} catch (e) {
+  // .env file not found or already loaded
+}
+
 const express = require('express');
 const cors = require('cors');
 const apiRoutes = require('./routes/api');

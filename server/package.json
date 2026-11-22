@@ -9,8 +9,10 @@
     "test": "node tests/api.test.js && node tests/booking-regression.test.js"
   },
   "dependencies": {
+    "@payos/node": "^2.0.6",
     "cors": "^2.8.5",
-    "express": "^4.21.2"
+    "express": "^4.21.2",
+    "medicare-plus-monorepo": "file:.."
   },
   "license": "MIT"
 }

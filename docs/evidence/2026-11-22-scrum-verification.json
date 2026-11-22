@@ -1,0 +1,35 @@
+{
+  "date": "2026-11-22",
+  "main": "602b76cd3c49661ba7d0e644b112cd2fc2cccb2a",
+  "totalCards": 31,
+  "counts": {
+    "In Progress": 4,
+    "In Review": 20,
+    "Done": 4,
+    "Ready": 2,
+    "Backlog": 1
+  },
+  "storyPoints": 136,
+  "spByStatus": {
+    "In Progress": 21,
+    "In Review": 99,
+    "Done": 13,
+    "Ready": 3,
+    "Backlog": 0
+  },
+  "Sprint6": {
+    "total": 123,
+    "done": 5,
+    "notDone": 118
+  },
+  "ratios": {
+    "nguyenthaison2408": 30,
+    "thanhvihuu2005": 22,
+    "thanhvuvn": 28,
+    "myth0ss": 20
+  },
+  "sourceIssuesReviewed": 30,
+  "existingStatusesSprintsPointsMilestonesPrioritiesPreserved": true,
+  "assigneesVerified": true,
+  "allIssueRatiosVerified": true
+}

@@ -1,0 +1,214 @@
+{
+  "asOf": "2026-11-22",
+  "main": "602b76cd3c49661ba7d0e644b112cd2fc2cccb2a",
+  "ci": [
+    {
+      "name": "code-quality-and-test (24.x)",
+      "conclusion": "success",
+      "url": "https://github.com/nguyenthaison2408/medicare-plus/actions/runs/45003336646/job/137149422791"
+    },
+    {
+      "name": "code-quality-and-test (22.x)",
+      "conclusion": "success",
+      "url": "https://github.com/nguyenthaison2408/medicare-plus/actions/runs/45003336646/job/137149422591"
+    }
+  ],
+  "protection": {
+    "reviewCount": 1,
+    "strictChecks": true,
+    "enforcedForAdmins": true,
+    "allowForce": false
+  },
+  "cloudSnapshot": {
+    "ledgerNames": [
+      "202611190001_clinic_core.sql",
+      "202611190002_demo_catalog_alignment.sql",
+      "202611190003_booking_patient_details.sql",
+      "202611200001_clinic_doctor_reviews.sql",
+      "202611200002_clinic_family_members.sql",
+      "202611200003_clinic_medicine_cabinet.sql",
+      "202611200004_clinic_hospitals.sql",
+      "202611200004_clinic_reviews_moderation.sql",
+      "202611200005_clinic_profile_avatar.sql",
+      "202611200006_clinic_profile_shifts_bhyt.sql"
+    ],
+    "tables": [
+      "clinic_appointments",
+      "clinic_bhyt_configs",
+      "clinic_consult_messages",
+      "clinic_doctor_reviews",
+      "clinic_doctor_schedules",
+      "clinic_doctors",
+      "clinic_family_members",
+      "clinic_hospitals",
+      "clinic_medical_records",
+      "clinic_medication_logs",
+      "clinic_medicine_cabinet",
+      "clinic_profiles"
+    ],
+    "limitation": "Schema exists for family/chat while migration ledger 007/008 is absent; #44 tracks reconciliation. No database mutation in this audit."
+  },
+  "cloudChecks21Nov": {
+    "started": "2026-11-21T12:57:10.386Z",
+    "finished": "2026-11-21T12:57:19.676Z",
+    "checks": [
+      {
+        "name": "PostgREST exposes four active hospitals",
+        "passed": true
+      },
+      {
+        "name": "anonymous users cannot read internal review notes",
+        "passed": true
+      },
+      {
+        "name": "PATIENT login and profile role",
+        "passed": true
+      },
+      {
+        "name": "PATIENT_B login and profile role",
+        "passed": true
+      },
+      {
+        "name": "RECEPTION login and profile role",
+        "passed": true
+      },
+      {
+        "name": "DOCTOR login and profile role",
+        "passed": true
+      },
+      {
+        "name": "ADMIN login and profile role",
+        "passed": true
+      },
+      {
+        "name": "patient medication RPC has no missing-table/function error",
+        "passed": true
+      },
+      {
+        "name": "admin review RPC is reachable through PostgREST",
+        "passed": true
+      },
+      {
+        "name": "patient cannot call admin review RPC",
+        "passed": true
+      },
+      {
+        "name": "patient cannot read review notes through PostgREST",
+        "passed": true
+      },
+      {
+        "name": "PATIENT cannot create a hospital through public RPC",
+        "passed": true
+      },
+      {
+        "name": "RECEPTION cannot create a hospital through public RPC",
+        "passed": true
+      },
+      {
+        "name": "DOCTOR cannot create a hospital through public RPC",
+        "passed": true
+      },
+      {
+        "name": "profile avatar/extended fields may be updated by the owner",
+        "passed": true
+      },
+      {
+        "name": "profile role cannot be escalated by the owner",
+        "passed": true
+      },
+      {
+        "name": "medicine cabinet derives ownership and name on the server",
+        "passed": true
+      },
+      {
+        "name": "prescribed medication dose log is written and read back by patient",
+        "passed": true
+      },
+      {
+        "name": "another patient cannot read the test cabinet item",
+        "passed": true
+      },
+      {
+        "name": "another patient cannot read or alter a private profile",
+        "passed": true
+      },
+      {
+        "name": "admin can create hospital via RPC inside rollback transaction",
+        "passed": true
+      },
+      {
+        "name": "admin cannot bypass hospital RPC with direct table insert",
+        "passed": true
+      },
+      {
+        "name": "admin notes are available through admin RPC",
+        "passed": true
+      },
+      {
+        "name": "hidden review is invisible to anonymous role",
+        "passed": true
+      },
+      {
+        "name": "internal admin notes cannot be selected by anonymous role",
+        "passed": true
+      },
+      {
+        "name": "slot availability respects assigned doctor shift",
+        "passed": true
+      },
+      {
+        "name": "outside-shift booking is rejected",
+        "passed": true
+      },
+      {
+        "name": "inside-shift booking succeeds inside rollback transaction",
+        "passed": true
+      },
+      {
+        "name": "QA business writes were rolled back",
+        "passed": true
+      }
+    ],
+    "transactionRolledBack": true
+  },
+  "deployment21Nov": {
+    "commit": "7caa8e14fa84dd3029ce8187a6ad36a36910031e",
+    "applied": [
+      {
+        "name": "202611200003_clinic_medicine_cabinet.sql",
+        "sha256": "cff93e9c34b05a219bb077ca694657edfdd57f10305d1908bd9b7e882a1b7e24"
+      },
+      {
+        "name": "202611200004_clinic_hospitals.sql",
+        "sha256": "5c664be51365ab586e57813a01b861e0e3e7752d907f161a3286171c797e4a70"
+      },
+      {
+        "name": "202611200004_clinic_reviews_moderation.sql",
+        "sha256": "92ec51577ae82af435d37b2348983c8016eaf6129bfb12cff7599aebffe0a73b"
+      },
+      {
+        "name": "202611200005_clinic_profile_avatar.sql",
+        "sha256": "533bb927f423650953993626db4373056a1490b771820bdc94c43719782a0a71"
+      },
+      {
+        "name": "202611200006_clinic_profile_shifts_bhyt.sql",
+        "sha256": "49a34d23453ecdf5e1e0e519fc6178c1af784042e02488173036ed73505d7606"
+      }
+    ],
+    "committed": true,
+    "dataPreserved": true
+  },
+  "readOnlyUiSmoke21Nov": {
+    "tests": [
+      "Patient: cloud hospital catalog and map modal open",
+      "Patient: medicine cabinet screen loads after migration"
+    ],
+    "pageErrors": [],
+    "businessWrites": false
+  },
+  "limits": [
+    "Historical cloud and UI checks are not end-to-end UAT of main 602b76c.",
+    "Historical k6 is not a new-main benchmark.",
+    "No real email delivery, provider OAuth or clinical acceptance claimed."
+  ]
+}

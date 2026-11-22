@@ -1,0 +1,34 @@
+{
+  "main": "602b76c",
+  "ratioDecision": {
+    "Nguyễn Thái Sơn": "30%",
+    "Vi Hữu Thành": "22%",
+    "Đặng Thanh Vũ": "28%",
+    "Nguyễn Từ Anh Nguyên": "20%"
+  },
+  "submissionFiles": [
+    "01_Final_Technical_Report.docx",
+    "02_Project_Charter_Signed.docx",
+    "03_WBS_and_WBS_Dictionary.docx",
+    "04_Risk_Register_Evolution.xlsx",
+    "05_Sprint_Retrospectives.docx",
+    "06_Scope_Change_Control_Record.docx",
+    "08_Presentation_Slide_Deck.pptx"
+  ],
+  "report01Pages": 25,
+  "chapters": 7,
+  "coverAndFiguresPreserved": true,
+  "wbsLeafPackages": 25,
+  "riskSheets": 3,
+  "riskScoresAndFormulasPreserved": true,
+  "slides": 9,
+  "slideNotes": 9,
+  "webExportMatchesOfficeMasters": true,
+  "readmeLinksValid": true,
+  "noOptionalFile07": true,
+  "noObsoleteSubmissionMarkdownPdf": true,
+  "publicFilesScanned": 27,
+  "limits": [
+    "No UAT sign-off, new-main k6, actual email delivery or new database deployment performed by this documentation audit."
+  ]
+}

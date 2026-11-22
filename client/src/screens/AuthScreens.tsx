@@ -13,15 +13,8 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { CLOUD_MODE, SUPABASE_CONFIGURED } from '../services/supabaseClient';
-import { signInClinic, signInWithGoogleClinic, signUpClinic } from '../services/clinicCloud';
-import {
-  createRegistrationOtpChallenge,
-  isBookingEmailConfigured,
-  REGISTRATION_OTP_RESEND_SECONDS,
-  sendRegistrationOtpEmail,
-  verifyRegistrationOtpChallenge,
-  type RegistrationOtpChallenge,
-} from '../services/clinicEmail';
+import { signInClinic, signInWithGoogleClinic, signUpClinic, resendClinicRegistrationEmail, verifyClinicRegistrationOtp } from '../services/clinicCloud';
+
 import { COLORS, GRADIENTS, RADIUS, SHADOWS, TOUCH, TYPOGRAPHY } from '../theme';
 import {
   AppButton,
@@ -429,7 +422,6 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
   const [agreed, setAgreed] = useState(true);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [otpStep, setOtpStep] = useState(false);
-  const [otpChallenge, setOtpChallenge] = useState<RegistrationOtpChallenge | null>(null);
   const [otpInput, setOtpInput] = useState('');
   const [otpError, setOtpError] = useState('');
   const [otpStatus, setOtpStatus] = useState('');
@@ -445,20 +437,14 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
 
   const sendOtpForRegistration = async () => {
     const trimmedEmail = email.trim().toLowerCase();
-    const challenge = createRegistrationOtpChallenge(trimmedEmail);
     setLoading(true);
     setOtpError('');
     try {
-      await sendRegistrationOtpEmail({
-        toEmail: trimmedEmail,
-        fullName: fullName.trim(),
-        otpCode: challenge.code,
-      });
-      setOtpChallenge(challenge);
+      await resendClinicRegistrationEmail(trimmedEmail);
       setOtpStep(true);
       setOtpInput('');
-      setOtpStatus(`Đã gửi mã OTP 6 chữ số đến ${trimmedEmail}. Vui lòng kiểm tra hộp thư đến hoặc thư rác.`);
-      setResendCooldown(REGISTRATION_OTP_RESEND_SECONDS);
+      setOtpStatus(`Đã yêu cầu gửi lại email xác nhận tới ${trimmedEmail}. Hãy mở liên kết hoặc nhập mã nếu email có mã xác nhận.`);
+      setResendCooldown(60);
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Không thể gửi mã OTP xác thực email.';
       if (otpStep) {
@@ -498,39 +484,27 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
     setErrors(newErrors);
     if (Object.keys(newErrors).length === 0 && agreed) {
       if (!CLOUD_MODE) { onRegisterSuccess(); return; }
-      if (!isBookingEmailConfigured()) {
-        setErrors({
-          email: 'Chưa cấu hình dịch vụ gửi email xác thực OTP (EXPO_PUBLIC_BOOKING_EMAIL_WEBHOOK_URL).',
-        });
-        return;
-      }
-      await sendOtpForRegistration();
+      setLoading(true);
+      try {
+        const signedIn = await signUpClinic({ email, password, fullName, phone: cleanPhone });
+        if (signedIn) { onRegisterSuccess(); return; }
+        setOtpStep(true);
+        setOtpInput('');
+        setOtpStatus('Supabase đã tiếp nhận yêu cầu đăng ký. Kiểm tra email để mở liên kết xác nhận; nếu email có mã, bạn có thể nhập bên dưới.');
+        setResendCooldown(60);
+      } catch (error) {
+        setErrors({ email: error instanceof Error ? error.message : 'Không thể tạo tài khoản.' });
+      } finally { setLoading(false); }
     }
   };
 
   const handleVerifyOtpAndRegister = async () => {
     if (loading) return;
-    const check = verifyRegistrationOtpChallenge(otpChallenge, otpInput, email);
-    if (!check.ok) {
-      setOtpError(check.reason);
-      setOtpChallenge(check.nextChallenge);
-      return;
-    }
     setOtpError('');
     setLoading(true);
     try {
-      const cleanPhone = phone.replace(/\s+/g, '');
-      const signedIn = await signUpClinic({ email, password, fullName, phone: cleanPhone });
-      setOtpChallenge(null);
-      if (signedIn) {
-        onRegisterSuccess();
-      } else {
-        Alert.alert(
-          'Đăng ký thành công',
-          'Email đã được xác thực và tài khoản đã được tạo. Vui lòng đăng nhập để tiếp tục.'
-        );
-        onGoLogin();
-      }
+      await verifyClinicRegistrationOtp(email, otpInput);
+      onRegisterSuccess();
     } catch (error) {
       setOtpError(error instanceof Error ? error.message : 'Không thể tạo tài khoản sau khi xác thực OTP.');
     } finally {
@@ -569,11 +543,11 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
               Nhập mã xác thực
             </Text>
             <Text style={[styles.authSub, { textAlign: 'left', marginBottom: 14 }]}>
-              Nhập mã OTP 6 chữ số đã được gửi tới{' '}
+              Mở liên kết xác nhận trong email gửi tới{' '}
               <Text style={{ fontWeight: '800', color: COLORS.primary }}>
                 {normalizedEmail}
               </Text>{' '}
-              để hoàn tất đăng ký tài khoản.
+              để hoàn tất xác nhận. Nếu email chứa mã xác nhận, nhập mã bên dưới.
             </Text>
 
             {otpStatus ? (
@@ -584,29 +558,36 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
             ) : null}
 
             <AppInput
-              label="Mã xác thực OTP (6 chữ số)"
+              label="Mã xác nhận trong email (nếu có)"
               leftIcon="key-outline"
               placeholder="Ví dụ: 482910"
               value={otpInput}
               onChangeText={(txt) => {
-                setOtpInput(txt.replace(/[^0-9]/g, '').slice(0, 6));
+                setOtpInput(txt.replace(/[^0-9]/g, '').slice(0, 10));
                 if (otpError) setOtpError('');
               }}
               keyboardType="number-pad"
-              maxLength={6}
+              maxLength={10}
               returnKeyType="done"
               onSubmitEditing={handleVerifyOtpAndRegister}
               error={otpError}
             />
 
             <AppButton
-              title="Xác nhận & Tạo tài khoản"
+              title="Xác nhận email"
               loading={loading}
               disabled={loading || otpInput.trim().length < 6}
               variant="gradient"
               size="lg"
               leftIcon="shield-checkmark-outline"
               onPress={handleVerifyOtpAndRegister}
+            />
+
+            <AppButton
+              title="Đã xác nhận email — Đăng nhập"
+              variant="outline"
+              disabled={loading}
+              onPress={onGoLogin}
             />
 
             <View style={styles.otpActionsRow}>

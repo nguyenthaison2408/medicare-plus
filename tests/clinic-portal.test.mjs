@@ -234,65 +234,13 @@ test('webhook must explicitly confirm delivery and a failed acknowledgement rema
  assert.equal(retries,1);assert.equal(result.sent,true);
 });
 
-test("registration email OTP challenge, verification, and webhook sending work end-to-end",async()=>{
- const emailApi=vm.runInNewContext(
-  clean(read('client/src/services/clinicEmail.ts'))+';({generateOtpCode,createRegistrationOtpChallenge,verifyRegistrationOtpChallenge,buildRegistrationOtpEmailPayload,sendRegistrationOtpEmail,REGISTRATION_OTP_TTL_MS})',
-  {process:{env:{}}}
- );
- const code=emailApi.generateOtpCode();
- assert.match(code,/^\d{6}$/);
- const now=1_700_000_000_000;
- const challenge=emailApi.createRegistrationOtpChallenge("  Patient@Example.com ",now,"482910");
- assert.equal(challenge.email,"patient@example.com");
- assert.equal(challenge.code,"482910");
-
- // Wrong code increments attempts and rejects
- const wrong=emailApi.verifyRegistrationOtpChallenge(challenge,"111111","patient@example.com",now+1000);
- assert.equal(wrong.ok,false);
- assert.equal(wrong.nextChallenge.attempts,1);
-
- // Expired challenge must reject and clear challenge
- const expired=emailApi.verifyRegistrationOtpChallenge(challenge,"482910","patient@example.com",now+emailApi.REGISTRATION_OTP_TTL_MS+1);
- assert.equal(expired.ok,false);
- assert.equal(expired.nextChallenge,null);
-
- // Correct code within TTL succeeds
- const ok=emailApi.verifyRegistrationOtpChallenge(challenge,"482910","PATIENT@example.com",now+60_000);
- assert.equal(ok.ok,true);
-
- // Email payload contains OTP and HTML
- const payload=emailApi.buildRegistrationOtpEmailPayload({
-  toEmail:"patient@example.com",
-  fullName:"Đặng Thanh Vũ",
-  otpCode:"482910",
- });
- assert.equal(payload.to_email,"patient@example.com");
- assert.equal(payload.otp_code,"482910");
- assert.match(payload.subject,/482910/);
- assert.match(payload.html_body,/482 910/);
-
- // Sending OTP via webhook rejects non-{ok:true} and succeeds on {ok:true}
- await assert.rejects(
-  emailApi.sendRegistrationOtpEmail(
-   {toEmail:"patient@example.com",fullName:"Đặng Thanh Vũ",otpCode:"482910"},
-   {
-    config:{webhookUrl:"https://script.google.com/macros/s/test/exec"},
-    fetchImpl:async()=>({ok:true,status:200,text:async()=>'<html>error</html>'}),
-   }
-  )
- );
- let postedBody=null;
- const sent=await emailApi.sendRegistrationOtpEmail(
-  {toEmail:"patient@example.com",fullName:"Đặng Thanh Vũ",otpCode:"482910"},
-  {
-   config:{webhookUrl:"https://script.google.com/macros/s/test/exec"},
-   fetchImpl:async(_url,init)=>{
-    postedBody=JSON.parse(init.body);
-    return {ok:true,status:200,text:async()=>JSON.stringify({ok:true})};
-   },
-  }
- );
- assert.equal(sent.sent,true);
- assert.equal(postedBody.to_email,"patient@example.com");
- assert.equal(postedBody.otp_code,"482910");
+test('registration verification delegates to Supabase and never trusts client-generated codes',async()=>{
+ let request,resendRequest;
+ const sdk={auth:{verifyOtp:async p=>{request=p;return{data:{session:{access_token:'qa'},user:{id:'qa'}},error:null};},resend:async p=>{resendRequest=p;return{error:null};}}};
+ const api=service('client/src/services/clinicCloud.ts',['verifyClinicRegistrationOtp','resendClinicRegistrationEmail'],sdk,{checkError:e=>{if(e)throw Error(e.message);}});
+ await api.verifyClinicRegistrationOtp(' QA@Example.invalid ','482910');
+ assert.equal(request.type,'signup');assert.equal(request.email,'qa@example.invalid');assert.equal(request.token,'482910');
+ await api.resendClinicRegistrationEmail(' QA@Example.invalid ');assert.equal(resendRequest.type,'signup');
+ sdk.auth.verifyOtp=async()=>({data:{session:null,user:null},error:{message:'expired'}});
+ await assert.rejects(api.verifyClinicRegistrationOtp('qa@example.invalid','482910'));
 });

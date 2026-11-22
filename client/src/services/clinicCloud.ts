@@ -236,6 +236,21 @@ export async function signUpClinic(params: { email: string; password: string; fu
   return Boolean(data.session);
 }
 
+export async function resendClinicRegistrationEmail(email: string): Promise<void> {
+  const { error } = await getSupabase().auth.resend({ type: 'signup', email: email.trim().toLowerCase() });
+  checkError(error);
+}
+
+export async function verifyClinicRegistrationOtp(email: string, token: string): Promise<void> {
+  const cleanToken = token.trim();
+  if (!/^\d{6,10}$/.test(cleanToken)) throw new Error('Vui lòng nhập mã xác nhận trong email.');
+  const { data, error } = await getSupabase().auth.verifyOtp({
+    email: email.trim().toLowerCase(), token: cleanToken, type: 'signup',
+  });
+  checkError(error);
+  if (!data.session || !data.user) throw new Error('Email chưa được xác nhận. Vui lòng thử lại.');
+}
+
 export async function signOutClinic(): Promise<void> {
   const { error } = await getSupabase().auth.signOut();
   checkError(error);

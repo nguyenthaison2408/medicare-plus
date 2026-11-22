@@ -173,3 +173,52 @@ test('resolveConsultDoctor prioritizes newly selected doctor over previous booki
  });
  assert.equal(resolved.id,'doc-2');
 });
+test('sendBookingConfirmationEmail sends escaped HTML ticket to webhook and rejects on failure or missing config',async()=>{
+ const emailApi=vm.runInNewContext(clean(read('client/src/services/clinicEmail.ts'))+';({sendBookingConfirmationEmail,buildBookingEmailPayload})', {
+  process:{env:{}},
+ });
+ const sampleTicket={
+  code:'MC-9087523588FE41F9B9356658097059FF',
+  doctor:{id:'doc-1',name:'TS. BS. Lê Thu Trang',degree:'Tiến sĩ Y khoa',specialty:'Nội Thần Kinh',hospital:'BV MediCare Plus'},
+  dayLabel:'Thứ Hai',
+  fullDate:'23/11/2026',
+  timeRange:'09:00 - 09:30',
+  room:'Phòng 302',
+  queueNumber:'Đã xác nhận',
+  consultMode:'clinic',
+  paymentMethod:'at_clinic_bhyt',
+  patientName:'Đặng Vũ <script>',
+  patientPhone:'0901234567',
+  patientEmail:'vu.dang@example.com',
+  symptoms:'Đau đầu & mệt mỏi',
+ };
+ const payload=emailApi.buildBookingEmailPayload(sampleTicket);
+ assert.equal(payload.to_email,'vu.dang@example.com');
+ assert.equal(payload.booking_code,'MC-9087523588FE41F9B9356658097059FF');
+ assert.ok(!payload.html_body.includes('<script>'));
+ assert.ok(payload.html_body.includes('&lt;script&gt;'));
+ // Missing config must reject
+ await assert.rejects(
+  emailApi.sendBookingConfirmationEmail(sampleTicket,{config:{}})
+ );
+ // Webhook HTTP error must reject
+ await assert.rejects(
+  emailApi.sendBookingConfirmationEmail(sampleTicket,{
+   config:{webhookUrl:'https://script.google.com/macros/s/test/exec'},
+   fetchImpl:async()=>({ok:false,status:500,text:async()=>'error'}),
+  })
+ );
+ // Successful webhook call sends POST payload
+ let sentUrl,sentBody;
+ const result=await emailApi.sendBookingConfirmationEmail(sampleTicket,{
+  config:{webhookUrl:'https://script.google.com/macros/s/test/exec'},
+  fetchImpl:async(url,init)=>{
+   sentUrl=url;
+   sentBody=JSON.parse(init.body);
+   return {ok:true,status:200,text:async()=>JSON.stringify({ok:true})};
+  },
+ });
+ assert.equal(result.sent,true);
+ assert.equal(sentUrl,'https://script.google.com/macros/s/test/exec');
+ assert.equal(sentBody.booking_code,'MC-9087523588FE41F9B9356658097059FF');
+});

@@ -31,6 +31,10 @@ import {
 import { openGoogleMapsDirections } from '../utils/mapNavigation';
 import { shareAppointmentTicket } from '../utils/shareUtils';
 import {
+  isBookingEmailConfigured,
+  sendBookingConfirmationEmail,
+} from '../services/clinicEmail';
+import {
   AppHeader,
   AppButton,
   AppInput,
@@ -56,9 +60,58 @@ export const BookingSuccessScreen: React.FC<{
   const { latestBooking } = useAppContext();
   const [copied, setCopied] = useState(false);
   const [zoomQr, setZoomQr] = useState(false);
+  const [emailSending, setEmailSending] = useState(false);
+  const [emailStatus, setEmailStatus] = useState<'idle' | 'sent' | 'error'>('idle');
+  const [emailFeedback, setEmailFeedback] = useState('');
   const doctor = latestBooking.doctor || DOCTORS[0];
   const activePayment = paymentMethod || latestBooking.paymentMethod || 'at_clinic_bhyt';
   const isBHYT = activePayment === 'at_clinic_bhyt';
+
+  const handleSendBookingEmail = async (isAuto = false) => {
+    if (!latestBooking.code || !latestBooking.patientEmail || emailSending) return;
+    setEmailSending(true);
+    if (!isAuto) setEmailFeedback('');
+    try {
+      const res = await sendBookingConfirmationEmail(latestBooking, {
+        isAutoSend: isAuto,
+      });
+      setEmailStatus('sent');
+      setEmailFeedback(`Đã gửi phiếu hẹn điện tử kèm mã QR tới ${res.toEmail}`);
+    } catch (err) {
+      setEmailStatus('error');
+      setEmailFeedback(
+        err instanceof Error ? err.message : 'Không gửi được email xác nhận.'
+      );
+    } finally {
+      setEmailSending(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!latestBooking.code || !latestBooking.patientEmail) return;
+    if (!isBookingEmailConfigured()) return;
+    let active = true;
+    const autoSend = async () => {
+      try {
+        const res = await sendBookingConfirmationEmail(latestBooking, {
+          isAutoSend: true,
+        });
+        if (!active) return;
+        setEmailStatus('sent');
+        setEmailFeedback(`Đã tự động gửi phiếu hẹn kèm mã QR tới ${res.toEmail}`);
+      } catch (err) {
+        if (!active) return;
+        setEmailStatus('error');
+        setEmailFeedback(
+          err instanceof Error ? err.message : 'Chưa gửi được email xác nhận.'
+        );
+      }
+    };
+    void autoSend();
+    return () => {
+      active = false;
+    };
+  }, [latestBooking]);
 
   const handleCopyCode = () => {
     if (!latestBooking.code) return;
@@ -245,6 +298,39 @@ export const BookingSuccessScreen: React.FC<{
                 {latestBooking.symptoms || 'Chưa cập nhật'}
               </Text>
             </View>
+
+            {latestBooking.patientEmail ? (
+              <View style={{ marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: COLORS.border, gap: 8 }}>
+                {emailFeedback ? (
+                  <Text
+                    accessibilityRole="alert"
+                    style={{
+                      fontSize: 13,
+                      fontWeight: '600',
+                      color: emailStatus === 'sent' ? COLORS.secondary : COLORS.error,
+                    }}
+                  >
+                    {emailStatus === 'sent' ? '✓ ' : '⚠ '}
+                    {emailFeedback}
+                  </Text>
+                ) : null}
+                <AppButton
+                  title={
+                    emailStatus === 'sent'
+                      ? 'Gửi lại phiếu hẹn qua Email'
+                      : 'Gửi phiếu hẹn kèm QR về Email'
+                  }
+                  variant={emailStatus === 'sent' ? 'outline' : 'tonal'}
+                  size="sm"
+                  leftIcon="mail-outline"
+                  loading={emailSending}
+                  disabled={emailSending}
+                  onPress={() => {
+                    void handleSendBookingEmail(false);
+                  }}
+                />
+              </View>
+            ) : null}
           </View>
         </AnimatedEntry>
 

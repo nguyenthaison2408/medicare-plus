@@ -10,7 +10,14 @@ export function clinicAppointmentToItem(appointment: ClinicAppointment): Appoint
   const doctor = DOCTORS.find(d => d.id === appointment.doctor_id);
   if (!doctor) throw new Error('Thông tin bác sĩ chưa được đồng bộ với ứng dụng.');
   const date = new Date(appointment.starts_at);
-  const label = date.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+  const label = date.toLocaleString('vi-VN', {
+    timeZone: 'Asia/Ho_Chi_Minh',
+    hour: '2-digit',
+    minute: '2-digit',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
   const isChatConsult = Boolean(
     appointment.symptoms && appointment.symptoms.startsWith('[Tư vấn Chat]')
   );

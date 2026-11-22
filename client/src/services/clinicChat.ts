@@ -349,7 +349,7 @@ export function subscribeConsultMessagesCloud(
 
   const pollTimer = setInterval(() => {
     onUpdate();
-  }, 3000);
+  }, 15000);
 
   return () => {
     clearInterval(pollTimer);

@@ -120,6 +120,7 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({
   const [bhytInRate, setBhytInRate] = useState('80');
   const [bhytOutRate, setBhytOutRate] = useState('40');
   const [bhytSaving, setBhytSaving] = useState(false);
+  const [bhytError, setBhytError] = useState('');
 
   // Biểu mẫu thêm bác sĩ
   const [showAddDoc, setShowAddDoc] = useState(false);
@@ -1345,18 +1346,35 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({
   );
 
   const handleSaveBhytRule = async () => {
+    setBhytError('');
+    const trimmedPrefix = bhytPrefix.trim().toUpperCase();
+    const trimmedGroup = bhytGroupName.trim();
+    if (!trimmedPrefix || trimmedPrefix.length < 2) {
+      const msg = 'Vui lòng nhập mã đầu thẻ BHYT hợp lệ (tối thiểu 2 ký tự, VD: TE, HT, DN).';
+      setBhytError(msg);
+      Alert.alert('Thiếu thông tin BHYT', msg);
+      return;
+    }
+    if (!trimmedGroup || trimmedGroup.length < 2) {
+      const msg = 'Vui lòng nhập tên nhóm đối tượng hưởng BHYT.';
+      setBhytError(msg);
+      Alert.alert('Thiếu thông tin BHYT', msg);
+      return;
+    }
+    const inRate = Number(bhytInRate);
+    const outRate = Number(bhytOutRate);
+    if (Number.isNaN(inRate) || inRate < 0 || inRate > 100 || Number.isNaN(outRate) || outRate < 0 || outRate > 100) {
+      const msg = 'Mức hưởng BHYT phải nằm trong khoảng 0 đến 100%.';
+      setBhytError(msg);
+      Alert.alert('Tỷ lệ không hợp lệ', msg);
+      return;
+    }
     setBhytSaving(true);
     try {
-      const inRate = Number(bhytInRate);
-      const outRate = Number(bhytOutRate);
-      if (Number.isNaN(inRate) || inRate < 0 || inRate > 100 || Number.isNaN(outRate) || outRate < 0 || outRate > 100) {
-        Alert.alert('Tỷ lệ không hợp lệ', 'Mức hưởng BHYT phải nằm trong khoảng 0 đến 100%.');
-        return;
-      }
       await saveBhytConfig({
-        id: bhytEditId || `bhyt-${bhytPrefix.trim().toLowerCase()}-${Date.now()}`,
-        prefixCode: bhytPrefix,
-        groupName: bhytGroupName,
+        id: bhytEditId || `bhyt-${trimmedPrefix.toLowerCase()}-${Date.now()}`,
+        prefixCode: trimmedPrefix,
+        groupName: trimmedGroup,
         inNetworkRate: inRate,
         outNetworkRate: outRate,
         active: true,
@@ -1366,9 +1384,12 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({
       setBhytGroupName('');
       setBhytInRate('80');
       setBhytOutRate('40');
+      setBhytError('');
       setAdminToast('Đã lưu chính sách mức hưởng BHYT.');
     } catch (err) {
-      Alert.alert('Lỗi cấu hình BHYT', err instanceof Error ? err.message : 'Không thể lưu cấu hình BHYT.');
+      const msg = err instanceof Error ? err.message : 'Không thể lưu cấu hình BHYT.';
+      setBhytError(msg);
+      Alert.alert('Lỗi cấu hình BHYT', msg);
     } finally {
       setBhytSaving(false);
     }
@@ -1492,6 +1513,25 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({
             />
           </View>
         </View>
+        {bhytError ? (
+          <View
+            accessibilityRole="alert"
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 6,
+              backgroundColor: COLORS.errorContainer,
+              borderRadius: RADIUS.sm,
+              padding: 10,
+              marginBottom: 10,
+            }}
+          >
+            <Ionicons name="alert-circle" size={16} color={COLORS.error} />
+            <Text style={{ flex: 1, fontSize: TYPOGRAPHY.size.xs, color: COLORS.error, fontWeight: '600' }}>
+              {bhytError}
+            </Text>
+          </View>
+        ) : null}
         <View style={{ flexDirection: 'row', gap: 8 }}>
           {bhytEditId && (
             <AppButton
@@ -1660,19 +1700,26 @@ export const DoctorDashboardScreen: React.FC<DoctorDashboardScreenProps> = ({
   const [manualCodeInput, setManualCodeInput] = useState('');
   const [showManualCodeInput, setShowManualCodeInput] = useState(false);
   const [isCheckingInCode, setIsCheckingInCode] = useState(false);
+  const [checkInError, setCheckInError] = useState('');
   const doctorScanHandled = useRef(false);
 
   const handleDoctorCheckIn = async (code: string) => {
     if (!code) return;
     setIsCheckingInCode(true);
+    setCheckInError('');
     try {
       const success = await checkInByCode(code);
       if (success) {
         setDoctorCameraVisible(false);
         setShowManualCodeInput(false);
         setManualCodeInput('');
+        setCheckInError('');
         setToastMessage(`Đã tiếp đón bệnh nhân (Mã: ${code}) thành công!`);
         Alert.alert('Tiếp đón thành công', `Bệnh nhân với mã ${code} đã được đánh dấu ĐÃ CÓ MẶT.`);
+      } else {
+        setCheckInError(
+          `Không thể tiếp đón mã "${code}". Vui lòng kiểm tra lại mã phiếu hẹn hoặc ngày khám hôm nay.`
+        );
       }
     } finally {
       setIsCheckingInCode(false);
@@ -1900,8 +1947,12 @@ export const DoctorDashboardScreen: React.FC<DoctorDashboardScreenProps> = ({
               label="Nhập mã phiếu hẹn bệnh nhân"
               placeholder="MC-..."
               value={manualCodeInput}
-              onChangeText={setManualCodeInput}
+              onChangeText={(txt) => {
+                setManualCodeInput(txt);
+                if (checkInError) setCheckInError('');
+              }}
               autoCapitalize="characters"
+              error={checkInError}
             />
             <AppButton
               title="Xác nhận tiếp đón"

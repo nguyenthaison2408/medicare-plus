@@ -403,12 +403,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
         {/* Promo Banner placed below Doctors for organic reading flow */}
         <AnimatedEntry delay={60}>
-          <PressableScale
+          <SmartPromoBanner
             onPress={() => onBookDoctor(DOCTORS[0])}
             style={{ marginBottom: SPACING.lg }}
-          >
-            <SmartPromoBanner />
-          </PressableScale>
+          />
         </AnimatedEntry>
 
         {/* Hospitals near you */}
@@ -880,9 +878,11 @@ export const AppointmentsScreen: React.FC<AppointmentsScreenProps> = ({
 
         {statusTab === 'upcoming' && (
           <>
-            <AnimatedEntry delay={20} direction="up">
-              <AIReminderCard style={{ marginBottom: 14 }} />
-            </AnimatedEntry>
+            {upcomingList.length > 0 && (
+              <AnimatedEntry delay={20} direction="up">
+                <AIReminderCard style={{ marginBottom: 14 }} />
+              </AnimatedEntry>
+            )}
 
             {upcomingList.length > 0 ? (
               upcomingList.map((apt, idx) => (

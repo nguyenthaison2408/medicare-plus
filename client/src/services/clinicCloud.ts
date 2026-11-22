@@ -15,6 +15,7 @@ export interface ClinicDoctor {
 }
 export interface ClinicProfile {
   id: string;
+  email?: string;
   full_name: string;
   phone: string;
   role: ClinicRole;
@@ -128,7 +129,7 @@ export async function loadClinicProfile(): Promise<ClinicProfile> {
         .eq('id', user.id)
         .select('*')
         .single();
-      if (!updateErr && updated) return updated as ClinicProfile;
+      if (!updateErr && updated) return { ...(updated as ClinicProfile), email: user.email || undefined };
       if (updateErr && needsNameSync) {
         const { data: fallbackUpdated } = await getSupabase()
           .from('clinic_profiles')
@@ -136,13 +137,13 @@ export async function loadClinicProfile(): Promise<ClinicProfile> {
           .eq('id', user.id)
           .select('*')
           .single();
-        if (fallbackUpdated) return fallbackUpdated as ClinicProfile;
+        if (fallbackUpdated) return { ...(fallbackUpdated as ClinicProfile), email: user.email || undefined };
       }
     } catch {
       // Ignore optional metadata sync error so login never fails
     }
   }
-  return profile;
+  return { ...profile, email: user.email || undefined };
 }
 
 export async function updateClinicProfile(updates: UpdateClinicProfileInput, expectedUserId?: string): Promise<ClinicProfile> {

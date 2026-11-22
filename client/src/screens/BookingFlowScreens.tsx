@@ -634,7 +634,7 @@ export const BookingPaymentScreen: React.FC<BookingPaymentScreenProps> = ({
   onBack,
   onPaymentSuccess,
 }) => {
-  const { patientProfile, bhytConfigs, familyMembers } = useAppContext();
+  const { patientProfile, cloudProfile, bhytConfigs, familyMembers } = useAppContext();
   const [selectedMethod, setSelectedMethod] =
     useState<PaymentMethodType>('at_clinic_bhyt');
   const [submitting, setSubmitting] = useState(false);
@@ -644,7 +644,7 @@ export const BookingPaymentScreen: React.FC<BookingPaymentScreenProps> = ({
   const [patientInfo, setPatientInfo] = useState<PatientBookingInfo>({
     fullName: patient?.name || patientProfile.name,
     phone: patient?.phone || patientProfile.phone || '',
-    email: '',
+    email: cloudProfile?.email || '',
     symptoms: '',
   });
   const [patientErrors, setPatientErrors] = useState<PatientBookingErrors>({});

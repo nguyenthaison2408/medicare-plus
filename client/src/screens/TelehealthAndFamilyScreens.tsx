@@ -23,6 +23,7 @@ import {
 import { useAppContext, FamilyMemberItem } from '../context/AppContext';
 import {
   fetchConsultMessagesCloud,
+  resolveConsultDoctor,
   sendConsultMessageCloud,
   subscribeConsultMessagesCloud,
   type ConsultMessageItem,
@@ -1295,14 +1296,14 @@ export const TeleconsultationScreen: React.FC<{
 }> = ({ doctor: propDoctor, onBack, onFinishChat, onOpenLabResults }) => {
   const { latestBooking, patientProfile, cloudProfile, doctors, appointments } = useAppContext();
   const isDoctorPortalUser = CLOUD_MODE && cloudProfile?.role === 'doctor';
-  const assignedDoctor =
-    (cloudProfile?.doctor_id && doctors.find((d) => d.id === cloudProfile.doctor_id)) ||
-    propDoctor ||
-    latestBooking.doctor ||
-    DOCTORS[0];
-  const doctor = isDoctorPortalUser
-    ? assignedDoctor
-    : propDoctor || latestBooking.doctor || DOCTORS[0];
+  const doctor = resolveConsultDoctor({
+    isDoctorPortalUser,
+    cloudDoctorId: cloudProfile?.doctor_id,
+    doctors,
+    selectedDoctor: propDoctor,
+    latestBookingDoctor: latestBooking.doctor,
+    fallbackDoctor: DOCTORS[0],
+  });
 
   const [messages, setMessages] = useState<DoctorChatMessage[]>(
     CLOUD_MODE ? [] : INITIAL_DOCTOR_CHAT
@@ -1317,12 +1318,13 @@ export const TeleconsultationScreen: React.FC<{
   useEffect(() => {
     if (!CLOUD_MODE || !cloudProfile) return;
     let active = true;
+    const scope = {
+      doctorId: doctor.id,
+      ...(isDoctorPortalUser ? {} : { patientId: cloudProfile.id }),
+    };
     const refresh = async () => {
       try {
-        const rows = await fetchConsultMessagesCloud({
-          doctorId: doctor.id,
-          ...(isDoctorPortalUser ? {} : { patientId: cloudProfile.id }),
-        });
+        const rows = await fetchConsultMessagesCloud(scope);
         if (!active) return;
         setCloudMessages(rows);
         if (isDoctorPortalUser && rows.length > 0) {
@@ -1338,7 +1340,7 @@ export const TeleconsultationScreen: React.FC<{
     void refresh();
     const unsub = subscribeConsultMessagesCloud(() => {
       void refresh();
-    });
+    }, scope);
     return () => {
       active = false;
       unsub();
@@ -1472,7 +1474,9 @@ export const TeleconsultationScreen: React.FC<{
       'Tất cả bệnh nhân'
     : patientProfile.name;
   const activeBookingCode =
-    latestBooking.code || appointments[0]?.code || '#TUVAN-TRUCTUYEN';
+    (latestBooking.doctor?.id === doctor.id ? latestBooking.code : '') ||
+    appointments.find((a) => a.doctor.id === doctor.id)?.code ||
+    '#TUVAN-TRUCTUYEN';
 
   return (
     <KeyboardAvoidingView

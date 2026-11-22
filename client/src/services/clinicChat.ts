@@ -17,6 +17,11 @@ export interface ConsultMessageItem {
   createdAt: string;
 }
 
+export interface ConsultSubscriptionScope {
+  doctorId?: string;
+  patientId?: string;
+}
+
 interface CloudConsultMessageRow {
   id: string;
   patient_id: string;
@@ -29,17 +34,58 @@ interface CloudConsultMessageRow {
   created_at: string;
 }
 
-type ChatListener = (msg?: ConsultMessageItem) => void;
-const localListeners = new Set<ChatListener>();
+interface ScopedListenerEntry {
+  callback: () => void;
+  scope?: ConsultSubscriptionScope;
+}
 
-let sharedRealtimeChannel: ReturnType<ReturnType<typeof getSupabase>['channel']> | null = null;
-let sharedChannelSubscribed = false;
-let sharedSubscriberCount = 0;
+const localListeners = new Set<ScopedListenerEntry>();
+let channelCounter = 0;
 
-function notifyLocalListeners(msg?: ConsultMessageItem) {
-  localListeners.forEach((fn) => {
+export function resolveConsultDoctor<T extends { id: string }>(options: {
+  isDoctorPortalUser?: boolean;
+  cloudDoctorId?: string | null;
+  doctors?: T[];
+  selectedDoctor?: T | null;
+  latestBookingDoctor?: T | null;
+  fallbackDoctor: T;
+}): T {
+  const {
+    isDoctorPortalUser,
+    cloudDoctorId,
+    doctors = [],
+    selectedDoctor,
+    latestBookingDoctor,
+    fallbackDoctor,
+  } = options;
+  if (isDoctorPortalUser) {
+    const assigned = cloudDoctorId
+      ? doctors.find((d) => d.id === cloudDoctorId)
+      : undefined;
+    return assigned || selectedDoctor || latestBookingDoctor || fallbackDoctor;
+  }
+  return selectedDoctor || latestBookingDoctor || fallbackDoctor;
+}
+
+function matchesScope(
+  scope: ConsultSubscriptionScope | undefined,
+  target?: { doctorId?: string; patientId?: string }
+): boolean {
+  if (!scope || !target) return true;
+  if (scope.doctorId && target.doctorId && scope.doctorId !== target.doctorId) {
+    return false;
+  }
+  if (scope.patientId && target.patientId && scope.patientId !== target.patientId) {
+    return false;
+  }
+  return true;
+}
+
+function notifyLocalListeners(target?: { doctorId?: string; patientId?: string }) {
+  localListeners.forEach((entry) => {
+    if (!matchesScope(entry.scope, target)) return;
     try {
-      fn(msg);
+      entry.callback();
     } catch {
       // ignore listener error
     }
@@ -94,13 +140,12 @@ async function appendCachedMessage(msg: ConsultMessageItem): Promise<void> {
   }
 }
 
-function mergeMessages(
-  dbRows: ConsultMessageItem[],
-  cachedRows: ConsultMessageItem[],
+function filterMessages(
+  rows: ConsultMessageItem[],
   params: { doctorId?: string; patientId?: string }
 ): ConsultMessageItem[] {
   const byId = new Map<string, ConsultMessageItem>();
-  for (const item of [...cachedRows, ...dbRows]) {
+  for (const item of rows) {
     if (params.doctorId && item.doctorId !== params.doctorId) continue;
     if (params.patientId && item.patientId !== params.patientId) continue;
     byId.set(item.id, item);
@@ -114,63 +159,37 @@ export async function fetchConsultMessagesCloud(params: {
   doctorId?: string;
   patientId?: string;
 }): Promise<ConsultMessageItem[]> {
-  const cached = await readCachedMessages();
+  const cleanDoctorId = (params.doctorId || '').trim();
+  const cleanPatientId = (params.patientId || '').trim();
   if (!CLOUD_MODE) {
-    return mergeMessages([], cached, params);
+    const cached = await readCachedMessages();
+    return filterMessages(cached, {
+      doctorId: cleanDoctorId || undefined,
+      patientId: cleanPatientId || undefined,
+    });
+  }
+  if (!cleanDoctorId && !cleanPatientId) {
+    throw new Error('Thiếu thông tin cuộc trò chuyện tư vấn.');
   }
   let query = getSupabase()
     .from('clinic_consult_messages')
     .select('*')
     .order('created_at', { ascending: true });
-  if (params.doctorId) {
-    query = query.eq('doctor_id', params.doctorId);
+  if (cleanDoctorId) {
+    query = query.eq('doctor_id', cleanDoctorId);
   }
-  if (params.patientId) {
-    query = query.eq('patient_id', params.patientId);
+  if (cleanPatientId) {
+    query = query.eq('patient_id', cleanPatientId);
   }
   const { data, error } = await query;
   if (error) {
-    return mergeMessages([], cached, params);
+    throw new Error('Không tải được tin nhắn tư vấn. Vui lòng thử lại.');
   }
   const dbRows = ((data || []) as CloudConsultMessageRow[]).map(toConsultMessage);
-  return mergeMessages(dbRows, cached, params);
-}
-
-async function broadcastConsultMessage(savedItem: ConsultMessageItem): Promise<void> {
-  if (!CLOUD_MODE) return;
-  try {
-    if (sharedRealtimeChannel && sharedChannelSubscribed) {
-      await sharedRealtimeChannel.send({
-        type: 'broadcast',
-        event: 'new_message',
-        payload: savedItem,
-      });
-      return;
-    }
-    const supabase = getSupabase();
-    const tempName = `clinic-consult-send-${Date.now()}`;
-    const tempChannel = supabase.channel('clinic-consult-messages-live', {
-      config: { broadcast: { self: false } },
-    });
-    void tempName;
-    await new Promise<void>((resolve) => {
-      const timer = setTimeout(resolve, 1500);
-      tempChannel.subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          clearTimeout(timer);
-          void tempChannel
-            .send({
-              type: 'broadcast',
-              event: 'new_message',
-              payload: savedItem,
-            })
-            .finally(() => resolve());
-        }
-      });
-    });
-  } catch {
-    // ignore broadcast error
-  }
+  return filterMessages(dbRows, {
+    doctorId: cleanDoctorId || undefined,
+    patientId: cleanPatientId || undefined,
+  });
 }
 
 export async function sendConsultMessageCloud(params: {
@@ -183,20 +202,24 @@ export async function sendConsultMessageCloud(params: {
   senderName: string;
 }): Promise<ConsultMessageItem> {
   const cleanText = (params.content || '').trim();
+  const cleanDoctorId = (params.doctorId || '').trim();
   if (!cleanText) {
     throw new Error('Vui lòng nhập nội dung tin nhắn.');
   }
   if (cleanText.length > 2000) {
     throw new Error('Tin nhắn tư vấn không vượt quá 2000 ký tự.');
   }
+  if (!cleanDoctorId) {
+    throw new Error('Vui lòng chọn bác sĩ tư vấn.');
+  }
   const nowIso = new Date().toISOString();
   if (!CLOUD_MODE) {
     const localMsg: ConsultMessageItem = {
       id: `local-${Date.now()}`,
       patientId: params.patientId || 'demo-patient',
-      doctorId: params.doctorId,
+      doctorId: cleanDoctorId,
       appointmentId: params.appointmentId || null,
-      senderId: params.senderRole === 'patient' ? 'demo-patient' : params.doctorId,
+      senderId: params.senderRole === 'patient' ? 'demo-patient' : cleanDoctorId,
       senderRole: params.senderRole,
       senderName: (params.senderName || 'Người dùng').trim(),
       patientName:
@@ -207,7 +230,7 @@ export async function sendConsultMessageCloud(params: {
       createdAt: nowIso,
     };
     await appendCachedMessage(localMsg);
-    notifyLocalListeners(localMsg);
+    notifyLocalListeners({ doctorId: cleanDoctorId, patientId: localMsg.patientId });
     return localMsg;
   }
 
@@ -218,11 +241,16 @@ export async function sendConsultMessageCloud(params: {
   if (authError || !user) {
     throw new Error('Vui lòng đăng nhập lại trước khi gửi tin nhắn.');
   }
+  const rawPatientId = (params.patientId || '').trim();
+  if (params.senderRole !== 'patient' && (!rawPatientId || rawPatientId.startsWith('apt-'))) {
+    throw new Error('Không xác định được hồ sơ bệnh nhân nhận tin nhắn.');
+  }
   const resolvedPatientId =
-    params.senderRole === 'patient' ? user.id : params.patientId || user.id;
+    params.senderRole === 'patient' ? user.id : rawPatientId;
+
   const payload = {
     patient_id: resolvedPatientId,
-    doctor_id: params.doctorId,
+    doctor_id: cleanDoctorId,
     appointment_id: params.appointmentId || null,
     sender_id: user.id,
     sender_role: params.senderRole,
@@ -230,100 +258,102 @@ export async function sendConsultMessageCloud(params: {
     content: cleanText,
   };
 
-  let savedItem: ConsultMessageItem;
   const { data, error } = await getSupabase()
     .from('clinic_consult_messages')
     .insert(payload)
     .select('*')
     .single();
 
-  if (!error && data) {
-    savedItem = {
-      ...toConsultMessage(data as CloudConsultMessageRow),
-      patientName:
-        params.patientName ||
-        (params.senderRole === 'patient' ? payload.sender_name : undefined),
-    };
-  } else {
-    savedItem = {
-      id: `msg-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-      patientId: resolvedPatientId,
-      doctorId: params.doctorId,
-      appointmentId: params.appointmentId || null,
-      senderId: user.id,
-      senderRole: params.senderRole,
-      senderName: payload.sender_name,
-      patientName:
-        params.patientName ||
-        (params.senderRole === 'patient' ? payload.sender_name : undefined),
-      text: cleanText,
-      time: formatChatTime(nowIso),
-      createdAt: nowIso,
-    };
+  if (error || !data) {
+    throw new Error('Không gửi được tin nhắn tư vấn. Vui lòng thử lại.');
   }
 
-  await appendCachedMessage(savedItem);
-  notifyLocalListeners(savedItem);
-  void broadcastConsultMessage(savedItem);
+  const savedItem: ConsultMessageItem = {
+    ...toConsultMessage(data as CloudConsultMessageRow),
+    patientName:
+      params.patientName ||
+      (params.senderRole === 'patient' ? payload.sender_name : undefined),
+  };
 
+  notifyLocalListeners({ doctorId: savedItem.doctorId, patientId: savedItem.patientId });
   return savedItem;
 }
 
-export function subscribeConsultMessagesCloud(onUpdate: () => void): () => void {
-  const localHandler: ChatListener = () => onUpdate();
-  localListeners.add(localHandler);
+export function subscribeConsultMessagesCloud(
+  onUpdate: () => void,
+  scope?: ConsultSubscriptionScope
+): () => void {
+  const cleanScope: ConsultSubscriptionScope | undefined = scope
+    ? {
+        doctorId: scope.doctorId?.trim() || undefined,
+        patientId: scope.patientId?.trim() || undefined,
+      }
+    : undefined;
+  const localEntry: ScopedListenerEntry = {
+    callback: () => onUpdate(),
+    scope: cleanScope,
+  };
+  localListeners.add(localEntry);
 
   if (!CLOUD_MODE) {
     return () => {
-      localListeners.delete(localHandler);
+      localListeners.delete(localEntry);
     };
   }
 
-  sharedSubscriberCount += 1;
   const supabase = getSupabase();
+  const subId = ++channelCounter;
+  const scopeTag = [
+    cleanScope?.doctorId ? `doc-${cleanScope.doctorId}` : null,
+    cleanScope?.patientId ? `pat-${cleanScope.patientId}` : null,
+  ]
+    .filter(Boolean)
+    .join(':') || 'all';
+  const filter = cleanScope?.patientId
+    ? `patient_id=eq.${cleanScope.patientId}`
+    : cleanScope?.doctorId
+    ? `doctor_id=eq.${cleanScope.doctorId}`
+    : undefined;
 
-  if (!sharedRealtimeChannel) {
-    sharedChannelSubscribed = false;
-    sharedRealtimeChannel = supabase
-      .channel('clinic-consult-messages-live', {
-        config: { broadcast: { self: false } },
-      })
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'clinic_consult_messages' },
-        () => {
-          notifyLocalListeners();
+  const channel = supabase
+    .channel(`clinic-consult-messages:${scopeTag}:${subId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'clinic_consult_messages',
+        ...(filter ? { filter } : {}),
+      },
+      (payload: { new?: Partial<CloudConsultMessageRow>; old?: Partial<CloudConsultMessageRow> }) => {
+        const row = payload?.new || payload?.old;
+        if (
+          cleanScope?.doctorId &&
+          row?.doctor_id &&
+          row.doctor_id !== cleanScope.doctorId
+        ) {
+          return;
         }
-      )
-      .on('broadcast', { event: 'new_message' }, (event) => {
-        const incoming = event?.payload as ConsultMessageItem | undefined;
-        if (incoming && incoming.id) {
-          void appendCachedMessage(incoming).then(() => {
-            notifyLocalListeners(incoming);
-          });
-        } else {
-          notifyLocalListeners();
+        if (
+          cleanScope?.patientId &&
+          row?.patient_id &&
+          row.patient_id !== cleanScope.patientId
+        ) {
+          return;
         }
-      })
-      .subscribe((status) => {
-        sharedChannelSubscribed = status === 'SUBSCRIBED';
-      });
-  }
+        // Chỉ thông báo để tải lại dữ liệu đã được xác thực qua RLS từ database, tuyệt đối không render trực tiếp payload từ sự kiện
+        onUpdate();
+      }
+    )
+    .subscribe();
 
-  // Fallback polling mỗi 3 giây phòng trường hợp WebSocket trên 4G/5G bị ngủ đông
   const pollTimer = setInterval(() => {
     onUpdate();
   }, 3000);
 
   return () => {
     clearInterval(pollTimer);
-    localListeners.delete(localHandler);
-    sharedSubscriberCount = Math.max(0, sharedSubscriberCount - 1);
-    if (sharedSubscriberCount === 0 && sharedRealtimeChannel) {
-      const ch = sharedRealtimeChannel;
-      sharedRealtimeChannel = null;
-      sharedChannelSubscribed = false;
-      void supabase.removeChannel(ch);
-    }
+    localListeners.delete(localEntry);
+    void supabase.removeChannel(channel);
   };
 }

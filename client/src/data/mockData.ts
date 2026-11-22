@@ -76,6 +76,7 @@ export interface AppointmentItem {
   status: 'upcoming' | 'completed' | 'cancelled';
   mode: 'clinic' | 'video';
   statusBadge: string;
+  patientId?: string;
   patientName?: string;
   patientPhone?: string;
   patientEmail?: string;

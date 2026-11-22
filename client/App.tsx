@@ -58,7 +58,7 @@ import {
 } from './src/screens/PharmacyAndMedicationScreens';
 
 function AppContent() {
-  const { createBooking, cloudProfile, cloudSyncError } = useAppContext();
+  const { createBooking, cloudProfile, cloudSyncError, latestBooking } = useAppContext();
   const bookingInFlight = useRef(false);
   const [route, setRoute] = useState<string>('login');
   const [actionMessage, setActionMessage] = useState('');
@@ -206,13 +206,13 @@ function AppContent() {
 
   const handleOpenDoctor = (doc: DoctorItem) => {
     setSelectedDoctor(doc);
-    setBookingInfo((prev) => ({ ...prev, patient: undefined }));
+    setBookingInfo((prev) => ({ ...prev, doctor: doc, patient: undefined }));
     navigateTo('doctorDetail');
   };
 
   const handleOpenBooking = (doc: DoctorItem) => {
     setSelectedDoctor(doc);
-    setBookingInfo((prev) => ({ ...prev, patient: undefined }));
+    setBookingInfo((prev) => ({ ...prev, doctor: doc, patient: undefined }));
     navigateTo('bookingSlot');
   };
 
@@ -286,6 +286,7 @@ function AppContent() {
             onBookSlot={handleOpenBooking}
             onOpenChat={(doc) => {
               setSelectedDoctor(doc);
+              setBookingInfo((prev) => ({ ...prev, doctor: doc }));
               navigateTo('teleconsult');
             }}
           />
@@ -297,6 +298,7 @@ function AppContent() {
             onBack={() => goBack('doctorDetail')}
             onConfirmBooking={(details) => {
               if (details) {
+                setSelectedDoctor(details.doctor);
                 setBookingInfo((prev) => ({
                   ...prev,
                   doctor: details.doctor,
@@ -312,7 +314,7 @@ function AppContent() {
       case 'bookingPayment':
         return (
           <BookingPaymentScreen
-            doctor={bookingInfo.doctor || selectedDoctor}
+            doctor={selectedDoctor || bookingInfo.doctor}
             day={bookingInfo.day}
             slot={bookingInfo.slot}
             consultMode={bookingInfo.consultMode}
@@ -322,13 +324,15 @@ function AppContent() {
               if (bookingInFlight.current) return;
               bookingInFlight.current = true;
               try {
+                const targetDoctor = selectedDoctor || bookingInfo.doctor;
                 await createBooking({
-                  doctor: bookingInfo.doctor || selectedDoctor,
+                  doctor: targetDoctor,
                   day: bookingInfo.day, slot: bookingInfo.slot,
                   consultMode: bookingInfo.consultMode, paymentMethod: method,
                   patientInfo,
                 });
-                setBookingInfo((prev) => ({ ...prev, paymentMethod: method }));
+                setSelectedDoctor(targetDoctor);
+                setBookingInfo((prev) => ({ ...prev, doctor: targetDoctor, paymentMethod: method }));
                 navigateTo('bookingSuccess');
               } catch (error) { setActionMessage(error instanceof Error ? error.message : 'Chưa đặt được lịch. Vui lòng thử lại.'); }
               finally { bookingInFlight.current = false; }
@@ -351,7 +355,13 @@ function AppContent() {
               setRoute('main');
               setActiveTab('home');
             }}
-            onNavigate={navigateTo}
+            onNavigate={(targetRoute) => {
+              if (targetRoute === 'teleconsult' && latestBooking.doctor) {
+                setSelectedDoctor(latestBooking.doctor);
+                setBookingInfo((prev) => ({ ...prev, doctor: latestBooking.doctor }));
+              }
+              navigateTo(targetRoute);
+            }}
           />
         );
       case 'familyProfiles':
@@ -419,7 +429,7 @@ function AppContent() {
       case 'teleconsult':
         return (
           <TeleconsultationScreen
-            doctor={bookingInfo.doctor || selectedDoctor}
+            doctor={selectedDoctor || bookingInfo.doctor}
             onBack={() => goBack('main')}
             onFinishChat={() => navigateTo('postConsultSummary')}
             onOpenLabResults={() => navigateTo('labImagingResults')}
@@ -504,6 +514,10 @@ function AppContent() {
               >
                 <AppointmentsScreen
                   onSelectDoctor={handleOpenDoctor}
+                  onFocusDoctor={(doc) => {
+                    setSelectedDoctor(doc);
+                    setBookingInfo((prev) => ({ ...prev, doctor: doc }));
+                  }}
                   onBookNew={() => handleOpenBooking(DOCTORS[0])}
                   onNavigate={navigateTo}
                 />

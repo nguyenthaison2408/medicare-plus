@@ -1711,9 +1711,10 @@ export const DoctorDashboardScreen: React.FC<DoctorDashboardScreenProps> = ({
 
   useEffect(() => {
     let active = true;
+    const scope = { doctorId: doctor.id };
     const refreshChat = async () => {
       try {
-        const rows = await fetchConsultMessagesCloud({ doctorId: doctor.id });
+        const rows = await fetchConsultMessagesCloud(scope);
         if (!active) return;
         setChatMessages(rows);
       } catch {
@@ -1723,7 +1724,7 @@ export const DoctorDashboardScreen: React.FC<DoctorDashboardScreenProps> = ({
     void refreshChat();
     const unsub = subscribeConsultMessagesCloud(() => {
       void refreshChat();
-    });
+    }, scope);
     return () => {
       active = false;
       unsub();
@@ -2262,18 +2263,19 @@ export const DoctorDashboardScreen: React.FC<DoctorDashboardScreenProps> = ({
     // 2. Ghép thêm các bệnh nhân có lịch khám với bác sĩ này để bác sĩ chủ động nhắn tin
     for (const apt of doctorAppointments) {
       const pName = (apt.patientName || 'Bệnh nhân').trim();
+      const realPatientId = apt.patientId?.trim();
       const matchedEntry = Array.from(map.values()).find(
         (t) =>
+          (realPatientId && t.patientId === realPatientId) ||
           t.patientName.trim().toLowerCase() === pName.toLowerCase() ||
           t.patientId === `apt-${apt.id}`
       );
       if (matchedEntry) {
         matchedEntry.appointment = matchedEntry.appointment || apt;
         matchedEntry.subtitle = `Mã phiếu: ${apt.code}${apt.patientPhone ? ` • SĐT: ${apt.patientPhone}` : ''}`;
-      } else {
-        const syntheticId = `apt-${apt.id}`;
-        map.set(syntheticId, {
-          patientId: syntheticId,
+      } else if (realPatientId) {
+        map.set(realPatientId, {
+          patientId: realPatientId,
           patientName: pName,
           initials: getInitials(pName),
           subtitle: `Mã phiếu: ${apt.code}${apt.patientPhone ? ` • SĐT: ${apt.patientPhone}` : ''}`,

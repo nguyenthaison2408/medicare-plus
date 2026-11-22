@@ -804,12 +804,14 @@ export const EHRScreen: React.FC<EHRScreenProps> = ({
 
 export interface AppointmentsScreenProps {
   onSelectDoctor: (doctor: DoctorItem) => void;
+  onFocusDoctor?: (doctor: DoctorItem) => void;
   onBookNew: () => void;
   onNavigate: (routeKey: string) => void;
 }
 
 export const AppointmentsScreen: React.FC<AppointmentsScreenProps> = ({
   onSelectDoctor,
+  onFocusDoctor,
   onBookNew,
   onNavigate,
 }) => {
@@ -890,6 +892,7 @@ export const AppointmentsScreen: React.FC<AppointmentsScreenProps> = ({
                       appointment={apt}
                       onPrimaryPress={(item) => {
                         selectAppointmentTicket(item);
+                        onFocusDoctor?.(item.doctor);
                         if (item.mode === 'video') {
                           onNavigate('teleconsult');
                         } else {

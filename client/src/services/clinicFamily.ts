@@ -89,19 +89,13 @@ export async function addFamilyMemberCloud(member: FamilyMemberInput): Promise<F
     phone: (member.phone || '').trim(),
     allergies: (member.allergies || '').trim(),
   };
-  let { data, error } = await getSupabase()
+  const { data, error } = await getSupabase()
     .from('clinic_family_members')
     .insert(extendedRow)
     .select()
     .single();
   if (error && (error.code === '42703' || error.message?.includes('column') || error.message?.includes('schema cache'))) {
-    const fallback = await getSupabase()
-      .from('clinic_family_members')
-      .insert(baseRow)
-      .select()
-      .single();
-    data = fallback.data;
-    error = fallback.error;
+    throw new Error('Cơ sở dữ liệu chưa cập nhật đầy đủ trường thông tin người thân (giới tính, SĐT, dị ứng). Vui lòng chạy migration mới nhất.');
   }
   if (error || !data) throw new Error('Chưa lưu được hồ sơ người thân. Vui lòng thử lại.');
   return toMember(data);
@@ -138,21 +132,14 @@ export async function updateFamilyMemberCloud(
     phone: (member.phone || '').trim(),
     allergies: (member.allergies || '').trim(),
   };
-  let { data, error } = await getSupabase()
+  const { data, error } = await getSupabase()
     .from('clinic_family_members')
     .update(extendedPatch)
     .eq('id', cleanId)
     .select()
     .single();
   if (error && (error.code === '42703' || error.message?.includes('column') || error.message?.includes('schema cache'))) {
-    const fallback = await getSupabase()
-      .from('clinic_family_members')
-      .update(basePatch)
-      .eq('id', cleanId)
-      .select()
-      .single();
-    data = fallback.data;
-    error = fallback.error;
+    throw new Error('Cơ sở dữ liệu chưa cập nhật đầy đủ trường thông tin người thân (giới tính, SĐT, dị ứng). Vui lòng chạy migration mới nhất.');
   }
   if (error || !data) throw new Error('Không tìm thấy hoặc không thể cập nhật hồ sơ người thân.');
   return toMember(data);

@@ -21,6 +21,7 @@ export function clinicAppointmentToItem(appointment: ClinicAppointment): Appoint
     room: isChatConsult ? 'Phòng Tư vấn Chat Trực tuyến' : doctor.hospital,
     status: appointment.status === 'COMPLETED' ? 'completed' : appointment.status === 'CANCELLED' ? 'cancelled' : 'upcoming',
     mode: isChatConsult ? 'video' : 'clinic',
+    patientId: appointment.patient_id,
     patientName: appointment.patient_name,
     patientPhone: appointment.patient_phone,
     patientEmail: appointment.patient_email,

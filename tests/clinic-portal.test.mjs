@@ -73,3 +73,103 @@ test('opening an unknown profile does not invent gender or blood type',()=>{
  const open=vm.runInNewContext(stripTypeScriptTypes(source.slice(begin,end))+';openEditProfile',{...setters,patientProfile:{name:'QA',gender:'Chưa cập nhật',bloodType:'Chưa cập nhật'},PATIENT_PROFILE:{avatar:'qa-placeholder'},setEditGender:value=>{gender=value;},setEditBloodType:value=>{blood=value;},setEditProfileVisible:()=>{}});
  open();assert.equal(gender,'');assert.equal(blood,'');
 });
+test('addFamilyMemberCloud and updateFamilyMemberCloud reject instead of dropping gender, phone, and allergies when schema columns are missing',async()=>{
+ let insertCount=0,updateCount=0;
+ const missingColumnError={code:'42703',message:'column "allergies" of relation "clinic_family_members" does not exist'};
+ const table={
+  insert:()=>{insertCount++;return table;},
+  update:()=>{updateCount++;return table;},
+  eq:()=>table,
+  select:()=>table,
+  single:async()=>({data:null,error:missingColumnError}),
+ };
+ const api=service('client/src/services/clinicFamily.ts',['addFamilyMemberCloud','updateFamilyMemberCloud'],{
+  auth:{getUser:async()=>({data:{user:{id:'patient-a'}},error:null})},
+  from:()=>table,
+ });
+ await assert.rejects(
+  api.addFamilyMemberCloud({name:'Nguyễn Bảo Nam',dob:'18/09/2020',relation:'Con cái',bhyt:'TE1',gender:'Nam',phone:'0909123456',allergies:'Penicillin'}),
+  /migration/i
+ );
+ await assert.rejects(
+  api.updateFamilyMemberCloud('fam-1',{name:'Nguyễn Bảo Nam',dob:'18/09/2020',relation:'Con cái',bhyt:'TE1',gender:'Nam',phone:'0909123456',allergies:'Penicillin'}),
+  /migration/i
+ );
+ assert.equal(insertCount,1);
+ assert.equal(updateCount,1);
+});
+test('sendConsultMessageCloud rejects when Supabase insert fails and never creates a local fallback or broadcast',async()=>{
+ let cacheWrites=0,channelCalls=0;
+ const chatApi=vm.runInNewContext(clean(read('client/src/services/clinicChat.ts'))+';({sendConsultMessageCloud})', {
+  CLOUD_MODE:true,
+  AsyncStorage:{getItem:async()=>null,setItem:async()=>{cacheWrites++;}},
+  getSupabase:()=>({
+   auth:{getUser:async()=>({data:{user:{id:'patient-a'}},error:null})},
+   channel:()=>{channelCalls++;throw Error('Must not open broadcast channel on send');},
+   from:()=>({
+    insert:()=>({
+     select:()=>({
+      single:async()=>({data:null,error:{code:'42501',message:'new row violates row-level security policy'}}),
+     }),
+    }),
+   }),
+  }),
+ });
+ await assert.rejects(
+  chatApi.sendConsultMessageCloud({
+   doctorId:'doc-1',
+   content:'Xin chào bác sĩ',
+   senderRole:'patient',
+   senderName:'Thanh Vũ',
+  })
+ );
+ assert.equal(cacheWrites,0);
+ assert.equal(channelCalls,0);
+});
+test('subscribeConsultMessagesCloud scopes postgres_changes per conversation and never trusts unverified broadcast payloads',()=>{
+ const channels=[];
+ const handlers=[];
+ let updates=0;
+ const chatApi=vm.runInNewContext(clean(read('client/src/services/clinicChat.ts'))+';({subscribeConsultMessagesCloud})', {
+  CLOUD_MODE:true,
+  setInterval:()=>1,
+  clearInterval:()=>{},
+  AsyncStorage:{getItem:async()=>null,setItem:async()=>{throw Error('Must not cache unverified realtime payload');}},
+  getSupabase:()=>({
+   channel:(name)=>{
+    const ch={
+     name,
+     on:(type,filter,cb)=>{handlers.push({type,filter,cb});return ch;},
+     subscribe:()=>ch,
+    };
+    channels.push(ch);
+    return ch;
+   },
+   removeChannel:async()=>{},
+  }),
+ });
+ const unsub=chatApi.subscribeConsultMessagesCloud(()=>{updates++;},{doctorId:'doc-2',patientId:'patient-a'});
+ assert.equal(channels.length,1);
+ assert.match(channels[0].name,/doc-doc-2:pat-patient-a/);
+ assert.equal(handlers.length,1);
+ assert.equal(handlers[0].type,'postgres_changes');
+ assert.equal(handlers[0].filter.filter,'patient_id=eq.patient-a');
+ handlers[0].cb({new:{doctor_id:'doc-other',patient_id:'patient-a'}});
+ assert.equal(updates,0);
+ handlers[0].cb({new:{doctor_id:'doc-2',patient_id:'patient-a'}});
+ assert.equal(updates,1);
+ unsub();
+});
+test('resolveConsultDoctor prioritizes newly selected doctor over previous booking doctor',()=>{
+ const chatApi=vm.runInNewContext(clean(read('client/src/services/clinicChat.ts'))+';({resolveConsultDoctor})',{});
+ const previousBookingDoc={id:'doc-1',name:'BS. Cũ'};
+ const newlySelectedDoc={id:'doc-2',name:'BS. Mới'};
+ const fallbackDoc={id:'doc-0',name:'BS. Mặc định'};
+ const resolved=chatApi.resolveConsultDoctor({
+  isDoctorPortalUser:false,
+  selectedDoctor:newlySelectedDoc,
+  latestBookingDoctor:previousBookingDoc,
+  fallbackDoctor:fallbackDoc,
+ });
+ assert.equal(resolved.id,'doc-2');
+});

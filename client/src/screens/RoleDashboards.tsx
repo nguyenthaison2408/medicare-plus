@@ -75,6 +75,7 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({
     doctors,
     addDoctor,
     approveDoctor,
+    updateDoctorAvatar,
     hospitals,
     addHospital,
     familyMembers,
@@ -137,8 +138,78 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({
   const [newDocFee, setNewDocFee] = useState('300000');
   const [newDocExp, setNewDocExp] = useState('5');
   const [newDocLicense, setNewDocLicense] = useState('');
+  const [newDocAvatar, setNewDocAvatar] = useState('');
   const [docErrors, setDocErrors] = useState<Record<string, string>>({});
   const [isSavingDoctor, setIsSavingDoctor] = useState(false);
+
+  // Chỉnh sửa ảnh đại diện cho bác sĩ hiện có
+  const [editingAvatarDocId, setEditingAvatarDocId] = useState<string | null>(null);
+  const [editingAvatarUrl, setEditingAvatarUrl] = useState('');
+  const [editingAvatarSaving, setEditingAvatarSaving] = useState(false);
+  const [editingAvatarError, setEditingAvatarError] = useState('');
+
+  const pickDoctorImageFromDevice = (onPicked: (dataUri: string) => void) => {
+    if (Platform.OS !== 'web' || typeof document === 'undefined') {
+      Alert.alert(
+        'Chọn ảnh bác sĩ',
+        'Bạn có thể dán trực tiếp link ảnh (URL https://...) vào ô bên dưới hoặc dùng trình duyệt Web để tải ảnh từ máy tính.'
+      );
+      return;
+    }
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      if (file.size > 5 * 1024 * 1024) {
+        setEditingAvatarError('Ảnh tải lên không vượt quá 5MB.');
+        setDocErrors((p) => ({ ...p, avatar: 'Ảnh tải lên không vượt quá 5MB.' }));
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = typeof reader.result === 'string' ? reader.result : '';
+        if (!result) return;
+        const img = new window.Image();
+        img.onload = () => {
+          const maxDim = 320;
+          const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.max(1, Math.round(img.width * scale));
+          canvas.height = Math.max(1, Math.round(img.height * scale));
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            onPicked(canvas.toDataURL('image/jpeg', 0.85));
+          } else {
+            onPicked(result);
+          }
+        };
+        img.onerror = () => onPicked(result);
+        img.src = result;
+      };
+      reader.readAsDataURL(file);
+    };
+    input.click();
+  };
+
+  const handleSaveDoctorAvatar = async (docId: string, docName: string) => {
+    setEditingAvatarError('');
+    setEditingAvatarSaving(true);
+    try {
+      await updateDoctorAvatar(docId, editingAvatarUrl);
+      setEditingAvatarDocId(null);
+      setEditingAvatarUrl('');
+      setAdminToast(`Đã cập nhật ảnh đại diện mới cho ${docName}.`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Không thể cập nhật ảnh bác sĩ.';
+      setEditingAvatarError(msg);
+      Alert.alert('Lỗi cập nhật ảnh', msg);
+    } finally {
+      setEditingAvatarSaving(false);
+    }
+  };
 
   // Biểu mẫu thêm bệnh viện liên kết độc lập
   const [showAddHosp, setShowAddHosp] = useState(false);
@@ -211,6 +282,7 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({
     setNewDocFee('300000');
     setNewDocExp('5');
     setNewDocLicense('');
+    setNewDocAvatar('');
     setDocErrors({});
   };
 
@@ -267,6 +339,7 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({
         feeNumeric: fee,
         experienceYears: exp,
         licenseCode: newDocLicense,
+        avatar: newDocAvatar.trim() || undefined,
       });
       resetDocForm();
       setShowAddDoc(false);
@@ -745,6 +818,84 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({
             title="Cấp hồ sơ Bác sĩ & Chứng chỉ hành nghề"
             leftIcon="medkit-outline"
           />
+
+          {/* Upload ảnh bác sĩ */}
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 12,
+              backgroundColor: COLORS.surfaceContainerLow,
+              borderRadius: RADIUS.md,
+              padding: 12,
+              marginBottom: 12,
+              borderWidth: 1,
+              borderColor: COLORS.outlineVariant,
+            }}
+          >
+            {newDocAvatar.trim() ? (
+              <Image
+                source={{ uri: newDocAvatar.trim() }}
+                style={styles.docAvatar}
+              />
+            ) : (
+              <View
+                style={[
+                  styles.docAvatar,
+                  {
+                    backgroundColor: COLORS.primaryContainer,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  },
+                ]}
+              >
+                <Ionicons name="person" size={24} color={COLORS.primary} />
+              </View>
+            )}
+            <View style={{ flex: 1 }}>
+              <Text style={styles.docName}>Ảnh chân dung Bác sĩ</Text>
+              <Text style={styles.docSub}>
+                Tải ảnh trực tiếp từ máy hoặc dán đường dẫn URL ảnh
+              </Text>
+              <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+                <AppButton
+                  title="Tải ảnh từ máy"
+                  variant="tonal"
+                  size="sm"
+                  leftIcon="cloud-upload-outline"
+                  fullWidth={false}
+                  onPress={() =>
+                    pickDoctorImageFromDevice((dataUri) => {
+                      setNewDocAvatar(dataUri);
+                      if (docErrors.avatar) setDocErrors((p) => ({ ...p, avatar: '' }));
+                    })
+                  }
+                />
+                {newDocAvatar ? (
+                  <AppButton
+                    title="Xóa ảnh"
+                    variant="outline"
+                    size="sm"
+                    fullWidth={false}
+                    onPress={() => setNewDocAvatar('')}
+                  />
+                ) : null}
+              </View>
+            </View>
+          </View>
+          <AppInput
+            label="HOẶC DÁN LINK ẢNH BÁC SĨ (URL)"
+            placeholder="https://..."
+            value={newDocAvatar.startsWith('data:image/') ? '' : newDocAvatar}
+            onChangeText={(v) => {
+              setNewDocAvatar(v);
+              if (docErrors.avatar) setDocErrors((p) => ({ ...p, avatar: '' }));
+            }}
+            error={docErrors.avatar}
+            leftIcon="image-outline"
+            autoCapitalize="none"
+          />
+
           <AppInput
             label="HỌ TÊN & HỌC HÀM / HỌC VỊ (*)"
             placeholder="VD: ThS. BS. Phạm Quốc Bảo"
@@ -943,12 +1094,31 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({
                   }}
                 />
                 <AppButton
-                  title="Cấu hình BHYT"
+                  title="Đổi ảnh BS"
+                  variant="outline"
+                  size="sm"
+                  leftIcon="camera-outline"
+                  fullWidth={false}
+                  style={{ flex: 1 }}
+                  onPress={() => {
+                    if (editingAvatarDocId === doc.id) {
+                      setEditingAvatarDocId(null);
+                      setEditingAvatarUrl('');
+                      setEditingAvatarError('');
+                    } else {
+                      setEditingAvatarDocId(doc.id);
+                      setEditingAvatarUrl(doc.avatar || '');
+                      setEditingAvatarError('');
+                    }
+                  }}
+                />
+                <AppButton
+                  title="BHYT"
                   variant="outline"
                   size="sm"
                   leftIcon="create-outline"
                   fullWidth={false}
-                  style={{ flex: 1 }}
+                  style={{ flex: 0.7 }}
                   onPress={() => {
                     setActiveTab('settings');
                     setAdminToast(`Đã mở cấu hình BHYT áp dụng cho ${doc.name}.`);
@@ -957,6 +1127,81 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({
               </>
             )}
           </View>
+
+          {editingAvatarDocId === doc.id && (
+            <View
+              style={{
+                marginTop: 12,
+                paddingTop: 12,
+                borderTopWidth: 1,
+                borderTopColor: COLORS.divider,
+                gap: 8,
+              }}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <Image
+                  source={{ uri: editingAvatarUrl.trim() || doc.avatar }}
+                  style={styles.docAvatar}
+                />
+                <View style={{ flex: 1, gap: 6 }}>
+                  <Text style={styles.docSub}>
+                    Cập nhật ảnh đại diện cho {doc.name}
+                  </Text>
+                  <AppButton
+                    title="Chọn ảnh từ máy"
+                    variant="tonal"
+                    size="sm"
+                    leftIcon="cloud-upload-outline"
+                    fullWidth={false}
+                    onPress={() =>
+                      pickDoctorImageFromDevice((dataUri) => {
+                        setEditingAvatarUrl(dataUri);
+                        setEditingAvatarError('');
+                      })
+                    }
+                  />
+                </View>
+              </View>
+              <AppInput
+                label="Hoặc dán link ảnh (URL https://...)"
+                placeholder="https://..."
+                value={editingAvatarUrl.startsWith('data:image/') ? '' : editingAvatarUrl}
+                onChangeText={(txt) => {
+                  setEditingAvatarUrl(txt);
+                  if (editingAvatarError) setEditingAvatarError('');
+                }}
+                error={editingAvatarError}
+                leftIcon="image-outline"
+                autoCapitalize="none"
+              />
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <AppButton
+                  title="Hủy"
+                  variant="outline"
+                  size="sm"
+                  fullWidth={false}
+                  style={{ flex: 1 }}
+                  disabled={editingAvatarSaving}
+                  onPress={() => {
+                    setEditingAvatarDocId(null);
+                    setEditingAvatarUrl('');
+                    setEditingAvatarError('');
+                  }}
+                />
+                <AppButton
+                  title={editingAvatarSaving ? 'Đang lưu...' : 'Lưu ảnh bác sĩ'}
+                  variant="primary"
+                  size="sm"
+                  leftIcon="checkmark-circle-outline"
+                  fullWidth={false}
+                  style={{ flex: 1.4 }}
+                  loading={editingAvatarSaving}
+                  disabled={editingAvatarSaving || !editingAvatarUrl.trim()}
+                  onPress={() => void handleSaveDoctorAvatar(doc.id, doc.name)}
+                />
+              </View>
+            </View>
+          )}
         </View>
       ))}
 

@@ -11,6 +11,7 @@ export interface ClinicDoctor {
   specialty: string;
   hospital: string;
   active: boolean;
+  avatar_url?: string;
   created_at?: string;
 }
 export interface ClinicProfile {

@@ -181,3 +181,34 @@ export async function deleteBhytConfigCloud(id: string): Promise<void> {
   if (error) throw new Error(error.message);
   if (!data?.length) throw new Error('Không tìm thấy cấu hình BHYT hoặc bạn không có quyền xóa.');
 }
+
+export async function updateDoctorAvatarCloud(
+  doctorId: string,
+  avatarUrl: string
+): Promise<string> {
+  const cleanUrl = avatarUrl.trim();
+  if (!cleanUrl) {
+    throw new Error('Vui lòng chọn ảnh hoặc nhập đường dẫn ảnh bác sĩ hợp lệ.');
+  }
+  if (!/^(https?:\/\/|data:image\/)/i.test(cleanUrl)) {
+    throw new Error('Định dạng ảnh không hợp lệ (chỉ hỗ trợ ảnh tải lên hoặc URL http/https).');
+  }
+  const { data, error } = await getSupabase()
+    .from('clinic_doctors')
+    .update({ avatar_url: cleanUrl })
+    .eq('id', doctorId)
+    .select('id, avatar_url')
+    .single();
+  if (error) {
+    if (error.message.toLowerCase().includes('avatar_url')) {
+      throw new Error(
+        'CSDL chưa có cột avatar_url cho bác sĩ. Vui lòng chạy migration 202611220009_clinic_doctors_avatar.sql trên Supabase.'
+      );
+    }
+    throw new Error(error.message || 'Không thể cập nhật ảnh bác sĩ trên hệ thống.');
+  }
+  if (!data) {
+    throw new Error('Không tìm thấy bác sĩ hoặc tài khoản không có quyền cập nhật ảnh.');
+  }
+  return (data.avatar_url as string) || cleanUrl;
+}

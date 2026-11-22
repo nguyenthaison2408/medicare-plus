@@ -1,0 +1,38 @@
+{
+  "cli": {
+    "version": ">= 15.0.0",
+    "appVersionSource": "local"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal"
+    },
+    "preview": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_DATA_MODE": "supabase",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://eulckfyojbbovwpslrep.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_MP00Lf_ehWMKCJjHfzww-g_-8IHmj8y",
+        "EXPO_PUBLIC_BOOKING_EMAIL_WEBHOOK_URL": "https://script.google.com/macros/s/AKfycbyuWiAYlsQYE1TNZp489ViIY56XqG1NczAXv0VVnfSQo7is18yzzA81JRvLLN97xXeWYg/exec"
+      }
+    },
+    "production": {
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_DATA_MODE": "supabase",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://eulckfyojbbovwpslrep.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_MP00Lf_ehWMKCJjHfzww-g_-8IHmj8y",
+        "EXPO_PUBLIC_BOOKING_EMAIL_WEBHOOK_URL": "https://script.google.com/macros/s/AKfycbyuWiAYlsQYE1TNZp489ViIY56XqG1NczAXv0VVnfSQo7is18yzzA81JRvLLN97xXeWYg/exec"
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}

@@ -20,7 +20,7 @@ export function getSupabase(): SupabaseClient {
         ...(Platform.OS !== 'web' ? { storage: AsyncStorage } : {}),
         autoRefreshToken: true,
         persistSession: true,
-        detectSessionInUrl: false,
+        detectSessionInUrl: Platform.OS === 'web',
       },
     });
     if (Platform.OS !== 'web') {

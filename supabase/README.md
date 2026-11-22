@@ -37,7 +37,7 @@ Danh mục bác sĩ là dữ liệu minh họa kế thừa từ client; cần th
 - Bác sĩ được phân công lưu chẩn đoán và thuốc; bệnh nhân xem được kết quả từ tài khoản riêng.
 - Tắt mạng phải báo lỗi rõ; không sinh lịch hẹn thành công giả trong chế độ trực tuyến.
 
-Chưa có project được kết nối thì migration, RLS và luồng trực tuyến chỉ ở trạng thái chuẩn bị, chưa được nghiệm thu. Xem `docs/09_Implementation_Audit.md` để theo dõi bằng chứng.
+Chưa có project được kết nối thì migration, RLS và luồng trực tuyến chỉ ở trạng thái chuẩn bị, chưa được nghiệm thu. Xem README gốc và docs/evidence/2026-11-22-full-history-audit.json để theo dõi bằng chứng.
 
 ## Cấu hình riêng và công cụ trên máy hiện tại
 
@@ -51,3 +51,9 @@ Chưa có project được kết nối thì migration, RLS và luồng trực tu
 Kết nối PostgreSQL dùng CA Supabase tại `certs/prod-ca-2021.crt`, có xác minh chứng chỉ. Không chia sẻ tệp cấu hình quản trị để các thành viên dùng ứng dụng; họ đăng nhập bằng tài khoản của mình và được chủ project cấp đúng vai trò.
 
 Tài liệu tham chiếu chính thức: [Kết nối PostgreSQL](https://supabase.com/docs/guides/database/connecting-to-postgres), [Auth Admin createUser](https://supabase.com/docs/reference/javascript/auth-admin-createuser), [RLS](https://supabase.com/docs/guides/database/postgres/row-level-security), [k6 thresholds](https://grafana.com/docs/k6/latest/using-k6/thresholds/).
+
+## Đối chiếu môi trường ngày 22/11/2026
+
+Source main 602b76c có 12 tệp migration, ledger cloud ghi 10. Bảng clinic_consult_messages và cột mở rộng người thân đã có trên cloud, nhưng ledger chưa ghi migration 007/008. Issue #44 theo dõi xác minh schema, quyền, trigger, publication và checksum trước reconcile; không tự sửa lịch sử hoặc chạy lại SQL mù. Đây là kết quả truy vấn chỉ đọc, không phải lần triển khai mới.
+
+Email booking là tùy chọn và phải nhận phản hồi JSON {"ok":true}; đăng ký email dùng Supabase Auth signUp/resend/verifyOtp với type signup. Template cần chứa mã nếu dùng màn nhập OTP, hoặc người dùng mở liên kết xác nhận và quay lại đăng nhập. Chưa xác nhận gửi email thật trong đợt đối chiếu.

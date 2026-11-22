@@ -9,6 +9,7 @@ import {
   Alert,
   Linking,
   Modal,
+  Image,
   StyleSheet,
   RefreshControl,
 } from 'react-native';
@@ -26,6 +27,7 @@ import {
 } from '../data/mockData';
 import { useAppContext } from '../context/AppContext';
 import { CLOUD_MODE } from '../services/supabaseClient';
+import { ClinicPatientRecordsScreen } from './ClinicPatientScreens';
 import { refineFollowUp } from '../services/aiConversation';
 import { runClinicalTriage } from '../services/aiTriageEngine';
 import { checkEHRSafetyGuardrails } from '../services/aiSafetyGuardrails';
@@ -47,6 +49,7 @@ import {
   LabImagingCard,
   MedicalHistoryTimeline,
   AppButton,
+  AppInput,
   AIReminderCard,
   AppointmentCard,
   AIMedicalTriageBanner,
@@ -124,7 +127,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   onOpenProfile,
   onNavigate,
 }) => {
-  const { appointments, doctors, hospitals, patientProfile } = useAppContext();
+  const {
+    appointments,
+    doctors,
+    hospitals,
+    patientProfile,
+    refreshHospitalCatalog,
+  } = useAppContext();
   const [search, setSearch] = useState('');
   const [selectedSpecialty, setSelectedSpecialty] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -133,11 +142,15 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   const [notificationsVisible, setNotificationsVisible] = useState(false);
   const insets = useSafeAreaInsets();
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     setRefreshing(true);
-    setTimeout(() => {
+    try {
+      await refreshHospitalCatalog();
+    } catch {
+      // AppContext keeps the existing catalog and exposes the load error.
+    } finally {
       setRefreshing(false);
-    }, 850);
+    }
   };
 
   // Filter and sort upcoming appointments (nearest first) to show on Home
@@ -391,12 +404,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
         {/* Promo Banner placed below Doctors for organic reading flow */}
         <AnimatedEntry delay={60}>
-          <PressableScale
+          <SmartPromoBanner
             onPress={() => onBookDoctor(DOCTORS[0])}
             style={{ marginBottom: SPACING.lg }}
-          >
-            <SmartPromoBanner />
-          </PressableScale>
+          />
         </AnimatedEntry>
 
         {/* Hospitals near you */}
@@ -406,10 +417,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             badgeText="TP. Hồ Chí Minh"
             badgeVariant="teal"
             badgeIcon="navigate"
-            actionText="Xem bản đồ"
+            actionText={hospitals.length > 0 ? 'Xem bản đồ' : undefined}
             onActionPress={() => {
-              setSelectedMapHospital(hospitals[0]);
-              setMapModalVisible(true);
+              const firstHospital = hospitals[0];
+              if (firstHospital) {
+                setSelectedMapHospital(firstHospital);
+                setMapModalVisible(true);
+              }
             }}
           />
           {refreshing ? (
@@ -437,11 +451,18 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         initialHospital={selectedMapHospital}
         onClose={() => setMapModalVisible(false)}
         onBookAtHospital={(hosp) => {
-          const matchedDoc =
-            DOCTORS.find((d) =>
-              d.hospital.toLowerCase().includes(hosp.name.toLowerCase()) ||
-              hosp.name.toLowerCase().includes(d.hospital.toLowerCase())
-            ) || DOCTORS[0];
+          const hospitalName = hosp.name.trim().toLocaleLowerCase('vi-VN');
+          const matchedDoc = doctors.find(
+            (doctor) =>
+              doctor.hospital.trim().toLocaleLowerCase('vi-VN') === hospitalName
+          );
+          if (!matchedDoc) {
+            Alert.alert(
+              'Chưa có bác sĩ',
+              'Cơ sở này chưa có bác sĩ khả dụng để đặt lịch. Vui lòng chọn cơ sở khác.'
+            );
+            return;
+          }
           onBookDoctor(matchedDoc);
         }}
       />
@@ -619,6 +640,12 @@ export const EHRScreen: React.FC<EHRScreenProps> = ({
     null
   );
 
+  if (CLOUD_MODE) return <View style={styles.screen}>
+    <AppHeader title="Hồ sơ bệnh án điện tử" subtitle="Bệnh án đã lưu trên Supabase"
+      rightActions={[{icon:'people-outline',onPress:()=>onNavigate('familyProfiles')}]} />
+    <ClinicPatientRecordsScreen />
+  </View>;
+
   return (
     <View style={styles.screen}>
       <AppHeader
@@ -782,12 +809,14 @@ export const EHRScreen: React.FC<EHRScreenProps> = ({
 
 export interface AppointmentsScreenProps {
   onSelectDoctor: (doctor: DoctorItem) => void;
+  onFocusDoctor?: (doctor: DoctorItem) => void;
   onBookNew: () => void;
   onNavigate: (routeKey: string) => void;
 }
 
 export const AppointmentsScreen: React.FC<AppointmentsScreenProps> = ({
   onSelectDoctor,
+  onFocusDoctor,
   onBookNew,
   onNavigate,
 }) => {
@@ -856,9 +885,11 @@ export const AppointmentsScreen: React.FC<AppointmentsScreenProps> = ({
 
         {statusTab === 'upcoming' && (
           <>
-            <AnimatedEntry delay={20} direction="up">
-              <AIReminderCard style={{ marginBottom: 14 }} />
-            </AnimatedEntry>
+            {upcomingList.length > 0 && (
+              <AnimatedEntry delay={20} direction="up">
+                <AIReminderCard style={{ marginBottom: 14 }} />
+              </AnimatedEntry>
+            )}
 
             {upcomingList.length > 0 ? (
               upcomingList.map((apt, idx) => (
@@ -868,6 +899,7 @@ export const AppointmentsScreen: React.FC<AppointmentsScreenProps> = ({
                       appointment={apt}
                       onPrimaryPress={(item) => {
                         selectAppointmentTicket(item);
+                        onFocusDoctor?.(item.doctor);
                         if (item.mode === 'video') {
                           onNavigate('teleconsult');
                         } else {
@@ -1357,7 +1389,7 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
   onNavigate,
   onSwitchTab,
 }) => {
-  const { appointments, familyMembers, takenMap, resetAppData, patientProfile } = useAppContext();
+  const { appointments, familyMembers, takenMap, resetAppData, patientProfile, updatePatientProfile } = useAppContext();
   const [pillReminder, setPillReminder] = useState(true);
   const [aptAlert, setAptAlert] = useState(true);
   const [labAlert, setLabAlert] = useState(true);
@@ -1365,6 +1397,123 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
   const [dndMode, setDndMode] = useState(true);
   const [biometric, setBiometric] = useState(true);
   const [resetToast, setResetToast] = useState(false);
+
+  // Edit Profile Modal State
+  const [editProfileVisible, setEditProfileVisible] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [editDob, setEditDob] = useState('');
+  const [editGender, setEditGender] = useState('');
+  const [editBloodType, setEditBloodType] = useState('');
+  const [editEmergency, setEditEmergency] = useState('');
+  const [editBhytCode, setEditBhytCode] = useState('');
+  const [editBhytHospital, setEditBhytHospital] = useState('');
+  const [editBhytExpiry, setEditBhytExpiry] = useState('');
+  const [editAvatar, setEditAvatar] = useState('');
+  const [editError, setEditError] = useState('');
+  const [editSaving, setEditSaving] = useState(false);
+  const [profileToast, setProfileToast] = useState<string | null>(null);
+
+  const pickAvatarFromDevice = (onPicked: (dataUri: string) => void) => {
+    if (Platform.OS !== 'web' || typeof document === 'undefined') {
+      Alert.alert(
+        'Chọn ảnh đại diện',
+        'Tính năng tải ảnh trực tiếp từ máy tính đang hỗ trợ trên trình duyệt Web.'
+      );
+      return;
+    }
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      if (file.size > 5 * 1024 * 1024) {
+        setEditError('Ảnh tải lên không vượt quá 5MB.');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = typeof reader.result === 'string' ? reader.result : '';
+        if (!result) return;
+        const img = new window.Image();
+        img.onload = () => {
+          const maxDim = 320;
+          const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.max(1, Math.round(img.width * scale));
+          canvas.height = Math.max(1, Math.round(img.height * scale));
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            onPicked(canvas.toDataURL('image/jpeg', 0.85));
+          } else {
+            onPicked(result);
+          }
+        };
+        img.onerror = () => onPicked(result);
+        img.src = result;
+      };
+      reader.readAsDataURL(file);
+    };
+    input.click();
+  };
+
+  const handleQuickAvatarUpload = () => {
+    pickAvatarFromDevice(async (dataUri) => {
+      try {
+        await updatePatientProfile({
+          name: patientProfile.name || 'Bệnh nhân',
+          avatar: dataUri,
+        });
+        setProfileToast('Đã cập nhật ảnh đại diện mới từ máy của bạn.');
+      } catch (err) {
+        setProfileToast(
+          err instanceof Error ? err.message : 'Không thể cập nhật ảnh đại diện.'
+        );
+      }
+    });
+  };
+
+  const openEditProfile = () => {
+    setEditName(patientProfile.name || '');
+    setEditPhone(patientProfile.phone || '');
+    setEditDob(patientProfile.dob || '');
+    setEditGender(patientProfile.gender && patientProfile.gender !== 'Chưa cập nhật' ? patientProfile.gender : '');
+    setEditBloodType(patientProfile.bloodType && patientProfile.bloodType !== 'Chưa cập nhật' ? patientProfile.bloodType : '');
+    setEditEmergency(patientProfile.emergencyContact || '');
+    setEditBhytCode(patientProfile.bhytCode || '');
+    setEditBhytHospital(patientProfile.bhytHospital || '');
+    setEditBhytExpiry(patientProfile.bhytExpiry || '');
+    setEditAvatar(patientProfile.avatar || PATIENT_PROFILE.avatar);
+    setEditError('');
+    setEditProfileVisible(true);
+  };
+
+  const handleSaveProfile = async () => {
+    setEditError('');
+    setEditSaving(true);
+    try {
+      await updatePatientProfile({
+        name: editName,
+        phone: editPhone,
+        dob: editDob,
+        gender: editGender,
+        bloodType: editBloodType,
+        emergencyContact: editEmergency,
+        bhytCode: editBhytCode,
+        bhytHospital: editBhytHospital,
+        bhytExpiry: editBhytExpiry,
+        avatar: editAvatar,
+      });
+      setEditProfileVisible(false);
+      setProfileToast('Đã lưu thông tin hồ sơ cá nhân thành công.');
+    } catch (err) {
+      setEditError(err instanceof Error ? err.message : 'Không thể lưu hồ sơ. Vui lòng thử lại.');
+    } finally {
+      setEditSaving(false);
+    }
+  };
 
   const upcomingCount = appointments.filter(
     (a) => a.status === 'upcoming'
@@ -1391,30 +1540,21 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
       >
         <ProfileHeaderCard
           profile={patientProfile}
-          onEditPress={() =>
-            Alert.alert(
-              'Hồ sơ cá nhân đã xác thực',
-              `Hồ sơ ${patientProfile.name}\nMã tài khoản: ${patientProfile.patientCode}\nThông tin định danh và BHYT cần được đối chiếu tại cơ sở y tế.`
-            )
-          }
+          onEditPress={openEditProfile}
+          onAvatarPress={handleQuickAvatarUpload}
           onQrPress={() => onNavigate('bookingSuccess')}
           style={{ marginBottom: 16 }}
         />
 
         <VssIDInsuranceCard
           profile={patientProfile}
-          onDetailPress={() =>
-            Alert.alert(
-              'Chi tiết thẻ BHYT điện tử',
-              `Mã thẻ: ${patientProfile.bhytCode || 'Chưa cập nhật'}\nNơi ĐKKCB ban đầu: ${patientProfile.bhytHospital || 'Chưa cập nhật'}\nHạn thẻ: ${patientProfile.bhytExpiry || 'Chưa xác minh'}`
-            )
-          }
+          onDetailPress={openEditProfile}
           style={{ marginBottom: 18 }}
         />
 
         <SectionHeader
           title="Tổng quan điều trị"
-          actionText="Cập nhật 15 phút trước"
+          actionText="Xem bệnh án"
           onActionPress={() => onSwitchTab('records')}
         />
         {/* 2x2 Summary Stats Grid */}
@@ -1437,7 +1577,7 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
               Lịch hẹn sắp tới
             </Text>
             <Text style={styles.statBoxSub} numberOfLines={1}>
-              10:30 Thứ Năm (Nội thần kinh)
+              {upcomingCount > 0 ? 'Đã xác nhận lịch khám' : 'Chưa có lịch hẹn mới'}
             </Text>
           </TouchableOpacity>
 
@@ -1462,13 +1602,13 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
               Toa thuốc đang uống
             </Text>
             <Text style={styles.statBoxSub} numberOfLines={1}>
-              {totalDoses} cữ/ngày • Còn 5 ngày
+              {totalDoses} cữ/ngày • Theo dõi uống thuốc
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             activeOpacity={0.85}
-            onPress={() => onNavigate('labImagingResults')}
+            onPress={() => onSwitchTab('records')}
             style={[styles.statBox, SHADOWS.sm]}
           >
             <View style={styles.statBoxTop}>
@@ -1481,18 +1621,18 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
                 color={COLORS.textMuted}
               />
             </View>
-            <Text style={styles.statBigNum}>12</Text>
+            <Text style={styles.statBigNum}>{appointments.length}</Text>
             <Text style={styles.statBoxTitle} numberOfLines={1}>
               Hồ sơ bệnh án
             </Text>
             <Text style={styles.statBoxSub} numberOfLines={1}>
-              MRI, X-Quang & Huyết học
+              Lịch sử khám & Đơn thuốc
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             activeOpacity={0.85}
-            onPress={() => onNavigate('doctorDetail')}
+            onPress={() => onNavigate('familyProfiles')}
             style={[styles.statBox, SHADOWS.sm]}
           >
             <View style={styles.statBoxTop}>
@@ -1505,12 +1645,12 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
                 color={COLORS.textMuted}
               />
             </View>
-            <Text style={styles.statBigNum}>3</Text>
+            <Text style={styles.statBigNum}>{familyMembers.length + 1}</Text>
             <Text style={styles.statBoxTitle} numberOfLines={1}>
-              Bác sĩ phụ trách
+              Hồ sơ gia đình
             </Text>
             <Text style={styles.statBoxSub} numberOfLines={1}>
-              Chuyên khoa & Tư vấn AI
+              1 chủ hộ + {familyMembers.length} người thân
             </Text>
           </TouchableOpacity>
         </View>
@@ -1687,7 +1827,7 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
 
         <Text style={styles.versionFooter}>
           MediCare Plus Mobile App • v1.0.0 (Build 2026.11){'\n'}
-          Tiêu chuẩn an toàn dữ liệu y tế HL7/FHIR & Bộ Y Tế Việt Nam
+          {!CLOUD_MODE && 'Tiêu chuẩn an toàn dữ liệu y tế HL7/FHIR & Bộ Y Tế Việt Nam'}
         </Text>
       </ScrollView>
 
@@ -1697,6 +1837,243 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
         message="Bộ nhớ lưu trữ trên thiết bị (AsyncStorage) đã được làm mới."
         onDismiss={() => setResetToast(false)}
       />
+
+      <ToastBanner
+        visible={!!profileToast}
+        title="Cập nhật hồ sơ"
+        message={profileToast || ''}
+        onDismiss={() => setProfileToast(null)}
+      />
+
+      {/* Modal Chỉnh sửa hồ sơ cá nhân & BHYT */}
+      <Modal
+        visible={editProfileVisible}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setEditProfileVisible(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={styles.profileModalBackdrop}
+        >
+          <View style={[styles.profileModalSheet, SHADOWS.lg]}>
+            <View style={styles.profileModalHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.profileModalTitle}>Chỉnh sửa hồ sơ cá nhân</Text>
+                <Text style={styles.profileModalSub}>
+                  Cập nhật thông tin định danh và thẻ BHYT của bạn
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setEditProfileVisible(false)}
+                style={styles.profileModalCloseBtn}
+                accessibilityRole="button"
+                accessibilityLabel="Đóng"
+              >
+                <Ionicons name="close" size={20} color={COLORS.textPrimary} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={{ paddingBottom: 16 }}
+            >
+              {!!editError && (
+                <View style={styles.profileModalErrorBox}>
+                  <Ionicons name="alert-circle" size={16} color={COLORS.error} />
+                  <Text style={styles.profileModalErrorText}>{editError}</Text>
+                </View>
+              )}
+
+              {/* Avatar Upload Section */}
+              <View style={{ alignItems: 'center', marginBottom: 16 }}>
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={() => pickAvatarFromDevice((uri) => setEditAvatar(uri))}
+                  style={{ position: 'relative' }}
+                >
+                  <Image
+                    source={{ uri: editAvatar || patientProfile.avatar }}
+                    style={{
+                      width: 88,
+                      height: 88,
+                      borderRadius: 44,
+                      borderWidth: 3,
+                      borderColor: COLORS.primaryContainer,
+                      backgroundColor: COLORS.tintBlue,
+                    }}
+                  />
+                  <View
+                    style={{
+                      position: 'absolute',
+                      right: 0,
+                      bottom: 0,
+                      width: 28,
+                      height: 28,
+                      borderRadius: 14,
+                      backgroundColor: COLORS.primary,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderWidth: 2,
+                      borderColor: COLORS.surface,
+                    }}
+                  >
+                    <Ionicons name="camera" size={14} color="#FFFFFF" />
+                  </View>
+                </TouchableOpacity>
+                <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
+                  <AppButton
+                    title="Chọn ảnh từ máy"
+                    variant="tonal"
+                    size="sm"
+                    leftIcon="image-outline"
+                    fullWidth={false}
+                    onPress={() => pickAvatarFromDevice((uri) => setEditAvatar(uri))}
+                  />
+                  <AppButton
+                    title="Ảnh mặc định"
+                    variant="outline"
+                    size="sm"
+                    fullWidth={false}
+                    onPress={() => setEditAvatar(PATIENT_PROFILE.avatar)}
+                  />
+                </View>
+              </View>
+
+              <AppInput
+                label="Họ và tên *"
+                leftIcon="person-outline"
+                value={editName}
+                onChangeText={setEditName}
+                placeholder="Nguyễn Văn Vũ"
+              />
+              <AppInput
+                label="Số điện thoại"
+                leftIcon="call-outline"
+                value={editPhone}
+                onChangeText={setEditPhone}
+                placeholder="0912345678"
+                keyboardType="phone-pad"
+              />
+              <AppInput
+                label="Ngày sinh"
+                leftIcon="calendar-outline"
+                value={editDob}
+                onChangeText={setEditDob}
+                placeholder="15/06/1994"
+              />
+
+              <Text style={styles.profileModalFieldLabel}>Giới tính</Text>
+              <View style={styles.profileModalChipRow}>
+                {['Nam', 'Nữ', 'Khác'].map((g) => {
+                  const active = editGender === g;
+                  return (
+                    <TouchableOpacity
+                      key={g}
+                      onPress={() => setEditGender(g)}
+                      style={[
+                        styles.profileModalChip,
+                        active && styles.profileModalChipActive,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.profileModalChipText,
+                          active && styles.profileModalChipTextActive,
+                        ]}
+                      >
+                        {g}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              <Text style={styles.profileModalFieldLabel}>Nhóm máu</Text>
+              <View style={styles.profileModalChipRow}>
+                {['O+', 'A+', 'B+', 'AB+', 'O-', 'A-', 'B-', 'AB-'].map((bt) => {
+                  const active = editBloodType === bt;
+                  return (
+                    <TouchableOpacity
+                      key={bt}
+                      onPress={() => setEditBloodType(bt)}
+                      style={[
+                        styles.profileModalChip,
+                        active && styles.profileModalChipActive,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.profileModalChipText,
+                          active && styles.profileModalChipTextActive,
+                        ]}
+                      >
+                        {bt}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              <AppInput
+                label="Liên hệ khẩn cấp"
+                leftIcon="heart-outline"
+                value={editEmergency}
+                onChangeText={setEditEmergency}
+                placeholder="Nguyễn Thị Mai (Vợ - 0987 654 321)"
+              />
+
+              <Text style={[styles.profileModalFieldLabel, { marginTop: 8, color: COLORS.secondary }]}>
+                Thông tin Thẻ BHYT (VssID)
+              </Text>
+              <AppInput
+                label="Mã thẻ BHYT (VD: DN4 79 234 82390)"
+                leftIcon="shield-checkmark-outline"
+                value={editBhytCode}
+                onChangeText={setEditBhytCode}
+                placeholder="DN4 79 234 82390"
+                autoCapitalize="characters"
+              />
+              <AppInput
+                label="Nơi ĐKKCB ban đầu"
+                leftIcon="business-outline"
+                value={editBhytHospital}
+                onChangeText={setEditBhytHospital}
+                placeholder="BV Đại học Y Dược TP.HCM"
+              />
+              <AppInput
+                label="Thời hạn thẻ BHYT"
+                leftIcon="time-outline"
+                value={editBhytExpiry}
+                onChangeText={setEditBhytExpiry}
+                placeholder="31/12/2026"
+              />
+            </ScrollView>
+
+            <View style={styles.profileModalFooter}>
+              <AppButton
+                title="Hủy"
+                variant="outline"
+                size="md"
+                fullWidth={false}
+                style={{ flex: 1 }}
+                onPress={() => setEditProfileVisible(false)}
+              />
+              <AppButton
+                title={editSaving ? 'Đang lưu...' : 'Lưu hồ sơ'}
+                variant="primary"
+                size="md"
+                leftIcon="checkmark-circle-outline"
+                fullWidth={false}
+                style={{ flex: 1.4 }}
+                loading={editSaving}
+                onPress={handleSaveProfile}
+              />
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 };
@@ -1965,6 +2342,97 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
     textAlign: 'center',
     marginTop: 18,
+  },
+  profileModalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  profileModalSheet: {
+    backgroundColor: COLORS.surface,
+    borderTopLeftRadius: RADIUS.xl,
+    borderTopRightRadius: RADIUS.xl,
+    padding: SPACING.lg,
+    maxHeight: '90%',
+  },
+  profileModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+  },
+  profileModalTitle: {
+    fontSize: TYPOGRAPHY.size.lg,
+    fontWeight: '800',
+    color: COLORS.textPrimary,
+  },
+  profileModalSub: {
+    fontSize: TYPOGRAPHY.size.xs,
+    color: COLORS.textSecondary,
+    marginTop: 2,
+  },
+  profileModalCloseBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: COLORS.surfaceContainerLow,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  profileModalErrorBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: COLORS.errorSurface,
+    borderRadius: RADIUS.md,
+    padding: 10,
+    marginBottom: 12,
+  },
+  profileModalErrorText: {
+    flex: 1,
+    fontSize: TYPOGRAPHY.size.xs,
+    color: COLORS.error,
+    fontWeight: '600',
+  },
+  profileModalFieldLabel: {
+    fontSize: TYPOGRAPHY.size.xs,
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+    marginBottom: 8,
+    marginTop: 4,
+  },
+  profileModalChipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 14,
+  },
+  profileModalChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: RADIUS.full,
+    backgroundColor: COLORS.surfaceContainerLow,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  profileModalChipActive: {
+    backgroundColor: COLORS.tintBlue,
+    borderColor: COLORS.primary,
+  },
+  profileModalChipText: {
+    fontSize: TYPOGRAPHY.size.xs,
+    fontWeight: '700',
+    color: COLORS.textSecondary,
+  },
+  profileModalChipTextActive: {
+    color: COLORS.primary,
+  },
+  profileModalFooter: {
+    flexDirection: 'row',
+    gap: 10,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.divider,
   },
 });
 

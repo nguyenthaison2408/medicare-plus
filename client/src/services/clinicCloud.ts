@@ -1,3 +1,5 @@
+import { Linking, Platform } from 'react-native';
+import Constants from 'expo-constants';
 import type { DaySlotItem, DoctorItem, TimeSlotItem } from '../data/mockData';
 import type { PatientBookingInfo } from '../utils/bookingValidation';
 import { getSupabase } from './supabaseClient';
@@ -13,10 +15,32 @@ export interface ClinicDoctor {
 }
 export interface ClinicProfile {
   id: string;
+  email?: string;
   full_name: string;
   phone: string;
   role: ClinicRole;
   doctor_id: string | null;
+  gender?: string;
+  dob?: string;
+  blood_type?: string;
+  emergency_contact?: string;
+  bhyt_code?: string;
+  bhyt_hospital?: string;
+  bhyt_expiry?: string;
+  avatar_url?: string;
+}
+
+export interface UpdateClinicProfileInput {
+  full_name: string;
+  phone?: string;
+  gender?: string;
+  dob?: string;
+  blood_type?: string;
+  emergency_contact?: string;
+  bhyt_code?: string;
+  bhyt_hospital?: string;
+  bhyt_expiry?: string;
+  avatar_url?: string;
 }
 export interface ClinicMedication { name: string; dosage: string }
 export interface ClinicMedicalRecord {
@@ -42,6 +66,7 @@ export interface ClinicAppointment {
 
 const errorMessages: Record<string, string> = {
   SLOT_ALREADY_BOOKED: 'Khung giờ này vừa được người khác đặt. Vui lòng chọn giờ khác.',
+  OUTSIDE_DOCTOR_SHIFT: 'Bác sĩ không có ca trực trong khung giờ này. Vui lòng chọn khung giờ thuộc ca trực.',
   INVALID_BOOKING_TIME: 'Giờ khám đã qua hoặc không nằm trong lịch làm việc.',
   INVALID_BOOKING_DATE: 'Ngày khám không hợp lệ. Vui lòng chọn lại.',
   DOCTOR_NOT_FOUND: 'Bác sĩ chưa có lịch trên hệ thống trực tuyến.',
@@ -79,6 +104,73 @@ export async function loadClinicProfile(): Promise<ClinicProfile> {
   if (!user) throw new Error(errorMessages.AUTH_REQUIRED);
   const { data, error } = await getSupabase().from('clinic_profiles').select('*').eq('id', user.id).single();
   checkError(error);
+  const profile = data as ClinicProfile;
+  const meta = (user.user_metadata || {}) as Record<string, unknown>;
+  const oauthName = typeof meta.full_name === 'string' && meta.full_name.trim()
+    ? meta.full_name.trim()
+    : typeof meta.name === 'string' && meta.name.trim()
+      ? meta.name.trim()
+      : '';
+  const oauthAvatar = typeof meta.avatar_url === 'string' && meta.avatar_url.trim()
+    ? meta.avatar_url.trim()
+    : typeof meta.picture === 'string' && meta.picture.trim()
+      ? meta.picture.trim()
+      : '';
+  const needsNameSync = Boolean(oauthName && (!profile.full_name || profile.full_name === 'Bệnh nhân'));
+  const needsAvatarSync = Boolean(oauthAvatar && !profile.avatar_url);
+  if (needsNameSync || needsAvatarSync) {
+    try {
+      const syncPayload: Record<string, string> = {};
+      if (needsNameSync) syncPayload.full_name = oauthName;
+      if (needsAvatarSync) syncPayload.avatar_url = oauthAvatar;
+      const { data: updated, error: updateErr } = await getSupabase()
+        .from('clinic_profiles')
+        .update(syncPayload)
+        .eq('id', user.id)
+        .select('*')
+        .single();
+      if (!updateErr && updated) return { ...(updated as ClinicProfile), email: user.email || undefined };
+      if (updateErr && needsNameSync) {
+        const { data: fallbackUpdated } = await getSupabase()
+          .from('clinic_profiles')
+          .update({ full_name: oauthName })
+          .eq('id', user.id)
+          .select('*')
+          .single();
+        if (fallbackUpdated) return { ...(fallbackUpdated as ClinicProfile), email: user.email || undefined };
+      }
+    } catch {
+      // Ignore optional metadata sync error so login never fails
+    }
+  }
+  return { ...profile, email: user.email || undefined };
+}
+
+export async function updateClinicProfile(updates: UpdateClinicProfileInput, expectedUserId?: string): Promise<ClinicProfile> {
+  const { data: { user }, error: authError } = await getSupabase().auth.getUser();
+  checkError(authError);
+  if (!user) throw new Error(errorMessages.AUTH_REQUIRED);
+  if (expectedUserId && user.id !== expectedUserId) throw new Error('Phiên đăng nhập đã thay đổi.');
+  const payload: Record<string, string> = {
+    full_name: updates.full_name.trim(),
+  };
+  if (updates.phone !== undefined) payload.phone = updates.phone.replace(/\s+/g, '');
+  if (updates.gender !== undefined) payload.gender = updates.gender.trim();
+  if (updates.dob !== undefined) payload.dob = updates.dob.trim();
+  if (updates.blood_type !== undefined) payload.blood_type = updates.blood_type.trim();
+  if (updates.emergency_contact !== undefined) payload.emergency_contact = updates.emergency_contact.trim();
+  if (updates.bhyt_code !== undefined) payload.bhyt_code = updates.bhyt_code.trim().toUpperCase();
+  if (updates.bhyt_hospital !== undefined) payload.bhyt_hospital = updates.bhyt_hospital.trim();
+  if (updates.bhyt_expiry !== undefined) payload.bhyt_expiry = updates.bhyt_expiry.trim();
+  if (updates.avatar_url !== undefined) payload.avatar_url = updates.avatar_url.trim();
+
+  const { data, error } = await getSupabase()
+    .from('clinic_profiles')
+    .update(payload)
+    .eq('id', user.id)
+    .select('*')
+    .single();
+  checkError(error);
   return data as ClinicProfile;
 }
 
@@ -89,6 +181,52 @@ export async function signInClinic(email: string, password: string): Promise<Cli
   catch (error) { await getSupabase().auth.signOut(); throw error; }
 }
 
+export async function signInWithGoogleClinic(): Promise<void> {
+  const isWeb = Platform.OS === 'web';
+  let redirectTo: string | undefined = 'medicareplus://auth-callback';
+  if (isWeb) {
+    redirectTo =
+      typeof window !== 'undefined' && window.location?.origin
+        ? window.location.origin
+        : undefined;
+  } else {
+    try {
+      const hostUri = Constants.expoConfig?.hostUri;
+      const isExpoGo =
+        Constants.executionEnvironment === 'storeClient' ||
+        (Constants as unknown as { appOwnership?: string }).appOwnership === 'expo';
+      if (isExpoGo && hostUri) {
+        redirectTo = `exp://${hostUri.replace(/\/+$/, '')}/--/auth-callback`;
+      } else {
+        const initialUrl = await Linking.getInitialURL();
+        if (initialUrl && initialUrl.startsWith('exp://')) {
+          const base = initialUrl.replace(/\/+$/, '').split('/--/')[0];
+          redirectTo = `${base}/--/auth-callback`;
+        }
+      }
+    } catch {
+      redirectTo = 'medicareplus://auth-callback';
+    }
+  }
+
+  const { data, error } = await getSupabase().auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      ...(redirectTo ? { redirectTo } : {}),
+      ...(!isWeb ? { skipBrowserRedirect: true } : {}),
+    },
+  });
+  if (error) {
+    if (error.message.toLowerCase().includes('provider is not enabled')) {
+      throw new Error('Nhà cung cấp Google OAuth chưa được bật trong Supabase Authentication.');
+    }
+    checkError(error);
+  }
+  if (!isWeb && data?.url) {
+    await Linking.openURL(data.url);
+  }
+}
+
 export async function signUpClinic(params: { email: string; password: string; fullName: string; phone: string }): Promise<boolean> {
   const { data, error } = await getSupabase().auth.signUp({
     email: params.email.trim(), password: params.password,
@@ -96,6 +234,21 @@ export async function signUpClinic(params: { email: string; password: string; fu
   });
   checkError(error);
   return Boolean(data.session);
+}
+
+export async function resendClinicRegistrationEmail(email: string): Promise<void> {
+  const { error } = await getSupabase().auth.resend({ type: 'signup', email: email.trim().toLowerCase() });
+  checkError(error);
+}
+
+export async function verifyClinicRegistrationOtp(email: string, token: string): Promise<void> {
+  const cleanToken = token.trim();
+  if (!/^\d{6,10}$/.test(cleanToken)) throw new Error('Vui lòng nhập mã xác nhận trong email.');
+  const { data, error } = await getSupabase().auth.verifyOtp({
+    email: email.trim().toLowerCase(), token: cleanToken, type: 'signup',
+  });
+  checkError(error);
+  if (!data.session || !data.user) throw new Error('Email chưa được xác nhận. Vui lòng thử lại.');
 }
 
 export async function signOutClinic(): Promise<void> {

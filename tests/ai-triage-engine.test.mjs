@@ -14,7 +14,7 @@ import {
 import { DOCTORS } from '../client/src/data/mockData.ts';
 
 const clean = source => stripTypeScriptTypes(source.replace(/import[\s\S]*?from\s*['"][^'"]+['"];?/g, '')).replace(/export\s+/g, '');
-const source = file => fs.readFileSync(new URL('../client/src/' + file, import.meta.url), 'utf8');
+const source = file => fs.readFileSync(new URL('../client/src/' + file, import.meta.url), 'utf8').replace(/\r\n/g, '\n');
 const engineCode = ['services/aiMedicalKnowledge.ts', 'services/aiFollowUpQuestions.ts', 'services/aiTriageEngine.ts']
   .map(file => clean(source(file))).join('\n');
 const engine = vm.runInNewContext(engineCode + ';({getDoctorsForSpecialty,runClinicalTriage})', {DOCTORS});
@@ -191,9 +191,9 @@ test('actual screen analysis preserves emergency even with medication keywords',
 });
 test('cloud patient profile does not inherit the sample allergy list', () => {
   const src = source('context/AppContext.tsx');
-  const begin = src.indexOf('patientProfile: CLOUD_MODE ? {') + 'patientProfile: '.length;
-  const end = src.indexOf(' : PATIENT_PROFILE,', begin) + ' : PATIENT_PROFILE'.length;
-  const profile = vm.runInNewContext('(' + src.slice(begin, end) + ')', {CLOUD_MODE: true, PATIENT_PROFILE: {allergies: ['SAMPLE-ALLERGY']}, cloudProfile: {id:'patient',full_name:'Patient'}});
+  const begin = src.indexOf('CLOUD_MODE\n    ? {', src.indexOf('const resolvedPatientProfile:'));
+  const end = src.indexOf('\n    : localPatientProfile;', begin) + '\n    : localPatientProfile'.length;
+  const profile = vm.runInNewContext('(' + src.slice(begin, end) + ')', {CLOUD_MODE: true, PATIENT_PROFILE: {allergies: ['SAMPLE-ALLERGY']}, localPatientProfile: {}, cloudProfile: {id:'patient',full_name:'Patient'}});
   assert.equal(profile.allergies.length, 0);
 });
 const refine = vm.runInNewContext(clean(source('services/aiConversation.ts')) + ';refineFollowUp');

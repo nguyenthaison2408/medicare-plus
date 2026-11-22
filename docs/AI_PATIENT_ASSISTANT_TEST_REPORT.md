@@ -1,49 +1,31 @@
-# BÁO CÁO THỰC THI & KIỂM THỬ TRỢ LÝ Y TẾ AI (AI PATIENT ASSISTANT TEST REPORT)
+# Kết quả kiểm thử trợ lý triệu chứng và cổng phòng khám
 
-> **Môn học:** Quản trị Dự án Phần mềm (VKU SPM Capstone)  
-> **Module:** AI Patient Assistant & Triage Engine  
-> **Người thực hiện:** Vi Hữu Thành (`thanhvihuu2005`)  
-> **Thời gian nghiệm thu:** 20/11/2026  
-> **Tình trạng:** Passed 100% (10/10 Test Cases)
+Ngày kiểm tra: 20/11/2026. Module AI: Vi Hữu Thành; cổng phòng khám: Đặng Thanh Vũ. Các bản sửa được review và tích hợp trong PR #31 và #32.
 
----
+## Kiểm thử tự động cục bộ
 
-## 1. KẾT QUẢ KIỂM THỬ TỰ ĐỘNG (AUTOMATED TEST SUITE)
+| Bộ kiểm tra | Kết quả và phạm vi |
+| --- | --- |
+| `npm run test:ai` | 16 test đạt: từ khóa cảnh báo, ưu tiên cấp cứu ở đúng luồng màn hình, giới hạn catalog cloud, dữ liệu dị ứng mẫu và câu trả lời cũ/lặp. |
+| `npm run test:portal` | 17 test đạt: vai trò từ profile, callback đúng scheme/host, pending write khi đổi phiên, giữ điện thoại khi chỉ đổi ảnh, sửa ca theo ID, xóa không có bản ghi và không tự gán nhóm máu/giới tính. |
+| `npm run test:db` | 29 kiểm tra PostgreSQL lõi và 76 kiểm tra mở rộng đạt trong PGlite cục bộ; gồm quyền đọc admin_note và ca trực trong API giờ trống/đặt lịch. |
+| Client lint / TypeScript / web export | Đạt ở bản tích hợp được kiểm tra. |
+| `npm test` | Bộ hồi quy local hoàn tất; không tương đương kiểm thử toàn bộ tính năng trên Supabase đang triển khai. |
 
-Lệnh thực thi:
-```bash
-npm run test:ai
-# hoặc
-node --experimental-strip-types --test tests/ai-triage-engine.test.mjs
-```
+CI trên Node 22 và 24 chạy lại các bộ AI/portal cùng các kiểm tra hiện có. Kết quả cuối phải đọc theo commit tại GitHub Actions của PR, không dùng số ca trên phiên bản cũ làm bằng chứng cho phiên bản mới.
 
-### Chi tiết các ca kiểm thử:
+## Smoke test giao diện dùng Supabase hiện có
 
-| STT | Tên ca kiểm thử | Mô tả & Đầu vào kiểm thử | Kết quả mong đợi | Trạng thái |
-| :---: | :--- | :--- | :--- | :---: |
-| **01** | `Red Flag Emergency Detection` | Nhập các triệu chứng nguy kịch: đau ngực dữ dội lan tay, tê yếu nửa người méo miệng, khó thở tím tái, sốt cao co giật, yêu cầu gọi 115. | Nhận diện cờ đỏ, gán `urgencyLevel = 'emergency'`, kích hoạt hotline 115 và phác đồ cấp cứu. | **PASSED** (1.3ms) |
-| **02** | `Medical Knowledge Base Coverage` | Kiểm tra độ phủ của 8 chuyên khoa: Tim mạch, Thần kinh, Tiêu hóa, Hô hấp, Cơ xương khớp, Mắt, Nhi khoa, Da liễu. | Mỗi chuyên khoa chứa tối thiểu 5 từ khóa lâm sàng và cẩm nang chăm sóc tại nhà. | **PASSED** (0.3ms) |
-| **03** | `Clinical Routing Accuracy` | Kiểm tra khả năng ánh xạ chính xác câu mô tả bệnh nhân vào chuyên khoa đích (7 ca triệu chứng thực tế). | Trả về đúng chuyên khoa và phân tầng mức độ khẩn cấp (Emergency / Urgent / Routine). | **PASSED** (0.4ms) |
-| **04** | `EHR Safety Guardrails - Allergy` | Bệnh nhân có tiền sử dị ứng NSAID hỏi về thuốc giảm đau Ibuprofen/Aspirin. | Kích hoạt cảnh báo an toàn dược lâm sàng, khuyến cáo dùng Paracetamol đúng liều. | **PASSED** (0.2ms) |
-| **05** | `EHR Safety Guardrails - Lifestyle` | Bệnh nhân hỏi về chế độ ăn uống, sinh hoạt kiêng cữ. | Trả về hướng dẫn dinh dưỡng, quy tắc 20-20-20 và chế độ nghỉ ngơi. | **PASSED** (0.1ms) |
-| **06** | `Follow-up Questions Generator` | Sinh câu hỏi gợi mở đào sâu triệu chứng (thời gian bị, mức độ đau, triệu chứng đi kèm) theo mô hình Ada Health. | Trả về danh sách câu hỏi và các lựa chọn đa tầng kèm trọng số nguy cơ. | **PASSED** (0.2ms) |
-| **07** | `Emergency Priority over Medication` | Nhập "Tôi đau ngực dữ dội, có nên uống thuốc không?". | Ưu tiên cấp cứu tuyệt đối: gán `urgencyLevel = 'emergency'`, không bị câu hỏi thuốc hạ xuống `soon`. | **PASSED** (0.1ms) |
-| **08** | `EHR Allergy Isolation` | Kiểm tra bệnh nhân không có tiền sử dị ứng (`allergies: []`). | Không gán cảnh báo dị ứng giả, tôn trọng hồ sơ thực tế của bệnh nhân. | **PASSED** (0.1ms) |
-| **09** | `Specialty Doctor Recommendation` | Kiểm tra định tuyến bác sĩ chuyên khoa Da liễu, Tiêu hóa, Hô hấp, Nhi khoa. | Nhóm Da liễu trỏ đúng bác sĩ Da liễu (`doc-5`), không bị trỏ sai sang Mắt hay Thần kinh. | **PASSED** (0.3ms) |
-| **10** | `Follow-up Risk Modifier Escalation` | Bệnh nhân chọn các phương án có `riskModifier >= 3` (đau dữ dội). | Hệ thống tự động tích lũy điểm nguy cơ và leo thang mức độ khẩn cấp sang `soon`. | **PASSED** (0.2ms) |
+- Bệnh nhân, tiếp đón, bác sĩ và admin đăng nhập/đăng xuất qua đúng cổng; không ghi nhận pageerror trong lượt chạy.
+- Bệnh nhân hỏi chuyên khoa chưa có trong catalog: hiện trạng thái chưa có bác sĩ, không có nút đặt bác sĩ mẫu.
+- Câu hỏi về thuốc không tự tạo tiền sử dị ứng NSAID.
+- Câu có từ khóa cảnh báo và thuốc đi qua nhánh emergency, không hiện nút đặt lịch thường.
+- Trang hồ sơ cloud không hiện eKYC/VssID đồng bộ hoặc chỉ số sức khỏe mẫu như dữ liệu xác minh.
 
----
+Lượt này chỉ sử dụng phiên Auth và dữ liệu đọc; không thay đổi hồ sơ, ca trực, booking hay medication trên Supabase thật. Migration mới của PR #29/#32 chưa áp dụng trong lượt sửa/merge. Thông báo chưa tải được nhật ký thuốc là giới hạn đã biết khi migration tủ thuốc chưa triển khai.
 
-## 2. TỔNG HỢP KIỂM CHỨNG TOÀN DIỆN (FULL VERIFICATION MATRIX)
+## Chưa được chứng minh
 
-- **Client ESLint:**
-  - Lệnh: `npm run lint` (trong `client/`)
-  - Kết quả: **`0 errors, 0 warnings`** (Đã dọn sạch các biến không dùng).
-- **Client TypeScript Typecheck:**
-  - Lệnh: `npm run typecheck` (trong `client/`)
-  - Kết quả: **`0 errors`**
-- **Root Master Test Suite:**
-  - Lệnh: `npm run test:ai && npm run test:booking-validation && npm run test:auth`
-  - Kết quả: **`100% Passed`**
-- **Đồng bộ nhánh Main:**
-  - Đã merge sạch toàn bộ commit mới nhất từ `origin/main`.
+- Google OAuth hoàn chỉnh qua provider thật, upload avatar trên Android native, UAT người dùng cuối và nghiệm thu lâm sàng.
+- Độ chính xác chẩn đoán, độ bao phủ mọi triệu chứng, hiệu năng production hoặc tuân thủ một tiêu chuẩn y khoa.
+- Việc các test đạt không thay thế review, migration, smoke test trên bản triển khai và quyết định nghiệm thu của nhóm.

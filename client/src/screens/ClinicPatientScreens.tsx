@@ -1,5 +1,5 @@
-import React, {useCallback, useEffect, useState} from 'react';
-import {ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
+import React, {useCallback, useEffect, useRef, useState} from 'react';
+import {ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View} from 'react-native';
 import {COLORS} from '../theme';
 import {DOCTORS} from '../data/mockData';
 import type {DoctorItem,TimeSlotItem} from '../data/mockData';
@@ -9,27 +9,37 @@ import {cancelClinicAppointment, listClinicAppointments, loadClinicProfile, subs
   type ClinicAppointment, type ClinicProfile} from '../services/clinicCloud';
 
 function useClinicData() {
+  const {cloudProfile}=useAppContext();
+  const ownerId=cloudProfile?.id || null;
+  const generation=useRef(0);
   const [rows,setRows]=useState<ClinicAppointment[]>([]);
   const [profile,setProfile]=useState<ClinicProfile|null>(null);
+  const [loadedOwner,setLoadedOwner]=useState<string|null>(null);
   const [loading,setLoading]=useState(true);
   const [error,setError]=useState('');
   const refresh=useCallback(async()=>{
+    const request=++generation.current;
+    const expected=ownerId;
+    if(!expected){setRows([]);setProfile(null);setLoadedOwner(null);setError('');setLoading(false);return;}
+    setLoading(true);
     try {
       const [nextProfile,nextRows]=await Promise.all([loadClinicProfile(),listClinicAppointments()]);
-      setProfile(nextProfile);setRows(nextRows);setError('');
-    } catch(cause) {setError(cause instanceof Error?cause.message:'Không tải được dữ liệu.');}
-    finally {setLoading(false);}
-  },[]);
+      if(generation.current!==request)return;
+      if(nextProfile.id!==expected)throw new Error('Phiên đăng nhập đã thay đổi. Vui lòng tải lại.');
+      setProfile(nextProfile);setRows(nextRows);setLoadedOwner(expected);setError('');
+    } catch(cause) {
+      if(generation.current===request){setRows([]);setProfile(null);setLoadedOwner(expected);setError(cause instanceof Error?cause.message:'Không tải được dữ liệu.');}
+    } finally {if(generation.current===request)setLoading(false);}
+  },[ownerId]);
   useEffect(()=>{
-    let mounted=true;
-    void Promise.all([loadClinicProfile(),listClinicAppointments()]).then(([nextProfile,nextRows])=>{
-      if(mounted){setProfile(nextProfile);setRows(nextRows);setError('');}
-    }).catch(cause=>{if(mounted)setError(cause instanceof Error?cause.message:'Không tải được dữ liệu.');})
-      .finally(()=>{if(mounted)setLoading(false);});
+    const lifecycle=generation;
+    let active=true;
+    void Promise.resolve().then(()=>{if(active)void refresh();});
     const unsubscribe=subscribeClinicAppointments(()=>{void refresh();});
-    return ()=>{mounted=false;unsubscribe();};
+    return ()=>{active=false;lifecycle.current++;unsubscribe();};
   },[refresh]);
-  return {rows,profile,loading,error,refresh};
+  const belongsToCurrentUser=Boolean(ownerId && loadedOwner===ownerId);
+  return {rows:belongsToCurrentUser?rows:[],profile:belongsToCurrentUser?profile:null,loading:loading || Boolean(ownerId && !belongsToCurrentUser),error:belongsToCurrentUser?error:'',refresh};
 }
 const doctorName=(row:ClinicAppointment)=>DOCTORS.find(doctor=>doctor.id===row.doctor_id)?.name||row.doctor_id;
 const dateLabel=(row:ClinicAppointment)=>new Date(row.starts_at).toLocaleString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh'});
@@ -41,20 +51,54 @@ function Status({loading,error}:{loading:boolean;error:string}) {
   return <>{loading?<ActivityIndicator/>:null}{error?<Text accessibilityRole="alert" style={styles.error}>{error}</Text>:null}</>;
 }
 
+function CompletedVisitReview({doctorId}:{doctorId:string}) {
+  const {addDoctorReview}=useAppContext();
+  const [rating,setRating]=useState(5);
+  const [comment,setComment]=useState('');
+  const [busy,setBusy]=useState(false);
+  const [submitted,setSubmitted]=useState(false);
+  const [error,setError]=useState('');
+  const submit=async()=>{
+    if(busy||submitted)return;
+    const text=comment.trim();
+    if(text.length<2||text.length>1000){setError('Vui lòng nhập nhận xét từ 2 đến 1000 ký tự.');return;}
+    setBusy(true);setError('');
+    try{await addDoctorReview({doctorId,rating,comment:text});setSubmitted(true);}
+    catch(cause){setError(cause instanceof Error?cause.message:'Chưa gửi được đánh giá.');}
+    finally{setBusy(false);}
+  };
+  return <View style={{gap:8,marginTop:12}}>
+    <Text style={styles.title}>Đánh giá chất lượng khám</Text>
+    {submitted?<Text accessibilityRole="alert">Đã gửi đánh giá sau khám.</Text>:<>
+      <View style={{flexDirection:'row',gap:8}}>{[1,2,3,4,5].map(value=><TouchableOpacity key={value}
+        accessibilityRole="button" accessibilityLabel={`${value} sao`} accessibilityState={{selected:rating===value}}
+        disabled={busy} onPress={()=>setRating(value)} style={{padding:10}}>
+        <Text style={{fontSize:22,color:COLORS.primary}}>{value<=rating?'★':'☆'}</Text>
+      </TouchableOpacity>)}</View>
+      <TextInput accessibilityLabel="Nhận xét sau khám" placeholder="Nhập nhận xét sau khám"
+        value={comment} onChangeText={setComment} editable={!busy} multiline maxLength={1000}
+        style={{borderWidth:1,borderColor:COLORS.outlineVariant,borderRadius:10,padding:12,minHeight:80,color:COLORS.textPrimary}}/>
+      {error?<Text accessibilityRole="alert" style={styles.error}>{error}</Text>:null}
+      <Action label={busy?'Đang gửi đánh giá…':'Gửi đánh giá'} disabled={busy} onPress={()=>{void submit();}}/>
+    </>}
+  </View>;
+}
+
 export function ClinicPatientRecordsScreen() {
-  const {rows,loading,error,refresh}=useClinicData();
+  const {rows,profile,loading,error,refresh}=useClinicData();
   const records=rows.filter(row=>clinicRecord(row));
   return <ScrollView contentContainerStyle={styles.page}>
     <Text style={styles.heading}>Bệnh án của tôi</Text>
     <Status loading={loading} error={error}/>
     <Action label="Tải lại bệnh án" onPress={()=>{void refresh();}}/>
     {!loading&&!records.length?<Text style={styles.copy}>Chưa có bệnh án được bác sĩ lưu.</Text>:null}
-    {records.map(row=>{const record=clinicRecord(row)!;return <View key={row.id} style={styles.card}>
+    {records.map((row,index)=>{const record=clinicRecord(row)!;return <View key={row.id} style={styles.card}>
       <Text style={styles.title}>{doctorName(row)}</Text><Text>{dateLabel(row)}</Text>
       <Text style={styles.copy}>Chẩn đoán: {record.diagnosis}</Text>
       {record.medications.length?<Text style={styles.title}>Đơn thuốc</Text>:null}
       {record.medications.map((drug,index)=><Text key={index} style={styles.copy}>{drug.name} — {drug.dosage}</Text>)}
       {record.notes?<Text style={styles.copy}>Ghi chú: {record.notes}</Text>:null}
+      {row.status==='COMPLETED'&&!records.slice(0,index).some(previous=>previous.doctor_id===row.doctor_id)?<CompletedVisitReview key={`${profile?.id}:${row.doctor_id}`} doctorId={row.doctor_id}/>:null}
     </View>;})}
   </ScrollView>;
 }

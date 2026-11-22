@@ -4,15 +4,18 @@ import {
   StatusBar,
   StyleSheet,
   BackHandler,
+  Linking,
+  Platform,
   useWindowDimensions,
   Text,
 } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, LAYOUT } from './src/theme';
 import { DOCTORS, DoctorItem } from './src/data/mockData';
-import { AppProvider, useAppContext } from './src/context/AppContext';
-import { CLOUD_MODE } from './src/services/supabaseClient';
-import { signOutClinic } from './src/services/clinicCloud';
+import { AppProvider, useAppContext, type FamilyMemberItem } from './src/context/AppContext';
+import { CLOUD_MODE, SUPABASE_CONFIGURED, getSupabase } from './src/services/supabaseClient';
+import { parseClinicAuthCallback, routeForClinicRole } from './src/utils/clinicAuthRouting';
+import { loadClinicProfile, signOutClinic } from './src/services/clinicCloud';
 import { ClinicStaffScreen } from './src/screens/ClinicStaffScreen';
 import type { PatientBookingInfo } from './src/utils/bookingValidation';
 import { BottomTabBar, MainTabKey } from './src/components';
@@ -55,12 +58,18 @@ import {
 } from './src/screens/PharmacyAndMedicationScreens';
 
 function AppContent() {
-  const { createBooking, cloudProfile, cloudSyncError } = useAppContext();
+  const { createBooking, cloudProfile, cloudSyncError, latestBooking } = useAppContext();
   const bookingInFlight = useRef(false);
   const [route, setRoute] = useState<string>('login');
+  const [actionMessage, setActionMessage] = useState('');
+
   const [routeHistory, setRouteHistory] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<MainTabKey>('home');
   const [selectedDoctor, setSelectedDoctor] = useState<DoctorItem>(DOCTORS[0]);
+  const [selectedFamilyMember, setSelectedFamilyMember] =
+    useState<FamilyMemberItem | null>(null);
+  const [editingFamilyMember, setEditingFamilyMember] =
+    useState<FamilyMemberItem | null>(null);
   const [bookingInfo, setBookingInfo] = useState<{
     doctor?: DoctorItem;
     day?: any;
@@ -70,11 +79,90 @@ function AppContent() {
     patient?: {
       name: string;
       meta: string;
+      bhytCode?: string;
+      phone?: string;
     };
   }>({});
-  const [actionMessage, setActionMessage] = useState('');
   const { width } = useWindowDimensions();
   const isTablet = width > 700;
+
+  useEffect(() => {
+    if (!SUPABASE_CONFIGURED) return;
+    let active = true;
+    let generation = 0;
+    let routedUser: string | null = null;
+    const supabase = getSupabase();
+    const clearWebHash = () => {
+      if (
+        Platform.OS === 'web' &&
+        typeof window !== 'undefined' &&
+        window.location?.hash &&
+        (window.location.hash.includes('access_token=') ||
+          window.location.hash.includes('error='))
+      ) {
+        window.history?.replaceState?.(
+          null,
+          '',
+          window.location.pathname + window.location.search
+        );
+      }
+    };
+    const applySession = async (userId: string | null) => {
+      const request = ++generation;
+      if (!userId) {
+        if (active && CLOUD_MODE) { routedUser = null; setRoute('login'); setRouteHistory([]); setActiveTab('home'); setBookingInfo({}); }
+        return;
+      }
+      clearWebHash();
+      if (!CLOUD_MODE) {
+        if (active) {
+          routedUser = userId;
+          setRoute(previous => ['login', 'splash', 'register'].includes(previous) ? 'main' : previous);
+        }
+        return;
+      }
+      try {
+        const profile = await loadClinicProfile();
+        const current = await supabase.auth.getSession();
+        if (!active || request !== generation || current.data.session?.user.id !== userId || profile.id !== userId) return;
+        const destination = routeForClinicRole(profile.role);
+        const changed = routedUser !== userId;
+        routedUser = userId;
+        if (changed) { setRouteHistory([]); setActiveTab('home'); setBookingInfo({}); }
+        setRoute(previous => changed || ['login','splash','register'].includes(previous) ? destination : previous);
+      } catch {
+        if (active && request === generation) {
+          setRoute('login');
+          setActionMessage('Chưa tải được vai trò tài khoản. Vui lòng đăng nhập lại.');
+        }
+      }
+    };
+    const handleDeepLinkUrl = async (incoming: string | null | undefined) => {
+      if (!incoming) return;
+      try {
+        const callback = parseClinicAuthCallback(incoming);
+        if (!callback) return;
+        const response = callback.code
+          ? await supabase.auth.exchangeCodeForSession(callback.code)
+          : await supabase.auth.setSession({access_token: callback.accessToken!, refresh_token: callback.refreshToken!});
+        if (response.error) throw response.error;
+      } catch {
+        if (active) setActionMessage('Đăng nhập Google chưa hoàn tất. Vui lòng thử lại.');
+      }
+    };
+    let linkingSub: {remove: () => void} | undefined;
+    if (Platform.OS !== 'web') {
+      void Linking.getInitialURL().then(handleDeepLinkUrl).catch(() => {});
+      linkingSub = Linking.addEventListener('url', ({url}) => { void handleDeepLinkUrl(url); });
+    }
+    void supabase.auth.getSession().then(({data}) => applySession(data.session?.user.id || null)).catch(() => {});
+    const {data: {subscription}} = supabase.auth.onAuthStateChange((_event, session) => {
+      // Leave the auth callback before calling SDK methods that acquire its lock.
+      generation += 1;
+      setTimeout(() => { if (active) void applySession(session?.user.id || null); }, 0);
+    });
+    return () => { active = false; generation += 1; subscription.unsubscribe(); linkingSub?.remove(); };
+  }, []);
 
   const navigateTo = (nextRoute: string) => {
     setActionMessage('');
@@ -118,13 +206,13 @@ function AppContent() {
 
   const handleOpenDoctor = (doc: DoctorItem) => {
     setSelectedDoctor(doc);
-    setBookingInfo((prev) => ({ ...prev, patient: undefined }));
+    setBookingInfo((prev) => ({ ...prev, doctor: doc, patient: undefined }));
     navigateTo('doctorDetail');
   };
 
   const handleOpenBooking = (doc: DoctorItem) => {
     setSelectedDoctor(doc);
-    setBookingInfo((prev) => ({ ...prev, patient: undefined }));
+    setBookingInfo((prev) => ({ ...prev, doctor: doc, patient: undefined }));
     navigateTo('bookingSlot');
   };
 
@@ -142,13 +230,16 @@ function AppContent() {
 
   const handleLogout = async () => {
     try {
-      if (CLOUD_MODE) await signOutClinic();
+      if (SUPABASE_CONFIGURED) await signOutClinic();
       setRouteHistory([]);
       setRoute('login');
     } catch (error) { setActionMessage(error instanceof Error ? error.message : 'Chưa đăng xuất được. Vui lòng thử lại.'); }
   };
 
   const renderCurrentScreen = () => {
+    if (CLOUD_MODE && !cloudProfile && !['login', 'register', 'splash'].includes(route)) {
+      return <Text>Đang tải tài khoản...</Text>;
+    }
     switch (route) {
       case 'splash':
         return <SplashScreen onContinue={() => navigateTo('login')} />;
@@ -193,6 +284,11 @@ function AppContent() {
             doctor={selectedDoctor}
             onBack={() => goBack('main')}
             onBookSlot={handleOpenBooking}
+            onOpenChat={(doc) => {
+              setSelectedDoctor(doc);
+              setBookingInfo((prev) => ({ ...prev, doctor: doc }));
+              navigateTo('teleconsult');
+            }}
           />
         );
       case 'bookingSlot':
@@ -202,6 +298,7 @@ function AppContent() {
             onBack={() => goBack('doctorDetail')}
             onConfirmBooking={(details) => {
               if (details) {
+                setSelectedDoctor(details.doctor);
                 setBookingInfo((prev) => ({
                   ...prev,
                   doctor: details.doctor,
@@ -217,7 +314,7 @@ function AppContent() {
       case 'bookingPayment':
         return (
           <BookingPaymentScreen
-            doctor={bookingInfo.doctor || selectedDoctor}
+            doctor={selectedDoctor || bookingInfo.doctor}
             day={bookingInfo.day}
             slot={bookingInfo.slot}
             consultMode={bookingInfo.consultMode}
@@ -227,13 +324,15 @@ function AppContent() {
               if (bookingInFlight.current) return;
               bookingInFlight.current = true;
               try {
+                const targetDoctor = selectedDoctor || bookingInfo.doctor;
                 await createBooking({
-                  doctor: bookingInfo.doctor || selectedDoctor,
+                  doctor: targetDoctor,
                   day: bookingInfo.day, slot: bookingInfo.slot,
                   consultMode: bookingInfo.consultMode, paymentMethod: method,
                   patientInfo,
                 });
-                setBookingInfo((prev) => ({ ...prev, paymentMethod: method }));
+                setSelectedDoctor(targetDoctor);
+                setBookingInfo((prev) => ({ ...prev, doctor: targetDoctor, paymentMethod: method }));
                 navigateTo('bookingSuccess');
               } catch (error) { setActionMessage(error instanceof Error ? error.message : 'Chưa đặt được lịch. Vui lòng thử lại.'); }
               finally { bookingInFlight.current = false; }
@@ -256,7 +355,13 @@ function AppContent() {
               setRoute('main');
               setActiveTab('home');
             }}
-            onNavigate={navigateTo}
+            onNavigate={(targetRoute) => {
+              if (targetRoute === 'teleconsult' && latestBooking.doctor) {
+                setSelectedDoctor(latestBooking.doctor);
+                setBookingInfo((prev) => ({ ...prev, doctor: latestBooking.doctor }));
+              }
+              navigateTo(targetRoute);
+            }}
           />
         );
       case 'familyProfiles':
@@ -264,7 +369,18 @@ function AppContent() {
           <FamilyProfilesScreen
             onBack={() => goBack('main')}
             onSelectChild={() => navigateTo('childEHR')}
-            onAddMember={() => navigateTo('addFamilyMember')}
+            onSelectMember={(member) => {
+              setSelectedFamilyMember(member);
+              navigateTo('childEHR');
+            }}
+            onAddMember={() => {
+              setEditingFamilyMember(null);
+              navigateTo('addFamilyMember');
+            }}
+            onEditMember={(member) => {
+              setEditingFamilyMember(member);
+              navigateTo('addFamilyMember');
+            }}
             onNavigate={navigateTo}
             onBookForMember={(member) => {
               setBookingInfo((prev) => ({
@@ -272,6 +388,8 @@ function AppContent() {
                 patient: {
                   name: member.name,
                   meta: `${member.bhyt ? `BHYT: ${member.bhyt.split(' ')[0]} • ` : ''}${member.relation}`,
+                  bhytCode: member.bhyt,
+                  phone: member.phone,
                 },
               }));
               navigateTo('bookingSlot');
@@ -280,17 +398,38 @@ function AppContent() {
         );
       case 'childEHR':
         return (
-          <ChildEHRDetailScreen onBack={() => goBack('familyProfiles')} />
+          <ChildEHRDetailScreen
+            member={selectedFamilyMember}
+            onBack={() => goBack('familyProfiles')}
+            onEditMember={(member) => {
+              setEditingFamilyMember(member);
+              navigateTo('addFamilyMember');
+            }}
+            onBookForMember={(member) => {
+              setBookingInfo((prev) => ({
+                ...prev,
+                patient: {
+                  name: member.name,
+                  meta: `${member.bhyt ? `BHYT: ${member.bhyt.split(' ')[0]} • ` : ''}${member.relation}`,
+                  bhytCode: member.bhyt,
+                  phone: member.phone,
+                },
+              }));
+              navigateTo('bookingSlot');
+            }}
+          />
         );
       case 'addFamilyMember':
         return (
           <AddEditFamilyMemberScreen
+            editingMember={editingFamilyMember}
             onBack={() => goBack('familyProfiles')}
           />
         );
       case 'teleconsult':
         return (
           <TeleconsultationScreen
+            doctor={selectedDoctor || bookingInfo.doctor}
             onBack={() => goBack('main')}
             onFinishChat={() => navigateTo('postConsultSummary')}
             onOpenLabResults={() => navigateTo('labImagingResults')}
@@ -375,6 +514,10 @@ function AppContent() {
               >
                 <AppointmentsScreen
                   onSelectDoctor={handleOpenDoctor}
+                  onFocusDoctor={(doc) => {
+                    setSelectedDoctor(doc);
+                    setBookingInfo((prev) => ({ ...prev, doctor: doc }));
+                  }}
                   onBookNew={() => handleOpenBooking(DOCTORS[0])}
                   onNavigate={navigateTo}
                 />

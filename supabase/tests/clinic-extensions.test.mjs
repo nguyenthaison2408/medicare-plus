@@ -12,6 +12,24 @@ try{
  for(const [name,id] of Object.entries(ids))await db.query('insert into auth.users values($1,$2)',[id,JSON.stringify({full_name:'Test '+name,phone:'0901234567'})]);
  for(const role of ['doctor','reception','admin'])await db.query('update clinic_profiles set role=$1,doctor_id=$2 where id=$3',[role,role==='doctor'?'doc-1':null,ids[role]]);
  const tables=(await db.query("select tablename from pg_tables where schemaname='public'")).rows.map(x=>x.tablename);
+ if(tables.includes('clinic_hospitals')){
+  const addHospital=(name='Bệnh viện Kiểm thử',latitude=10.75,longitude=106.67)=>db.query("select public.clinic_admin_add_hospital($1,'123 Đường Kiểm thử, TP.HCM','02812345678',$2,$3) as hospital",[name,latitude,longitude]);
+  await as(null);
+  await check('anonymous users can read active hospital catalog',async()=>assert.equal((await db.query('select id from clinic_hospitals')).rows.length,4));
+  await check('anonymous hospital administration is denied',async()=>denied(()=>addHospital()));
+  await as(ids.a);await check('patients cannot add hospitals',async()=>denied(()=>addHospital()));
+  for(const role of ['doctor','reception']){await as(ids[role]);await check(role+' cannot add hospitals',async()=>denied(()=>addHospital()));}
+  await as(ids.admin);
+  const created=(await addHospital()).rows[0].hospital;
+  await check('admin can add a validated hospital',async()=>{assert.equal(created.name,'Bệnh viện Kiểm thử');assert.equal(created.latitude,10.75);});
+  await check('duplicate hospital creation returns existing row',async()=>assert.equal((await addHospital()).rows[0].hospital.id,created.id));
+  await check('invalid hospital coordinates are rejected',async()=>assert.rejects(()=>addHospital('Bệnh viện Tọa độ lỗi',999,106.67),e=>e.code==='22023'));
+  await check('direct hospital writes are denied',async()=>denied(()=>db.query("insert into clinic_hospitals(name,address,latitude,longitude) values('Direct hospital','Direct address',10,106)")));
+  await db.exec('reset role');
+  await db.query("insert into clinic_hospitals(name,address,latitude,longitude,active) values('Inactive hospital','Hidden address',10,106,false)");
+  await as(null);
+  await check('inactive hospitals are hidden from public catalog',async()=>assert.equal((await db.query("select id from clinic_hospitals where name='Inactive hospital'")).rows.length,0));
+ }
  if(tables.includes('clinic_family_members')){
   await as(ids.b);const family=(await db.query("insert into clinic_family_members(owner_id,full_name,relationship,bhyt_code) values($1,'Relative B','Con','TEST-BHYT') returning id",[ids.b])).rows[0];
   await check('owner can create family member and read it',async()=>assert.equal((await db.query('select id from clinic_family_members')).rows.length,1));
@@ -23,6 +41,7 @@ try{
   for(const role of ['doctor','reception','admin']){await as(ids[role]);await check(role+' has no blanket family access',async()=>assert.equal((await db.query('select * from clinic_family_members')).rows.length,0));}
   await as(null);await check('anonymous family read denied',async()=>denied(()=>db.query('select * from clinic_family_members')));
   await as(ids.b);await check('cannot transfer family ownership',async()=>denied(()=>db.query('update clinic_family_members set owner_id=$1 where id=$2',[ids.a,family.id])));
+  await check('owner can update extended family member medical fields',async()=>{const updated=(await db.query("update clinic_family_members set gender='Nữ',phone='0912345678',blood_group='A+',allergies='Penicillin',note='Theo dõi định kỳ' where id=$1 returning gender,phone,blood_group,allergies,updated_at",[family.id])).rows[0];assert.equal(updated.gender,'Nữ');assert.equal(updated.phone,'0912345678');assert.equal(updated.blood_group,'A+');assert.equal(updated.allergies,'Penicillin');assert.ok(updated.updated_at);});
   await check('owner can edit and delete family member',async()=>{assert.equal((await db.query("update clinic_family_members set note='Owner edit' where id=$1 returning id",[family.id])).rows.length,1);assert.equal((await db.query('delete from clinic_family_members where id=$1 returning id',[family.id])).rows.length,1);});
  }
  if(tables.includes('clinic_medicine_cabinet')){
@@ -92,6 +111,81 @@ try{
   await check('anonymous users may read verified public fields',async()=>assert.equal((await db.query('select id,doctor_id,patient_name,rating,comment,created_at from clinic_doctor_reviews')).rows.length,1));
   await check('public cannot read patient Auth identifiers',async()=>denied(()=>db.query('select patient_id from clinic_doctor_reviews')));
   await check('public cannot read appointment identifiers',async()=>denied(()=>db.query('select appointment_id from clinic_doctor_reviews')));
+  await check('anonymous cannot read private admin_note',async()=>denied(()=>db.query('select admin_note from clinic_doctor_reviews')));
+  await as(ids.a);
+  await check('patient cannot read private admin_note',async()=>denied(()=>db.query('select admin_note from clinic_doctor_reviews')));
+  await check('patient cannot call admin review list RPC',async()=>denied(()=>db.query('select * from public.clinic_admin_list_reviews()')));
+  await check('patient cannot hide or delete reviews',async()=>{
+   assert.equal((await db.query('update clinic_doctor_reviews set is_hidden=true returning id')).rows.length,0);
+   assert.equal((await db.query('delete from clinic_doctor_reviews returning id')).rows.length,0);
+  });
+  await as(ids.admin);
+  await check('admin can hide inappropriate review and read admin_note via RPC',async()=>{
+   assert.equal((await db.query("update clinic_doctor_reviews set is_hidden=true, admin_note='Spam' returning id")).rows.length,1);
+   const list=(await db.query('select * from public.clinic_admin_list_reviews()')).rows;
+   assert.equal(list.length,1);
+   assert.equal(list[0].admin_note,'Spam');
+  });
+  await as(null);
+  await check('hidden review is no longer visible to public',async()=>assert.equal((await db.query('select id from clinic_doctor_reviews')).rows.length,0));
+  await as(ids.admin);
+  await check('admin can restore hidden review',async()=>{
+   assert.equal((await db.query("update clinic_doctor_reviews set is_hidden=false, admin_note='' returning id")).rows.length,1);
+  });
+ }
+ if(tables.includes('clinic_doctor_schedules')){
+  await as(ids.a);
+  await check('patient can update own extended profile fields',async()=>assert.equal((await db.query("update clinic_profiles set full_name='Updated Patient', gender='Nam', bhyt_code='DN4 79 234 82390' where id=$1 returning id",[ids.a])).rows.length,1));
+  await check('patient cannot write doctor shift schedules',async()=>denied(()=>db.query("insert into clinic_doctor_schedules(doctor_id,work_date,shift,room) values('doc-1',current_date,'morning','P.302')")));
+  await as(ids.admin);
+  const shiftDate=(await db.query("select ((now() at time zone 'Asia/Ho_Chi_Minh')::date + 10)::text as d")).rows[0].d;
+  const sch=(await db.query("insert into clinic_doctor_schedules(doctor_id,work_date,shift,room) values('doc-1',$1::date,'morning','P.302') returning id",[shiftDate])).rows[0];
+  await check('admin can assign doctor shift schedule',async()=>assert.ok(sch.id));
+  await as(null);
+  await check('public can read assigned doctor schedules',async()=>assert.equal((await db.query('select id from clinic_doctor_schedules')).rows.length,1));
+  await check('slot availability marks afternoon slots unavailable when only morning shift is assigned',async()=>{
+   const slots=(await db.query("select (starts_at at time zone 'Asia/Ho_Chi_Minh')::time::text as t, is_booked from public.clinic_slot_availability('doc-1',$1::date)",[shiftDate])).rows;
+   const morning=slots.find(s=>s.t.startsWith('09:00'));
+   const afternoon=slots.find(s=>s.t.startsWith('14:00'));
+   assert.equal(morning.is_booked,false);
+   assert.equal(afternoon.is_booked,true);
+  });
+  await as(ids.a);
+  await check('booking outside assigned doctor shift is rejected',async()=>{
+   await assert.rejects(()=>db.query("select public.clinic_book_appointment('doc-1',($1 || 'T14:00:00+07:00')::timestamptz,'at_clinic','Nguyen Van A','0912345678','a@example.com','Kham dau dau')",[shiftDate]),e=>e.message.includes('OUTSIDE_DOCTOR_SHIFT'));
+  });
+  await check('booking inside assigned doctor shift succeeds',async()=>{
+   const booked=(await db.query("select public.clinic_book_appointment('doc-1',($1 || 'T09:00:00+07:00')::timestamptz,'at_clinic','Nguyen Van A','0912345678','a@example.com','Kham dau dau') as apt",[shiftDate])).rows[0].apt;
+   assert.equal(booked.doctor_id,'doc-1');
+  });
+  await as(ids.admin);
+  await check('admin can delete doctor shift schedule',async()=>assert.equal((await db.query('delete from clinic_doctor_schedules where id=$1 returning id',[sch.id])).rows.length,1));
+ }
+ if(tables.includes('clinic_bhyt_configs')){
+  await as(null);
+  await check('public can read default seeded BHYT configs',async()=>assert.ok((await db.query('select id from clinic_bhyt_configs')).rows.length>=4));
+  await as(ids.a);
+  await check('patient cannot modify BHYT config',async()=>denied(()=>db.query("insert into clinic_bhyt_configs(id,prefix_code,group_name,in_network_rate,out_network_rate) values('bhyt-cn','CN','Can ngheo',95,60)")));
+  await as(ids.admin);
+  await check('admin can create and update BHYT config',async()=>{
+   await db.query("insert into clinic_bhyt_configs(id,prefix_code,group_name,in_network_rate,out_network_rate) values('bhyt-cn','CN','Can ngheo',95,60)");
+   assert.equal((await db.query("update clinic_bhyt_configs set in_network_rate=100 where id='bhyt-cn' returning id")).rows.length,1);
+   assert.equal((await db.query("delete from clinic_bhyt_configs where id='bhyt-cn' returning id")).rows.length,1);
+  });
+ }
+ if(tables.includes('clinic_consult_messages')){
+  await as(ids.a);
+  const msg=(await db.query("insert into clinic_consult_messages(patient_id,doctor_id,sender_id,sender_role,sender_name,content) values($1,'doc-1',$1,'patient','Test a','Bác sĩ ơi em bị đau đầu') returning id",[ids.a])).rows[0];
+  await check('patient can send and read own consultation message',async()=>assert.equal((await db.query('select id from clinic_consult_messages')).rows.length,1));
+  await as(ids.b);
+  await check('another patient cannot read consultation messages',async()=>assert.equal((await db.query('select id from clinic_consult_messages')).rows.length,0));
+  await check('patient cannot spoof sender_id or patient_id in consultation messages',async()=>denied(()=>db.query("insert into clinic_consult_messages(patient_id,doctor_id,sender_id,sender_role,sender_name,content) values($1,'doc-1',$2,'patient','Spoof','Fake')",[ids.a,ids.b])));
+  await as(ids.doctor);
+  await check('assigned doctor can read and reply to consultation thread',async()=>{assert.equal((await db.query('select id from clinic_consult_messages')).rows.length,1);const reply=(await db.query("insert into clinic_consult_messages(patient_id,doctor_id,sender_id,sender_role,sender_name,content) values($1,'doc-1',$2,'doctor','BS. Trang','Chào bạn, bác sĩ đã nhận được thông tin') returning id",[ids.a,ids.doctor])).rows[0];assert.ok(reply.id);});
+  await check('doctor cannot send message on behalf of another doctor_id',async()=>denied(()=>db.query("insert into clinic_consult_messages(patient_id,doctor_id,sender_id,sender_role,sender_name,content) values($1,'doc-2',$2,'doctor','BS. Trang','Wrong doc')",[ids.a,ids.doctor])));
+  await as(ids.a);
+  await check('patient receives doctor reply in thread',async()=>assert.equal((await db.query('select id from clinic_consult_messages')).rows.length,2));
+  assert.ok(msg.id);
  }
  console.log(count+' PostgreSQL extension checks passed.');
 }finally{await db.close();}

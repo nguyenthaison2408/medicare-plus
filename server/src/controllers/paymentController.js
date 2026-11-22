@@ -266,5 +266,6 @@ module.exports = {
   getPaymentStatus,
   orders,
   getPayOSClient,
+  setPayOSClient: (client) => { payosInstance = client; },
   sanitizeDescription
 };

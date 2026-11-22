@@ -2,6 +2,26 @@
 const assert = require('assert');
 const app = require('../src/app');
 const http = require('http');
+const { getPayOSClient, setPayOSClient } = require('../src/controllers/paymentController');
+
+// Đảm bảo môi trường CI (không có file .env chứa API Key thực) vẫn pass kiểm thử thanh toán an toàn
+if (!getPayOSClient()) {
+  setPayOSClient({
+    paymentRequests: {
+      create: async (data) => ({
+        checkoutUrl: 'https://pay.payos.vn/web/mock-test-order',
+        qrCode: '00020101021238570010A000000727012700069704220113VQRQANUZS2008',
+        accountNumber: 'VQRQANUZS2008',
+        accountName: 'MEDICARE PLUS TEST',
+        bin: '970422',
+      }),
+      get: async (orderCode) => ({ status: 'PAID' })
+    },
+    webhooks: {
+      verify: async (body) => body.data || body
+    }
+  });
+}
 
 console.log('🧪 Đang chạy bộ kiểm thử tự động API (MediCare Plus Automated Test Suite)...');
 

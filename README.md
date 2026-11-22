@@ -70,4 +70,4 @@ Bảy tệp nộp chính:
 6. [Scope Change Record](docs/06_Scope_Change_Control_Record.docx)
 7. [PowerPoint 9 slide](docs/08_Presentation_Slide_Deck.pptx)
 
-Không tạo tệp 07 tùy chọn. Word/Excel/PowerPoint là bản nguồn giữ định dạng; node scripts/export-word-reports.cjs chỉ sao chép/kiểm tra các bản Office, không sinh lại từ bản thảo Markdown. Bằng chứng nằm trong docs/evidence; hướng dẫn thao tác nằm trong demo. PR tài liệu #22 và dữ liệu/identity #28 còn mở tại mốc đối chiếu; cần review phần chưa tích hợp, không coi đã hoàn thành vì tài liệu tồn tại.
+Không tạo tệp 07 tùy chọn. Word/Excel/PowerPoint là bản nguồn giữ định dạng; node scripts/export-word-reports.cjs chỉ sao chép/kiểm tra các bản Office, không sinh lại từ bản thảo Markdown. Bằng chứng nằm trong docs/evidence; hướng dẫn thao tác nằm trong demo. PR tài liệu #22 được PR #46 thay thế; bằng chứng riêng của #22 được lưu trong docs/evidence. PR #28 về dữ liệu bệnh án/identity vẫn cần review/tích hợp vì còn sửa app chưa vào main.

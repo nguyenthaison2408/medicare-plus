@@ -1,0 +1,185 @@
+{
+  "preparedAtUtc": "2026-11-19T12:25:02.097Z",
+  "purpose": "Mô hình CPM đối chiếu được lập 19/11, không phải thời gian thực hiện đã đo",
+  "durationUnit": "giờ ước lượng kỹ thuật; chưa có xác nhận Planning Poker/time tracking",
+  "activities": [
+    {
+      "id": "A",
+      "name": "Chốt phạm vi và bản tích hợp",
+      "duration": 2,
+      "pred": [],
+      "es": 0,
+      "ef": 2,
+      "lf": 2,
+      "ls": 0,
+      "slack": 0,
+      "critical": true
+    },
+    {
+      "id": "B",
+      "name": "Hồi quy core và CI",
+      "duration": 3,
+      "pred": [
+        "A"
+      ],
+      "es": 2,
+      "ef": 5,
+      "lf": 5,
+      "ls": 2,
+      "slack": 0,
+      "critical": true
+    },
+    {
+      "id": "C",
+      "name": "Kiểm tra UI và camera",
+      "duration": 3,
+      "pred": [
+        "B"
+      ],
+      "es": 5,
+      "ef": 8,
+      "lf": 9,
+      "ls": 6,
+      "slack": 1,
+      "critical": false
+    },
+    {
+      "id": "D",
+      "name": "Chuẩn bị bản chạy HTTPS hoặc APK",
+      "duration": 4,
+      "pred": [
+        "B"
+      ],
+      "es": 5,
+      "ef": 9,
+      "lf": 9,
+      "ls": 5,
+      "slack": 0,
+      "critical": true
+    },
+    {
+      "id": "E",
+      "name": "UAT và thu phản hồi",
+      "duration": 4,
+      "pred": [
+        "C",
+        "D"
+      ],
+      "es": 9,
+      "ef": 13,
+      "lf": 13,
+      "ls": 9,
+      "slack": 0,
+      "critical": true
+    },
+    {
+      "id": "F",
+      "name": "Đối chiếu báo cáo và slide",
+      "duration": 3,
+      "pred": [
+        "E"
+      ],
+      "es": 13,
+      "ef": 16,
+      "lf": 16,
+      "ls": 13,
+      "slack": 0,
+      "critical": true
+    },
+    {
+      "id": "G",
+      "name": "Đóng gói, kiểm tra quyền Drive",
+      "duration": 1,
+      "pred": [
+        "F"
+      ],
+      "es": 16,
+      "ef": 17,
+      "lf": 17,
+      "ls": 16,
+      "slack": 0,
+      "critical": true
+    },
+    {
+      "id": "H",
+      "name": "Tổng duyệt",
+      "duration": 2,
+      "pred": [
+        "G"
+      ],
+      "es": 17,
+      "ef": 19,
+      "lf": 19,
+      "ls": 17,
+      "slack": 0,
+      "critical": true
+    },
+    {
+      "id": "I",
+      "name": "Chốt gửi một lần",
+      "duration": 1,
+      "pred": [
+        "H"
+      ],
+      "es": 19,
+      "ef": 20,
+      "lf": 20,
+      "ls": 19,
+      "slack": 0,
+      "critical": true
+    }
+  ],
+  "totalDuration": 20,
+  "criticalPath": [
+    "A",
+    "B",
+    "D",
+    "E",
+    "F",
+    "G",
+    "H",
+    "I"
+  ],
+  "assumptions": [
+    "Các công việc chạy song song nếu có đủ người.",
+    "Chưa xét resource leveling hoặc lịch làm việc thực tế.",
+    "Không quy đổi Story Points thành giờ.",
+    "Mô hình chưa thay thế lịch CPM được nhóm chốt."
+  ],
+  "boardSnapshot": {
+    "observedAtUtc": "2026-11-19T06:20:38.8832692Z",
+    "sprint6Total": 123,
+    "remaining": 123,
+    "source": "docs/evidence/2026-11-19-project-board.json",
+    "daily": [
+      {
+        "date": "2026-11-16",
+        "remaining": null
+      },
+      {
+        "date": "2026-11-17",
+        "remaining": null
+      },
+      {
+        "date": "2026-11-18",
+        "remaining": null
+      },
+      {
+        "date": "2026-11-19",
+        "remaining": 123
+      },
+      {
+        "date": "2026-11-20",
+        "remaining": null
+      },
+      {
+        "date": "2026-11-21",
+        "remaining": null
+      },
+      {
+        "date": "2026-11-22",
+        "remaining": null
+      }
+    ]
+  }
+}

@@ -11,3 +11,5 @@ Mốc đối chiếu: main 602b76c ngày 22/11/2026. Tỷ lệ nhóm chốt: Sơ
 Các tệp ngày 19/11 được giữ làm chứng cứ lịch sử. Không sửa số liệu cũ để khớp bản mới, không cộng các bộ cloud khác phiên bản thành một lần nghiệm thu. Ngày tác giả hoặc ngày ghi commit không chứng minh giờ công, thời lượng Sprint hay cuộc họp. Các ảnh chụp không tạo đủ chuỗi burndown/velocity; chưa có UAT/sign-off được xác nhận từ chúng.
 
 Bộ hồ sơ chính gồm 5 Word + 1 Excel + 1 PowerPoint ở thư mục docs. Các bảng trạng thái DB được đối chiếu riêng trong docs/reference; hướng dẫn thao tác nằm trong demo.
+
+Bằng chứng riêng từ PR #22 được giữ nguyên trước khi đóng PR: CPM, đối chiếu yêu cầu, kiểm tra hồ sơ/Scrum, daily CSV và hai hình gốc trong figures. Đây là ảnh chụp ngày 19/11, có phân công/tỷ lệ/trạng thái cũ; dùng kết quả ngày 22/11 cho hiện trạng. Daily CSV để trống ngày không có quan sát, không phải biên bản Daily Scrum. Các script sinh báo cáo cũ và JSON bản thảo của #22 không được dùng lại.

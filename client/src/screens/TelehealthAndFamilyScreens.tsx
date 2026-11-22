@@ -66,6 +66,7 @@ export const BookingSuccessScreen: React.FC<{
   const doctor = latestBooking.doctor || DOCTORS[0];
   const activePayment = paymentMethod || latestBooking.paymentMethod || 'at_clinic_bhyt';
   const isBHYT = activePayment === 'at_clinic_bhyt';
+  const isPaidOnline = activePayment === 'vietqr' || activePayment === 'vnpay' || activePayment === 'momo';
 
   const handleSendBookingEmail = async (isAuto = false) => {
     if (!latestBooking.code || !latestBooking.patientEmail || emailSending) return;
@@ -122,10 +123,10 @@ export const BookingSuccessScreen: React.FC<{
     setTimeout(() => setCopied(false), 2500);
   };
 
-  const paymentLabel = CLOUD_MODE ? 'Thanh toán tại cơ sở y tế' :
-    activePayment === 'vietqr'
-      ? 'Chuyển khoản VietQR 24/7'
-      : activePayment === 'vnpay'
+  const paymentLabel = activePayment === 'vietqr'
+    ? 'Đã thanh toán qua VietQR (PayOS)'
+    : CLOUD_MODE ? 'Thanh toán tại cơ sở y tế' :
+    activePayment === 'vnpay'
       ? 'Cổng VNPAY'
       : activePayment === 'momo'
       ? 'Ví MoMo'
@@ -170,8 +171,8 @@ export const BookingSuccessScreen: React.FC<{
                 <Text style={styles.ticketCode}>{latestBooking.code}</Text>
               </View>
               <Badge
-                label={CLOUD_MODE ? 'Đã giữ chỗ • Chưa thu tiền' : isBHYT ? 'Giữ chỗ BHYT • Trả sau' : 'Đã thanh toán Online ✓'}
-                variant={isBHYT ? 'warning' : 'teal'}
+                label={isPaidOnline ? 'Đã thanh toán Online ✓' : CLOUD_MODE ? 'Đã giữ chỗ • Chưa thu tiền' : isBHYT ? 'Giữ chỗ BHYT • Trả sau' : 'Đã thanh toán Online ✓'}
+                variant={isPaidOnline ? 'teal' : isBHYT ? 'warning' : 'teal'}
                 showDot
               />
             </View>
@@ -258,10 +259,10 @@ export const BookingSuccessScreen: React.FC<{
                 style={{
                   fontSize: TYPOGRAPHY.caption,
                   fontWeight: '800',
-                  color: isBHYT ? COLORS.primary : COLORS.secondary,
+                  color: isPaidOnline ? COLORS.success : isBHYT ? COLORS.primary : COLORS.secondary,
                 }}
               >
-                {CLOUD_MODE ? 'Chưa thu' : isBHYT ? 'Trả tại viện' : doctor.fee}
+                {isPaidOnline ? 'Đã thanh toán' : CLOUD_MODE ? 'Chưa thu' : isBHYT ? 'Trả tại viện' : doctor.fee}
               </Text>
             </View>
           </View>

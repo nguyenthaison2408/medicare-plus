@@ -810,7 +810,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
       if (consultMode !== 'clinic' && consultMode !== 'chat' && consultMode !== 'video') {
         throw new Error('Hình thức khám không hợp lệ.');
       }
-      if (paymentMethod !== 'at_clinic' && paymentMethod !== 'at_clinic_bhyt') throw new Error('Vui lòng chọn thanh toán tại cơ sở y tế.');
+      if (paymentMethod !== 'at_clinic' && paymentMethod !== 'at_clinic_bhyt' && paymentMethod !== 'vietqr') {
+        throw new Error('Vui lòng chọn thanh toán tại cơ sở y tế.');
+      }
       const isChatMode = consultMode === 'chat' || consultMode === 'video';
       const normalizedPatientInfo: PatientBookingInfo =
         isChatMode && !patientInfo.symptoms.trim().startsWith('[Tư vấn Chat]')
@@ -831,7 +833,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         room: isChatMode ? 'Phòng Tư vấn Chat Trực tuyến' : doctor.hospital,
         queueNumber: 'Đã xác nhận',
         consultMode: isChatMode ? 'chat' : 'clinic',
-        paymentMethod: appointment.payment_method,
+        paymentMethod: paymentMethod === 'vietqr' ? 'vietqr' : appointment.payment_method,
         patientName: appointment.patient_name,
         patientPhone: appointment.patient_phone,
         patientEmail: appointment.patient_email,
@@ -839,7 +841,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
       };
       selectedTicketCode.current = ticket.code;
       setLatestBooking(ticket);
-      setAppointments(prev => [clinicAppointmentToItem(appointment), ...prev.filter(item => item.id !== appointment.id)]);
+      const appItem = clinicAppointmentToItem(appointment);
+      if (paymentMethod === 'vietqr') {
+        appItem.statusBadge = 'Đã thanh toán (PayOS)';
+      }
+      setAppointments(prev => [appItem, ...prev.filter(item => item.id !== appointment.id)]);
       return ticket;
     }
     const randNum = Math.floor(1000 + Math.random() * 8999);

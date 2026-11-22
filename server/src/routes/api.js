@@ -9,6 +9,11 @@ const {
   checkInByQR,
   saveMedicalRecord
 } = require('../controllers/bookingController');
+const {
+  createPaymentLink,
+  handleWebhook,
+  getPaymentStatus
+} = require('../controllers/paymentController');
 
 // Health Check
 router.get('/health', (req, res) => {
@@ -30,5 +35,10 @@ router.post('/appointments/book', bookAppointment);
 router.get('/appointments', getAppointments);
 router.post('/appointments/check-in', checkInByQR);
 router.post('/appointments/:id/medical-record', saveMedicalRecord);
+
+// PayOS Payment Flow
+router.post('/payments/create-payment-link', createPaymentLink);
+router.post('/payments/payos-webhook', handleWebhook);
+router.get('/payments/status/:orderCode', getPaymentStatus);
 
 module.exports = router;

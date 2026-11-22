@@ -1,10 +1,15 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   View,
   Text,
   ScrollView,
   TouchableOpacity,
   StyleSheet,
+  Modal,
+  ActivityIndicator,
+  Linking,
+  Image,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, LAYOUT, RADIUS, SHADOWS, SPACING, TOUCH, TYPOGRAPHY } from '../theme';
@@ -638,14 +643,19 @@ export const BookingPaymentScreen: React.FC<BookingPaymentScreenProps> = ({
   const [selectedMethod, setSelectedMethod] =
     useState<PaymentMethodType>('at_clinic_bhyt');
   const [submitting, setSubmitting] = useState(false);
+  const [payOsModalVisible, setPayOsModalVisible] = useState(false);
+  const [payOsLoading, setPayOsLoading] = useState(false);
+  const [payOsData, setPayOsData] = useState<any>(null);
+  const [payOsPaid, setPayOsPaid] = useState(false);
+  const pollTimerRef = useRef<any>(null);
   const [activeBhytCode, setActiveBhytCode] = useState<string>(
     patient?.bhytCode ?? patientProfile.bhytCode ?? ''
   );
   const [patientInfo, setPatientInfo] = useState<PatientBookingInfo>({
-    fullName: patient?.name || patientProfile.name,
+    fullName: patient?.name || patientProfile.name || '',
     phone: patient?.phone || patientProfile.phone || '',
-    email: cloudProfile?.email || '',
-    symptoms: '',
+    email: cloudProfile?.email || 'patient@example.com',
+    symptoms: 'Khám sức khỏe theo chuyên khoa',
   });
   const [patientErrors, setPatientErrors] = useState<PatientBookingErrors>({});
 
@@ -679,9 +689,9 @@ export const BookingPaymentScreen: React.FC<BookingPaymentScreenProps> = ({
     },
     {
       id: 'vietqr' as PaymentMethodType,
-      title: 'Chuyển khoản VietQR 24/7',
-      sub: 'Quét mã QR bằng mọi app ngân hàng (Tự động xác nhận 3s)',
-      badge: 'Miễn phí giao dịch',
+      title: 'Chuyển khoản VietQR 24/7 (PayOS)',
+      sub: 'Quét mã VietQR bằng mọi app ngân hàng (Tự động xác nhận 2s)',
+      badge: 'Tự động 24/7',
       badgeVariant: 'blue' as const,
       icon: 'qr-code-outline' as const,
     },
@@ -701,19 +711,99 @@ export const BookingPaymentScreen: React.FC<BookingPaymentScreenProps> = ({
       badgeVariant: 'warning' as const,
       icon: 'wallet-outline' as const,
     },
-  ].filter(option => !CLOUD_MODE || option.id === 'at_clinic_bhyt');
+  ].filter(option => !CLOUD_MODE || option.id === 'at_clinic_bhyt' || option.id === 'vietqr');
 
   const submitBooking = async (method: PaymentMethodType) => {
-    if (submitting || (CLOUD_MODE && (!day || !slot))) return;
+    if (submitting || payOsLoading || (CLOUD_MODE && (!day || !slot))) return;
     const errors = validatePatientBookingInfo(patientInfo);
     setPatientErrors(errors);
-    if (hasPatientBookingErrors(errors)) return;
+    if (hasPatientBookingErrors(errors)) {
+      const firstErr = Object.values(errors).find(Boolean);
+      const msg = `Vui lòng hoàn tất thông tin: ${firstErr}`;
+      if (typeof window !== 'undefined' && window.alert) {
+        window.alert(msg);
+      } else {
+        Alert.alert('Chưa đủ thông tin', msg);
+      }
+      return;
+    }
     const normalized = normalizePatientBookingInfo(patientInfo);
     setPatientInfo(normalized);
+
+    if (method === 'vietqr') {
+      setPayOsLoading(true);
+      setPayOsPaid(false);
+      try {
+        const serverUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
+        const res = await fetch(`${serverUrl}/payments/create-payment-link`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            amount: 2000,
+            description: `MEDICARE ${doctor.name.slice(0, 10)}`,
+            patientName: normalized.fullName,
+            patientPhone: normalized.phone,
+          }),
+        });
+        const json = await res.json();
+        if (json.success && json.data) {
+          setPayOsData(json.data);
+          setPayOsModalVisible(true);
+        } else {
+          const msg = json.message || 'Không thể tạo mã VietQR lúc này.';
+          if (typeof window !== 'undefined' && window.alert) {
+            window.alert(`Lỗi PayOS: ${msg}`);
+          } else {
+            Alert.alert('Lỗi PayOS', msg);
+          }
+        }
+      } catch {
+        const msg = 'Chưa kết nối được máy chủ API tại http://localhost:5000. Bạn hãy mở một Terminal riêng và chạy: npm run dev:server';
+        if (typeof window !== 'undefined' && window.alert) {
+          window.alert(msg);
+        } else {
+          Alert.alert('Lỗi kết nối Server', msg);
+        }
+      } finally {
+        setPayOsLoading(false);
+      }
+      return;
+    }
+
     setSubmitting(true);
     try { await onPaymentSuccess(method, normalized); }
     finally { setSubmitting(false); }
   };
+
+  useEffect(() => {
+    if (!payOsModalVisible || !payOsData?.orderCode || payOsPaid) {
+      if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+      return;
+    }
+
+    const serverUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
+    pollTimerRef.current = setInterval(async () => {
+      try {
+        const res = await fetch(`${serverUrl}/payments/status/${payOsData.orderCode}`);
+        const json = await res.json();
+        if (json.success && json.data?.status === 'PAID') {
+          if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+          setPayOsPaid(true);
+          setTimeout(async () => {
+            setPayOsModalVisible(false);
+            const normalized = normalizePatientBookingInfo(patientInfo);
+            await onPaymentSuccess('vietqr', normalized);
+          }, 1500);
+        }
+      } catch {
+        // Polling retry
+      }
+    }, 2000);
+
+    return () => {
+      if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+    };
+  }, [payOsModalVisible, payOsData, payOsPaid, patientInfo, onPaymentSuccess]);
 
   const patientForm = (<AnimatedEntry delay={70} direction="up">
           <View style={[styles.card, SHADOWS.sm, { marginBottom: 16 }]}>
@@ -857,27 +947,6 @@ export const BookingPaymentScreen: React.FC<BookingPaymentScreenProps> = ({
             </Text>
           </View>
         </AnimatedEntry>);
-
-  if (CLOUD_MODE) return (
-    <View style={styles.screen}>
-      <AppHeader title="Xác nhận lịch khám" onBack={onBack} />
-      <ScrollView contentContainerStyle={styles.scrollPad} keyboardShouldPersistTaps="handled">
-        <View style={[styles.card, SHADOWS.sm, { marginVertical: 14 }]}>
-          <Text style={styles.paymentDocName}>{doctor.name}</Text>
-          <Text style={styles.paymentDocSub}>{doctor.hospital}</Text>
-          <Text style={styles.paymentInfoVal}>Ngày khám: {day?.fullDate || 'Chưa chọn'}</Text>
-          <Text style={styles.paymentInfoVal}>Giờ khám: {slot?.time || 'Chưa chọn'}</Text>
-          <Text style={styles.paymentInfoVal}>Bệnh nhân: {patientInfo.fullName || 'Chưa nhập thông tin'}</Text>
-        </View>
-        {patientForm}
-        <Text style={styles.patientFormHint}>Thanh toán tại cơ sở y tế. Ứng dụng chưa thu tiền; viện phí và quyền lợi BHYT được đối soát tại quầy.</Text>
-      </ScrollView>
-      <StickyBottomBar topLabel="Thanh toán tại cơ sở y tế" topLabelIcon="business-outline"
-        priceLabel="Trạng thái:" priceValue="Chưa thu tiền" buttonTitle="Xác nhận đặt lịch"
-        disabled={submitting || !day || !slot} loading={submitting}
-        onButtonPress={() => submitBooking('at_clinic')} />
-    </View>
-  );
 
   return (
     <View style={styles.screen}>
@@ -1118,15 +1187,142 @@ export const BookingPaymentScreen: React.FC<BookingPaymentScreenProps> = ({
 
       {/* 6. Sticky Bottom Action Bar */}
       <StickyBottomBar
-        topLabel={isAtClinic ? 'Thanh toán tại viện với BHYT' : `Cổng thanh toán: ${selectedMethod.toUpperCase()}`}
-        topLabelIcon={isAtClinic ? 'business-outline' : 'card-outline'}
+        topLabel={isAtClinic ? 'Thanh toán tại viện với BHYT' : selectedMethod === 'vietqr' ? 'Cổng thanh toán: VIETQR (PAYOS)' : `Cổng thanh toán: ${selectedMethod.toUpperCase()}`}
+        topLabelIcon={isAtClinic ? 'business-outline' : 'qr-code-outline'}
         priceLabel="Cần thanh toán:"
-        priceValue={isAtClinic ? '0 đ' : doctor.fee}
-        buttonTitle={isAtClinic ? 'Xác nhận đặt lịch' : 'Thanh toán ngay'}
-        disabled={submitting}
-        loading={submitting}
+        priceValue={isAtClinic ? '0 đ' : selectedMethod === 'vietqr' ? '2.000 đ' : doctor.fee}
+        buttonTitle={isAtClinic ? 'Xác nhận đặt lịch' : selectedMethod === 'vietqr' ? 'Quét mã VietQR (PayOS)' : 'Thanh toán ngay'}
+        disabled={submitting || payOsLoading}
+        loading={submitting || payOsLoading}
         onButtonPress={() => submitBooking(selectedMethod)}
       />
+
+      {/* PayOS VietQR Modal */}
+      <Modal
+        visible={payOsModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          if (!payOsPaid) {
+            setPayOsModalVisible(false);
+          }
+        }}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.payOsModalContainer}>
+            {/* Header */}
+            <View style={styles.payOsModalHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Ionicons name="qr-code-outline" size={24} color={COLORS.primary} />
+                <Text style={styles.payOsModalTitle}>Thanh toán VietQR 24/7 (PayOS)</Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setPayOsModalVisible(false)}
+                disabled={payOsPaid}
+                style={{ padding: 4 }}
+              >
+                <Ionicons name="close" size={22} color={COLORS.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            {payOsPaid ? (
+              <View style={styles.payOsSuccessBox}>
+                <Ionicons name="checkmark-circle" size={64} color={COLORS.success} />
+                <Text style={styles.payOsSuccessTitle}>Thanh toán thành công!</Text>
+                <Text style={styles.payOsSuccessSub}>
+                  Hệ thống PayOS đã xác nhận chuyển khoản 2.000 đ. Đang chuyển đến phiếu hẹn điện tử...
+                </Text>
+                <ActivityIndicator size="small" color={COLORS.success} style={{ marginTop: 12 }} />
+              </View>
+            ) : (
+              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ alignItems: 'center' }}>
+                <Text style={styles.payOsInstruction}>
+                  Mở app ngân hàng bất kỳ (MB, Vietcombank, Techcombank, MoMo...) và quét mã bên dưới để thanh toán tự động:
+                </Text>
+
+                {/* QR Code */}
+                {payOsData?.qrCode ? (
+                  <View style={styles.payOsQrWrapper}>
+                    <Image
+                      source={{
+                        uri: `https://api.qrserver.com/v1/create-qr-code/?size=250x250&margin=8&data=${encodeURIComponent(
+                          payOsData.qrCode
+                        )}`,
+                      }}
+                      style={{ width: 210, height: 210, borderRadius: 10 }}
+                      resizeMode="contain"
+                    />
+                  </View>
+                ) : (
+                  <ActivityIndicator size="large" color={COLORS.primary} style={{ marginVertical: 40 }} />
+                )}
+
+                {/* Bank details card */}
+                <View style={styles.payOsBankCard}>
+                  <View style={styles.payOsInfoRow}>
+                    <Text style={styles.payOsLabel}>Ngân hàng thụ hưởng:</Text>
+                    <Text style={styles.payOsValue}>MB Bank (Quân Đội)</Text>
+                  </View>
+                  <View style={styles.payOsInfoRow}>
+                    <Text style={styles.payOsLabel}>Chủ tài khoản:</Text>
+                    <Text style={[styles.payOsValue, { fontWeight: '700' }]}>
+                      {payOsData?.accountName || 'MEDICARE PLUS'}
+                    </Text>
+                  </View>
+                  <View style={styles.payOsInfoRow}>
+                    <Text style={styles.payOsLabel}>Số tài khoản:</Text>
+                    <Text style={[styles.payOsValue, { color: COLORS.primary, fontWeight: '700' }]}>
+                      {payOsData?.accountNumber || 'VQRQANUZS2008'}
+                    </Text>
+                  </View>
+                  <View style={styles.payOsInfoRow}>
+                    <Text style={styles.payOsLabel}>Số tiền chuyển:</Text>
+                    <Text style={[styles.payOsValue, { color: '#E11D48', fontWeight: '800', fontSize: 16 }]}>
+                      2.000 đ
+                    </Text>
+                  </View>
+                  <View style={styles.payOsInfoRow}>
+                    <Text style={styles.payOsLabel}>Nội dung chuyển khoản:</Text>
+                    <Text style={[styles.payOsValue, { fontWeight: '700' }]}>
+                      {payOsData?.description || 'KHAM MEDICARE'}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Real-time waiting indicator */}
+                <View style={styles.payOsWaitingRow}>
+                  <ActivityIndicator size="small" color={COLORS.primary} />
+                  <Text style={styles.payOsWaitingText}>
+                    Đang chờ hệ thống ngân hàng xác nhận chuyển khoản...
+                  </Text>
+                </View>
+
+                {/* Open PayOS Web checkout button */}
+                {payOsData?.checkoutUrl ? (
+                  <TouchableOpacity
+                    style={styles.payOsWebBtn}
+                    onPress={() => {
+                      if (payOsData.checkoutUrl) {
+                        void Linking.openURL(payOsData.checkoutUrl);
+                      }
+                    }}
+                  >
+                    <Ionicons name="open-outline" size={18} color="#FFFFFF" />
+                    <Text style={styles.payOsWebBtnText}>Mở Cổng thanh toán PayOS (Trình duyệt)</Text>
+                  </TouchableOpacity>
+                ) : null}
+
+                <TouchableOpacity
+                  style={{ marginTop: 12, padding: 8 }}
+                  onPress={() => setPayOsModalVisible(false)}
+                >
+                  <Text style={{ color: COLORS.textSecondary, fontSize: 13 }}>Đóng / Chọn phương thức khác</Text>
+                </TouchableOpacity>
+              </ScrollView>
+            )}
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -1500,6 +1696,134 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: COLORS.secondary,
     marginTop: 3,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: SPACING.md,
+  },
+  payOsModalContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: RADIUS.lg,
+    width: '100%',
+    maxWidth: 440,
+    maxHeight: '90%',
+    padding: SPACING.lg,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+  payOsModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.outlineVariant,
+    paddingBottom: 12,
+    marginBottom: 12,
+    width: '100%',
+  },
+  payOsModalTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+  },
+  payOsInstruction: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    marginBottom: 10,
+    lineHeight: 18,
+  },
+  payOsQrWrapper: {
+    backgroundColor: '#FFFFFF',
+    padding: 10,
+    borderRadius: RADIUS.md,
+    borderWidth: 2,
+    borderColor: COLORS.primary,
+    marginBottom: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  payOsBankCard: {
+    width: '100%',
+    backgroundColor: '#F8FAFC',
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    padding: 12,
+    marginBottom: 12,
+    gap: 6,
+  },
+  payOsInfoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  payOsLabel: {
+    fontSize: 12,
+    color: '#64748B',
+  },
+  payOsValue: {
+    fontSize: 13,
+    color: '#0F172A',
+  },
+  payOsWaitingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: RADIUS.md,
+    marginBottom: 12,
+  },
+  payOsWaitingText: {
+    fontSize: 12,
+    color: COLORS.primary,
+    fontWeight: '600',
+  },
+  payOsWebBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: COLORS.primary,
+    width: '100%',
+    paddingVertical: 11,
+    borderRadius: RADIUS.md,
+  },
+  payOsWebBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  payOsSuccessBox: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 32,
+    paddingHorizontal: 16,
+  },
+  payOsSuccessTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: COLORS.success,
+    marginTop: 14,
+    marginBottom: 6,
+  },
+  payOsSuccessSub: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
   },
 });
 

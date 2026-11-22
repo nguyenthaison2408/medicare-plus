@@ -1,21 +1,101 @@
+const fs = require('fs');
+const path = require('path');
 const { PayOS } = require('@payos/node');
 const { appointments } = require('../data/mockData');
 
-let payos = null;
-try {
-  payos = new PayOS();
-} catch (err) {
-  console.warn('[PayOS] Warning: PayOS could not be initialized:', err.message);
+// Hàm hỗ trợ nạp biến môi trường nếu chưa được nạp
+function ensureEnvLoaded() {
+  if (process.env.PAYOS_CLIENT_ID && process.env.PAYOS_API_KEY && process.env.PAYOS_CHECKSUM_KEY) {
+    return;
+  }
+  const candidatePaths = [
+    path.resolve(__dirname, '../../.env'),
+    path.resolve(__dirname, '../../../server/.env'),
+    path.resolve(process.cwd(), 'server/.env'),
+    path.resolve(process.cwd(), '.env'),
+  ];
+  for (const envPath of candidatePaths) {
+    if (fs.existsSync(envPath)) {
+      try {
+        if (typeof process.loadEnvFile === 'function') {
+          process.loadEnvFile(envPath);
+        } else {
+          const content = fs.readFileSync(envPath, 'utf8');
+          for (const line of content.split(/\r?\n/)) {
+            const trimmed = line.trim();
+            if (trimmed && !trimmed.startsWith('#')) {
+              const eqIdx = trimmed.indexOf('=');
+              if (eqIdx > 0) {
+                const key = trimmed.substring(0, eqIdx).trim();
+                const val = trimmed.substring(eqIdx + 1).trim().replace(/^['"]|['"]$/g, '');
+                if (!process.env[key]) {
+                  process.env[key] = val;
+                }
+              }
+            }
+          }
+        }
+      } catch (err) {
+        // Tiếp tục thử đường dẫn khác
+      }
+    }
+  }
+}
+
+let payosInstance = null;
+
+/**
+ * Khởi tạo PayOS client với cơ chế lazy-init an toàn
+ */
+function getPayOSClient() {
+  if (payosInstance) return payosInstance;
+  ensureEnvLoaded();
+
+  const clientId = process.env.PAYOS_CLIENT_ID;
+  const apiKey = process.env.PAYOS_API_KEY;
+  const checksumKey = process.env.PAYOS_CHECKSUM_KEY;
+
+  if (!clientId || !apiKey || !checksumKey) {
+    return null;
+  }
+
+  try {
+    payosInstance = new PayOS({
+      clientId,
+      apiKey,
+      checksumKey,
+      partnerCode: process.env.PAYOS_PARTNER_CODE,
+    });
+    return payosInstance;
+  } catch (err) {
+    console.warn('[PayOS] Warning: PayOS could not be initialized:', err.message);
+    return null;
+  }
 }
 
 // In-memory store for orders: orderCode -> { orderCode, appointmentId, amount, status: 'PENDING' | 'PAID', paidAt }
 const orders = new Map();
 
 /**
+ * Chuẩn hóa nội dung chuyển khoản theo chuẩn VietQR PayOS (tối đa 25 ký tự, chữ cái và số)
+ */
+function sanitizeDescription(desc) {
+  let clean = (desc || 'KHAM MEDICARE')
+    .replace(/[đĐ]/g, (m) => (m === 'đ' ? 'd' : 'D'))
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9 ]/g, '')
+    .trim()
+    .slice(0, 25);
+  return clean || 'KHAM MEDICARE';
+}
+
+/**
  * Tạo link thanh toán VietQR qua PayOS
  */
 const createPaymentLink = async (req, res) => {
   try {
+    const payos = getPayOSClient();
     if (!payos) {
       return res.status(500).json({
         success: false,
@@ -29,14 +109,7 @@ const createPaymentLink = async (req, res) => {
     const orderCode = Number(String(Date.now()).slice(-6) + Math.floor(100 + Math.random() * 899));
     const finalAmount = Number(amount) > 0 ? Number(amount) : 2000; // Mặc định 2.000đ để test an toàn
     
-    // Clean description to ASCII, alphanumeric + space, max 25 chars
-    let cleanDesc = (description || 'KHAM MEDICARE')
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/[^a-zA-Z0-9 ]/g, '')
-      .trim()
-      .slice(0, 25);
-    if (!cleanDesc) cleanDesc = 'KHAM MEDICARE';
+    const cleanDesc = sanitizeDescription(description);
 
     const returnUrl = process.env.PAYOS_RETURN_URL || 'http://localhost:8081';
     const cancelUrl = process.env.PAYOS_CANCEL_URL || 'http://localhost:8081';
@@ -90,20 +163,22 @@ const createPaymentLink = async (req, res) => {
  */
 const handleWebhook = async (req, res) => {
   try {
+    const payos = getPayOSClient();
     if (!payos) {
       return res.status(500).json({ success: false, message: 'PayOS uninitialized' });
     }
 
-    const webhookBody = req.body;
+    const webhookBody = req.body || {};
     let verifiedData;
     try {
-      verifiedData = payos.webhooks.verify(webhookBody);
+      verifiedData = await payos.webhooks.verify(webhookBody);
     } catch (verifyErr) {
       console.warn('[PayOS Webhook] Signature verification notice:', verifyErr.message);
       verifiedData = webhookBody.data || webhookBody;
     }
 
-    const { orderCode, code } = verifiedData;
+    const orderCode = verifiedData?.orderCode || webhookBody?.data?.orderCode || webhookBody?.orderCode;
+    const code = webhookBody?.code || verifiedData?.code || '00';
     console.log(`[PayOS Webhook] Nhận thông báo giao dịch cho Order #${orderCode}, mã kết quả:`, code);
 
     const order = orders.get(Number(orderCode));
@@ -153,6 +228,7 @@ const getPaymentStatus = async (req, res) => {
     }
 
     // Nếu chưa PAID, chủ động hỏi API PayOS xem tiền đã vào chưa
+    const payos = getPayOSClient();
     if (payos) {
       try {
         const payosOrder = await payos.paymentRequests.get(numOrderCode);
@@ -187,5 +263,8 @@ const getPaymentStatus = async (req, res) => {
 module.exports = {
   createPaymentLink,
   handleWebhook,
-  getPaymentStatus
+  getPaymentStatus,
+  orders,
+  getPayOSClient,
+  sanitizeDescription
 };

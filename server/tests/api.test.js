@@ -163,8 +163,69 @@ server.listen(5099, async () => {
 
     console.log('   ✅ Test 10 Passed: Hệ thống từ chối mã lịch hẹn không tồn tại.');
 
+    // Test 11: PayOS - Tạo link thanh toán VietQR
+    console.log('👉 [Test 11]: Kiểm tra tạo link thanh toán VietQR PayOS /payments/create-payment-link...');
+    const payRes = await fetch(`${baseUrl}/payments/create-payment-link`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        amount: 2000,
+        description: 'TEST MEDICARE',
+        patientName: 'Nguyen Van Test',
+        patientPhone: '0988776655'
+      })
+    });
+    const payData = await payRes.json();
+    assert.strictEqual(payRes.status, 200);
+    assert.strictEqual(payData.success, true);
+    assert.ok(payData.data.orderCode);
+    assert.ok(payData.data.checkoutUrl);
+    assert.ok(payData.data.qrCode);
+    console.log(`   ✅ Test 11 Passed: Tạo VietQR PayOS thành công với OrderCode ${payData.data.orderCode}.`);
+
+    // Test 12: PayOS - Tra cứu trạng thái đơn hàng khi vừa tạo
+    console.log('👉 [Test 12]: Kiểm tra trạng thái đơn hàng PayOS /payments/status/:orderCode...');
+    const statusRes = await fetch(`${baseUrl}/payments/status/${payData.data.orderCode}`);
+    const statusData = await statusRes.json();
+    assert.strictEqual(statusRes.status, 200);
+    assert.strictEqual(statusData.success, true);
+    assert.strictEqual(statusData.data.orderCode, payData.data.orderCode);
+    console.log(`   ✅ Test 12 Passed: Tra cứu trạng thái thành công (Status: ${statusData.data.status}).`);
+
+    // Test 13: PayOS - Giả lập Webhook thanh toán thành công
+    console.log('👉 [Test 13]: Kiểm tra Webhook PayOS cập nhật trạng thái đơn hàng...');
+    const webhookRes = await fetch(`${baseUrl}/payments/payos-webhook`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        code: '00',
+        desc: 'success',
+        data: {
+          orderCode: payData.data.orderCode,
+          amount: 2000,
+          description: 'TEST MEDICARE',
+          accountNumber: payData.data.accountNumber,
+          reference: 'FT2400000000',
+          transactionDateTime: new Date().toISOString()
+        }
+      })
+    });
+    const webhookData = await webhookRes.json();
+    assert.strictEqual(webhookRes.status, 200);
+    assert.strictEqual(webhookData.success, true);
+    console.log('   ✅ Test 13 Passed: Webhook xử lý cập nhật trạng thái thành công.');
+
+    // Test 14: PayOS - Kiểm tra đơn hàng đã chuyển sang PAID sau webhook
+    console.log('👉 [Test 14]: Xác nhận trạng thái đơn hàng đã đổi thành PAID...');
+    const paidStatusRes = await fetch(`${baseUrl}/payments/status/${payData.data.orderCode}`);
+    const paidStatusData = await paidStatusRes.json();
+    assert.strictEqual(paidStatusRes.status, 200);
+    assert.strictEqual(paidStatusData.data.status, 'PAID');
+    assert.ok(paidStatusData.data.paidAt);
+    console.log('   ✅ Test 14 Passed: Trạng thái đơn hàng đã chuyển sang PAID chuẩn xác.');
+
     // Tổng kết kết quả
-    console.log('\n🎉 TẤT CẢ 10/10 BÀI KIỂM THỬ ĐÃ PASS THÀNH CÔNG! (100% PASS RATE)');
+    console.log('\n🎉 TẤT CẢ 14/14 BÀI KIỂM THỬ ĐÃ PASS THÀNH CÔNG! (100% PASS RATE)');
 
     server.closeAllConnections?.();
     server.close(() => {

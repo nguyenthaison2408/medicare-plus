@@ -1230,7 +1230,7 @@ export const BookingPaymentScreen: React.FC<BookingPaymentScreenProps> = ({
                 <Ionicons name="checkmark-circle" size={64} color={COLORS.success} />
                 <Text style={styles.payOsSuccessTitle}>Thanh toán thành công!</Text>
                 <Text style={styles.payOsSuccessSub}>
-                  Hệ thống PayOS đã xác nhận chuyển khoản 2.000 đ. Đang chuyển đến phiếu hẹn điện tử...
+                  Hệ thống PayOS đã xác nhận chuyển khoản {Number(payOsData?.amount || 2000).toLocaleString('vi-VN')} đ. Đang chuyển đến phiếu hẹn điện tử...
                 </Text>
                 <ActivityIndicator size="small" color={COLORS.success} style={{ marginTop: 12 }} />
               </View>
@@ -1261,7 +1261,9 @@ export const BookingPaymentScreen: React.FC<BookingPaymentScreenProps> = ({
                 <View style={styles.payOsBankCard}>
                   <View style={styles.payOsInfoRow}>
                     <Text style={styles.payOsLabel}>Ngân hàng thụ hưởng:</Text>
-                    <Text style={styles.payOsValue}>MB Bank (Quân Đội)</Text>
+                    <Text style={styles.payOsValue}>
+                      {payOsData?.bin === '970422' ? 'MB Bank (Quân Đội)' : 'MB Bank'}
+                    </Text>
                   </View>
                   <View style={styles.payOsInfoRow}>
                     <Text style={styles.payOsLabel}>Chủ tài khoản:</Text>
@@ -1278,7 +1280,7 @@ export const BookingPaymentScreen: React.FC<BookingPaymentScreenProps> = ({
                   <View style={styles.payOsInfoRow}>
                     <Text style={styles.payOsLabel}>Số tiền chuyển:</Text>
                     <Text style={[styles.payOsValue, { color: '#E11D48', fontWeight: '800', fontSize: 16 }]}>
-                      2.000 đ
+                      {Number(payOsData?.amount || 2000).toLocaleString('vi-VN')} đ
                     </Text>
                   </View>
                   <View style={styles.payOsInfoRow}>

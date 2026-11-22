@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "MediCare Plus",
+    "name": "Medicare Plus",
     "slug": "medicare-plus",
     "scheme": "medicareplus",
     "version": "1.0.0",
@@ -13,7 +13,7 @@
     "android": {
       "package": "com.medicareplus.app",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#FFFFFF",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"

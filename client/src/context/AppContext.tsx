@@ -37,6 +37,12 @@ import {
   fetchMedicationDataForRole,
   setMedicationTakenCloud,
 } from '../services/clinicMedicine';
+import {
+  deleteLabResultCloud,
+  fetchLabResultsCloud,
+  uploadLabResultCloud,
+} from '../services/clinicLabResults';
+import type { LabResultItem, UploadLabResultInput } from '../types/labResults';
 import { addHospitalCloud, fetchHospitalsCloud } from '../services/clinicHospitals';
 import type { PatientBookingInfo } from '../utils/bookingValidation';
 import {
@@ -49,6 +55,7 @@ import {
   formatRelativeDate,
   HOSPITALS,
   HospitalItem,
+  INITIAL_LAB_RESULTS,
   PATIENT_PROFILE,
   PRESCRIPTION_DRUGS,
   PrescriptionDrug,
@@ -247,6 +254,9 @@ interface AppContextValue {
   saveBhytConfig: (config: BhytConfigItem) => Promise<BhytConfigItem>;
   toggleBhytConfig: (id: string) => Promise<void>;
   deleteBhytConfig: (id: string) => Promise<void>;
+  labResults: LabResultItem[];
+  uploadLabResult: (input: UploadLabResultInput) => Promise<LabResultItem>;
+  deleteLabResult: (resultId: string) => Promise<void>;
   cloudProfile: ClinicProfile | null;
   isHydrated: boolean;
   cloudSyncError: string;
@@ -445,6 +455,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     CLOUD_MODE ? [] : INITIAL_DOCTOR_SCHEDULES
   );
   const [bhytConfigs, setBhytConfigs] = useState<BhytConfigItem[]>(CLOUD_MODE ? [] : INITIAL_BHYT_CONFIGS);
+  const [labResults, setLabResults] = useState<LabResultItem[]>(
+    CLOUD_MODE ? [] : INITIAL_LAB_RESULTS
+  );
   const [isPiiMasked, setIsPiiMasked] = useState<boolean>(true);
   const [isHydrated, setIsHydrated] = useState<boolean>(CLOUD_MODE);
   const hydratedRef = useRef<boolean>(CLOUD_MODE);
@@ -490,6 +503,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
           setTakenMap({});
           setDoctorSchedules([]);
           setBhytConfigs([]);
+          setLabResults([]);
           setCloudProfile(null);
           setDoctors([]);
           setDiagnosisNote('');
@@ -660,6 +674,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
                 : 'Không tải được dữ liệu thuốc trực tuyến.'
             );
           }
+        }
+
+        try {
+          const cloudLabResults = await fetchLabResultsCloud(profile.role);
+          if (!mounted || request !== generation) return;
+          setLabResults(
+            cloudLabResults.map((item) => {
+              const matchedDoc = (cloudDoctors || []).find((d) => d.id === item.doctorId)
+                || DOCTORS.find((d) => d.id === item.doctorId);
+              return matchedDoc ? { ...item, doctorName: matchedDoc.name } : item;
+            })
+          );
+        } catch {
+          // Lab results table may not exist on older DB deployments; keep empty silently.
         }
       } catch (error) {
         if (mounted && request === generation) setCloudSyncError(error instanceof Error ? error.message : 'Không tải được dữ liệu trực tuyến.');
@@ -1507,6 +1535,36 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     setBhytConfigs((prev) => prev.filter((c) => c.id !== id));
   };
 
+  const uploadLabResult = async (input: UploadLabResultInput): Promise<LabResultItem> => {
+    const expectedUser = CLOUD_MODE ? cloudUserIdRef.current : null;
+    if (CLOUD_MODE && !expectedUser) {
+      throw new Error('Vui lòng đăng nhập lại trước khi tải lên kết quả cận lâm sàng.');
+    }
+    const created = await uploadLabResultCloud(input);
+    if (CLOUD_MODE && cloudUserIdRef.current !== expectedUser) {
+      throw new Error('Phiên đăng nhập đã thay đổi.');
+    }
+    const matchedDoc = doctors.find((d) => d.id === created.doctorId);
+    const enriched: LabResultItem = {
+      ...created,
+      doctorName: created.doctorName || matchedDoc?.name || cloudProfile?.full_name || 'Bác sĩ điều trị',
+    };
+    setLabResults((prev) => [enriched, ...prev]);
+    return enriched;
+  };
+
+  const deleteLabResult = async (resultId: string): Promise<void> => {
+    if (CLOUD_MODE) {
+      const expectedUser = cloudUserIdRef.current;
+      if (!expectedUser) throw new Error('Vui lòng đăng nhập lại.');
+      await deleteLabResultCloud(resultId);
+      if (cloudUserIdRef.current !== expectedUser) {
+        throw new Error('Phiên đăng nhập đã thay đổi.');
+      }
+    }
+    setLabResults((prev) => prev.filter((item) => item.id !== resultId));
+  };
+
   const resetAppData = async () => {
     if (CLOUD_MODE) { Alert.alert('Dữ liệu trực tuyến', 'Chức năng khôi phục dữ liệu mẫu chỉ áp dụng trong chế độ minh họa.'); return; }
     await storageService.resetAllData();
@@ -1522,6 +1580,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     setDoctorReviews(INITIAL_DOCTOR_REVIEWS);
     setDoctors(DOCTORS);
     setHospitals(HOSPITALS);
+    setLabResults(INITIAL_LAB_RESULTS);
     setLocalPatientProfile(INITIAL_PATIENT_PROFILE);
     setDoctorSchedules(INITIAL_DOCTOR_SCHEDULES);
     setBhytConfigs(INITIAL_BHYT_CONFIGS);
@@ -1652,6 +1711,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         saveBhytConfig,
         toggleBhytConfig,
         deleteBhytConfig,
+        labResults,
+        uploadLabResult,
+        deleteLabResult,
         isHydrated,
         cloudSyncError,
         resetAppData,

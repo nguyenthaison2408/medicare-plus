@@ -218,3 +218,24 @@ test('severe canonical answer increases urgency while preserving specialty conte
   assert.equal(next.urgencyLevel, 'soon');
   assert.equal(next.specialtyName, initial.specialtyName);
 });
+
+test('leg and joint pain route to orthopedics (accented & unaccented), never neurology or pulmonology', () => {
+  const accented = engine.runClinicalTriage('Tôi bị đau chân và sưng cổ chân');
+  assert.equal(accented.specialtyKey, 'orthopedics');
+  assert.ok(accented.specialtyName.includes('Cơ Xương Khớp'));
+  assert.equal(
+    accented.recommendedDoctors.some((d) => d.id === 'doc-1'),
+    false,
+    'Orthopedics must not recommend headache neurologist doc-1'
+  );
+
+  const unaccented = engine.runClinicalTriage('bac si cho toi hoi toi bi dau chan');
+  assert.equal(unaccented.specialtyKey, 'orthopedics', 'Should route unaccented "dau chan" to orthopedics and ignore "ho" inside "cho"');
+
+  const ent = engine.runClinicalTriage('Tôi bị đau tai và nghẹt mũi');
+  assert.equal(ent.specialtyKey, 'ent');
+
+  const fallback = engine.runClinicalTriage('Hôm nay tôi thấy người hơi uể oải');
+  assert.equal(fallback.specialtyKey, 'general', 'Unknown symptoms must fall back to general medicine, never neurology');
+  assert.ok(fallback.specialtyName.includes('Nội Tổng Quát'));
+});

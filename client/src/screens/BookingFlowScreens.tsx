@@ -450,7 +450,7 @@ export const BookingSlotScreen: React.FC<BookingSlotScreenProps> = ({
   onBack,
   onConfirmBooking,
 }) => {
-  const { doctorSchedules } = useAppContext();
+  const { doctorSchedules, appointments, cloudProfile } = useAppContext();
   const [consultMode, setConsultMode] = useState('clinic');
   const [selectedDayId, setSelectedDayId] = useState('d2');
   const [selectedSlot, setSelectedSlot] = useState<TimeSlotItem>(TIME_SLOTS[3]);
@@ -464,12 +464,37 @@ export const BookingSlotScreen: React.FC<BookingSlotScreenProps> = ({
   const slotKey = `${doctor.id}:${currentDay.fullDate}`;
   const slotsReady = !CLOUD_MODE || loadedSlotKey === slotKey;
 
+  const isSlotTakenByMyAppointment = (slot: TimeSlotItem): boolean => {
+    const slotMs = new Date(toClinicStart(currentDay, slot)).getTime();
+    return appointments.some((apt) => {
+      if (apt.status !== 'upcoming') return false;
+      if (CLOUD_MODE && cloudProfile?.id && apt.patientId && apt.patientId !== cloudProfile.id) {
+        return false;
+      }
+      if (apt.startsAt) {
+        return new Date(apt.startsAt).getTime() === slotMs;
+      }
+      return apt.dateLabel.includes(currentDay.fullDate) && apt.dateLabel.includes(slot.time);
+    });
+  };
+
+  const isSlotTakenByDoctorLocally = (slot: TimeSlotItem): boolean => {
+    const slotMs = new Date(toClinicStart(currentDay, slot)).getTime();
+    return appointments.some((apt) => {
+      if (apt.status !== 'upcoming' || apt.doctor.id !== doctor.id) return false;
+      if (apt.startsAt) {
+        return new Date(apt.startsAt).getTime() === slotMs;
+      }
+      return apt.dateLabel.includes(currentDay.fullDate) && apt.dateLabel.includes(slot.time);
+    });
+  };
+
   const [dPart, mPart, yPart] = currentDay.fullDate.split('/');
   const isoDay = dPart && mPart && yPart ? `${yPart}-${mPart.padStart(2, '0')}-${dPart.padStart(2, '0')}` : '';
   const dayShifts = doctorSchedules.filter(
     (s) => s.doctorId === doctor.id && s.workDate === isoDay
   );
-  const demoShiftAwareSlots: TimeSlotItem[] =
+  const demoShiftAwareSlots: TimeSlotItem[] = (
     dayShifts.length === 0
       ? TIME_SLOTS
       : TIME_SLOTS.map((slot) => {
@@ -480,13 +505,32 @@ export const BookingSlotScreen: React.FC<BookingSlotScreenProps> = ({
                 (s.shift === 'morning' && slot.period === 'morning') ||
                 (s.shift === 'afternoon' && slot.period === 'afternoon'))
           );
-          return allowed ? slot : { ...slot, status: 'booked' };
-        });
+          return allowed ? slot : { ...slot, status: 'booked' as const };
+        })
+  ).map((slot) =>
+    slot.status === 'booked' || isSlotTakenByDoctorLocally(slot) || isSlotTakenByMyAppointment(slot)
+      ? { ...slot, status: 'booked' as const }
+      : slot
+  );
 
   const visibleSlots: TimeSlotItem[] = CLOUD_MODE
-    ? slotsReady ? remoteSlots : TIME_SLOTS.map(slot => ({ ...slot, status: 'booked' }))
+    ? slotsReady
+      ? remoteSlots.map((slot) =>
+          slot.status === 'booked' || isSlotTakenByMyAppointment(slot)
+            ? { ...slot, status: 'booked' as const }
+            : slot
+        )
+      : TIME_SLOTS.map((slot) => ({ ...slot, status: 'booked' as const }))
     : demoShiftAwareSlots;
-  const selectedSlotAvailable = visibleSlots.some(slot => slot.id === selectedSlot.id && slot.status !== 'booked');
+
+  const hasPersonalConflictToday = TIME_SLOTS.some((slot) => isSlotTakenByMyAppointment(slot));
+  const firstOpenSlot = visibleSlots.find((slot) => slot.status !== 'booked') || null;
+  const effectiveSlot: TimeSlotItem | null = visibleSlots.some(
+    (slot) => slot.id === selectedSlot.id && slot.status !== 'booked'
+  )
+    ? selectedSlot
+    : firstOpenSlot;
+  const selectedSlotAvailable = Boolean(effectiveSlot);
 
   useEffect(() => {
     if (!CLOUD_MODE) return;
@@ -558,10 +602,15 @@ export const BookingSlotScreen: React.FC<BookingSlotScreenProps> = ({
 
         <TimeSlotGrid
           slots={visibleSlots}
-          selectedSlotId={selectedSlot.id}
+          selectedSlotId={effectiveSlot?.id || ''}
           onSelectSlot={setSelectedSlot}
           style={{ marginBottom: 16 }}
         />
+        {hasPersonalConflictToday ? (
+          <Text style={{ fontSize: 12, color: COLORS.warning, marginBottom: 12, fontWeight: '600' }}>
+            • Các khung giờ bạn đã có lịch hẹn (kể cả với bác sĩ khác) được tự động khóa để tránh đặt trùng giờ.
+          </Text>
+        ) : null}
         {slotError ? <Text accessibilityRole="alert" style={{ color: COLORS.error }}>{slotError}</Text> : null}
 
         {/* Insurance & Essential Note Box */}
@@ -587,21 +636,26 @@ export const BookingSlotScreen: React.FC<BookingSlotScreenProps> = ({
       </ScrollView>
 
       <StickyBottomBar
-        topLabel={`${selectedSlot.time}, ${currentDay.dayLabel} (${currentDay.fullDate})`}
+        topLabel={
+          effectiveSlot
+            ? `${effectiveSlot.time}, ${currentDay.dayLabel} (${currentDay.fullDate})`
+            : `Chưa có khung giờ trống (${currentDay.fullDate})`
+        }
         topLabelIcon="time-outline"
         priceLabel="Tạm tính:"
         priceValue={doctor.fee}
-        buttonTitle="Tiếp tục"
-        disabled={CLOUD_MODE && (!slotsReady || !selectedSlotAvailable)}
+        buttonTitle={selectedSlotAvailable ? 'Tiếp tục' : 'Hết khung giờ trống'}
+        disabled={!slotsReady || !selectedSlotAvailable}
         loading={CLOUD_MODE && !slotsReady && !slotError}
-        onButtonPress={() =>
+        onButtonPress={() => {
+          if (!effectiveSlot) return;
           onConfirmBooking({
             doctor,
             day: currentDay,
-            slot: selectedSlot,
+            slot: effectiveSlot,
             consultMode,
-          })
-        }
+          });
+        }}
       />
     </View>
   );
@@ -733,11 +787,14 @@ export const BookingPaymentScreen: React.FC<BookingPaymentScreenProps> = ({
     if (method === 'vietqr') {
       setPayOsLoading(true);
       setPayOsPaid(false);
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 4000);
       try {
         const serverUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
         const res = await fetch(`${serverUrl}/payments/create-payment-link`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal,
           body: JSON.stringify({
             amount: 2000,
             description: `MEDICARE ${doctor.name.slice(0, 10)}`,
@@ -747,26 +804,31 @@ export const BookingPaymentScreen: React.FC<BookingPaymentScreenProps> = ({
         });
         const json = await res.json();
         if (json.success && json.data) {
-          setPayOsData(json.data);
+          setPayOsData({ ...json.data, isDirectQr: false });
           setPayOsModalVisible(true);
-        } else {
-          const msg = json.message || 'Không thể tạo mã VietQR lúc này.';
-          if (typeof window !== 'undefined' && window.alert) {
-            window.alert(`Lỗi PayOS: ${msg}`);
-          } else {
-            Alert.alert('Lỗi PayOS', msg);
-          }
+          return;
         }
       } catch {
-        const msg = 'Chưa kết nối được máy chủ API tại http://localhost:5000. Bạn hãy mở một Terminal riêng và chạy: npm run dev:server';
-        if (typeof window !== 'undefined' && window.alert) {
-          window.alert(msg);
-        } else {
-          Alert.alert('Lỗi kết nối Server', msg);
-        }
+        // Fallback sang VietQR ngân hàng trực tiếp khi dùng APK không nối localhost:5000
       } finally {
+        clearTimeout(timeout);
         setPayOsLoading(false);
       }
+
+      const memoCode = `MEDICARE ${String(Date.now()).slice(-6)}`;
+      setPayOsData({
+        isDirectQr: true,
+        bin: '970436',
+        bankName: 'Vietcombank (CN Tân Bình)',
+        accountName: 'BV MEDICARE PLUS Y TE SO',
+        accountNumber: '988241029',
+        amount: 2000,
+        description: memoCode,
+        directQrImageUrl: `https://img.vietqr.io/image/VCB-988241029-compact2.png?amount=2000&addInfo=${encodeURIComponent(
+          memoCode
+        )}&accountName=${encodeURIComponent('BV MEDICARE PLUS Y TE SO')}`,
+      });
+      setPayOsModalVisible(true);
       return;
     }
 
@@ -1055,12 +1117,13 @@ export const BookingPaymentScreen: React.FC<BookingPaymentScreenProps> = ({
 
             <View style={styles.paymentDivider} />
 
-            <View style={styles.feeTotalRow}>
+            <View style={[styles.feeTotalRow, { flexWrap: 'wrap', gap: 4 }]}>
               <Text style={styles.feeTotalLabel}>Phí khám niêm yết:</Text>
-              <Text style={styles.feeTotalVal}>{doctor.fee} (chưa đối soát BHYT)
+              <Text style={[styles.feeTotalVal, { flexShrink: 1, textAlign: 'right' }]}>
+                {doctor.fee}
               </Text>
             </View>
-            <Text style={styles.paymentInfoSub}>Ước tính theo cấu hình đúng tuyến; thẻ, tuyến và mức hưởng chưa được xác minh. Cơ sở y tế đối soát chi phí tại quầy; ứng dụng chưa thu tiền.</Text>
+            <Text style={styles.paymentInfoSub}>Chưa đối soát BHYT. Ước tính theo cấu hình đúng tuyến; cơ sở y tế đối soát chi phí tại quầy.</Text>
           </View>
         </AnimatedEntry>
 
@@ -1241,7 +1304,15 @@ export const BookingPaymentScreen: React.FC<BookingPaymentScreenProps> = ({
                 </Text>
 
                 {/* QR Code */}
-                {payOsData?.qrCode ? (
+                {payOsData?.directQrImageUrl ? (
+                  <View style={styles.payOsQrWrapper}>
+                    <Image
+                      source={{ uri: payOsData.directQrImageUrl }}
+                      style={{ width: 220, height: 260, borderRadius: 10 }}
+                      resizeMode="contain"
+                    />
+                  </View>
+                ) : payOsData?.qrCode ? (
                   <View style={styles.payOsQrWrapper}>
                     <Image
                       source={{
@@ -1262,7 +1333,7 @@ export const BookingPaymentScreen: React.FC<BookingPaymentScreenProps> = ({
                   <View style={styles.payOsInfoRow}>
                     <Text style={styles.payOsLabel}>Ngân hàng thụ hưởng:</Text>
                     <Text style={styles.payOsValue}>
-                      {payOsData?.bin === '970422' ? 'MB Bank (Quân Đội)' : 'MB Bank'}
+                      {payOsData?.bankName || (payOsData?.bin === '970422' ? 'MB Bank (Quân Đội)' : 'MB Bank')}
                     </Text>
                   </View>
                   <View style={styles.payOsInfoRow}>
@@ -1291,13 +1362,33 @@ export const BookingPaymentScreen: React.FC<BookingPaymentScreenProps> = ({
                   </View>
                 </View>
 
-                {/* Real-time waiting indicator */}
-                <View style={styles.payOsWaitingRow}>
-                  <ActivityIndicator size="small" color={COLORS.primary} />
-                  <Text style={styles.payOsWaitingText}>
-                    Đang chờ hệ thống ngân hàng xác nhận chuyển khoản...
-                  </Text>
-                </View>
+                {payOsData?.isDirectQr ? (
+                  <TouchableOpacity
+                    style={[styles.payOsWebBtn, { backgroundColor: COLORS.secondary, marginTop: 12 }]}
+                    disabled={submitting}
+                    onPress={async () => {
+                      if (submitting) return;
+                      setSubmitting(true);
+                      try {
+                        setPayOsModalVisible(false);
+                        const normalized = normalizePatientBookingInfo(patientInfo);
+                        await onPaymentSuccess('vietqr', normalized);
+                      } finally {
+                        setSubmitting(false);
+                      }
+                    }}
+                  >
+                    <Ionicons name="checkmark-circle-outline" size={18} color="#FFFFFF" />
+                    <Text style={styles.payOsWebBtnText}>Tôi đã chuyển khoản — Xác nhận lịch</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <View style={styles.payOsWaitingRow}>
+                    <ActivityIndicator size="small" color={COLORS.primary} />
+                    <Text style={styles.payOsWaitingText}>
+                      Đang chờ hệ thống ngân hàng xác nhận chuyển khoản...
+                    </Text>
+                  </View>
+                )}
 
                 {/* Open PayOS Web checkout button */}
                 {payOsData?.checkoutUrl ? (

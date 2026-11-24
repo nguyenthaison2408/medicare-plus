@@ -31,6 +31,8 @@ import { ClinicPatientRecordsScreen } from './ClinicPatientScreens';
 import { refineFollowUp } from '../services/aiConversation';
 import { runClinicalTriage } from '../services/aiTriageEngine';
 import { checkEHRSafetyGuardrails } from '../services/aiSafetyGuardrails';
+import { isGeminiConfigured, runGeminiClinicalTriage } from '../services/aiGeminiService';
+import { promptImagePicker } from '../services/imagePickerService';
 import {
   HomeGreetingHeader,
   SearchBar,
@@ -1191,6 +1193,14 @@ export const AIAssistantScreen: React.FC<AIAssistantScreenProps> = ({
     const generation = ++conversationGeneration.current;
     setCurrentTriageContext(null);
 
+    const historySnapshot = extraMessages
+      .slice(-4)
+      .map((m) => ({
+        role: m.sender,
+        text: m.text || m.clinicalCard?.analysisText || '',
+      }))
+      .filter((m) => m.text.length > 0);
+
     setExtraMessages((prev) => [
       ...prev,
       { id: `usr-${prev.length + 1}`, sender: 'user', text: content, time: timeStr },
@@ -1203,9 +1213,9 @@ export const AIAssistantScreen: React.FC<AIAssistantScreenProps> = ({
     }, 80);
 
     const patientAllergies = CLOUD_MODE ? [] : patientProfile.allergies;
-    const analysisResult = analyzeMedicalSymptom(content, patientAllergies, doctors);
+    const localResult = analyzeMedicalSymptom(content, patientAllergies, doctors);
 
-    setTimeout(() => {
+    const deliverResult = (analysisResult: Omit<AIChatThreadItem, 'id' | 'sender' | 'time'>) => {
       if (conversationGeneration.current !== generation) return;
       setIsTyping(false);
       if (analysisResult.clinicalCard) {
@@ -1229,13 +1239,49 @@ export const AIAssistantScreen: React.FC<AIAssistantScreenProps> = ({
           sender: 'ai',
           time: getCurrentTimeStr(),
           ...analysisResult,
-          ...(analysisResult.clinicalCard ? { clinicalCard: { ...analysisResult.clinicalCard, contextId: generation } } : {}),
+          ...(analysisResult.clinicalCard
+            ? { clinicalCard: { ...analysisResult.clinicalCard, contextId: generation } }
+            : {}),
         },
       ]);
       setTimeout(() => {
         chatScrollRef.current?.scrollToEnd({ animated: true });
       }, 100);
-    }, 500);
+    };
+
+    // Cấp cứu đỏ Red Flag luôn xử lý tức thì tại local (0ms, không chờ mạng)
+    if (localResult.clinicalCard?.urgencyLevel === 'emergency' || !isGeminiConfigured()) {
+      setTimeout(() => deliverResult(localResult), 300);
+      return;
+    }
+
+    void runGeminiClinicalTriage(content, {
+      availableDoctors: doctors,
+      allergies: patientAllergies,
+      conversationHistory: historySnapshot,
+    }).then((geminiResult) => {
+      if (!geminiResult) {
+        deliverResult(localResult);
+        return;
+      }
+      const allergyWarning = localResult.clinicalCard?.allergyWarning;
+      deliverResult({
+        clinicalCard: {
+          urgencyLevel:
+            allergyWarning && geminiResult.urgencyLevel === 'routine'
+              ? 'soon'
+              : geminiResult.urgencyLevel,
+          analysisText: geminiResult.analysisText,
+          specialtyName: geminiResult.specialtyName,
+          specialtyDesc: geminiResult.specialtyDesc,
+          specialtyIcon: geminiResult.specialtyIcon,
+          doctors: geminiResult.recommendedDoctors || [],
+          followUpQuestions: geminiResult.followUpQuestions,
+          homeCareAdvice: geminiResult.homeCareAdvice,
+          ...(allergyWarning ? { allergyWarning } : {}),
+        },
+      });
+    });
   };
 
   const handleSelectFollowUp = (
@@ -1277,7 +1323,7 @@ export const AIAssistantScreen: React.FC<AIAssistantScreenProps> = ({
       <AppHeader
         title="Trợ lý Sức khỏe AI"
         subtitle="Hỗ trợ sàng lọc triệu chứng & gợi ý chuyên khoa"
-        badgeText="AI 24/7"
+        badgeText={isGeminiConfigured() ? 'Gemini AI' : 'AI 24/7'}
         leftIconBox="sparkles"
         rightActions={[
           {
@@ -1415,48 +1461,14 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
   const [profileToast, setProfileToast] = useState<string | null>(null);
 
   const pickAvatarFromDevice = (onPicked: (dataUri: string) => void) => {
-    if (Platform.OS !== 'web' || typeof document === 'undefined') {
-      Alert.alert(
-        'Chọn ảnh đại diện',
-        'Tính năng tải ảnh trực tiếp từ máy tính đang hỗ trợ trên trình duyệt Web.'
-      );
-      return;
-    }
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
-    input.onchange = () => {
-      const file = input.files?.[0];
-      if (!file) return;
-      if (file.size > 5 * 1024 * 1024) {
-        setEditError('Ảnh tải lên không vượt quá 5MB.');
-        return;
-      }
-      const reader = new FileReader();
-      reader.onload = () => {
-        const result = typeof reader.result === 'string' ? reader.result : '';
-        if (!result) return;
-        const img = new window.Image();
-        img.onload = () => {
-          const maxDim = 320;
-          const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
-          const canvas = document.createElement('canvas');
-          canvas.width = Math.max(1, Math.round(img.width * scale));
-          canvas.height = Math.max(1, Math.round(img.height * scale));
-          const ctx = canvas.getContext('2d');
-          if (ctx) {
-            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-            onPicked(canvas.toDataURL('image/jpeg', 0.85));
-          } else {
-            onPicked(result);
-          }
-        };
-        img.onerror = () => onPicked(result);
-        img.src = result;
-      };
-      reader.readAsDataURL(file);
-    };
-    input.click();
+    promptImagePicker({
+      title: 'Ảnh đại diện',
+      message: 'Bạn muốn chụp ảnh mới hay chọn ảnh có sẵn trong thư viện?',
+      aspect: [1, 1],
+      quality: 0.6,
+      onSuccess: onPicked,
+      onError: (msg) => setEditError(msg),
+    });
   };
 
   const handleQuickAvatarUpload = () => {

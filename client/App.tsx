@@ -8,6 +8,7 @@ import {
   Platform,
   useWindowDimensions,
   Text,
+  Alert,
 } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, LAYOUT } from './src/theme';
@@ -317,6 +318,28 @@ function AppContent() {
           />
         );
       case 'bookingPayment':
+        if (!bookingInfo.day || !bookingInfo.slot) {
+          return (
+            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, backgroundColor: '#F8FAFC' }}>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: '#0F172A', textAlign: 'center', marginBottom: 8 }}>
+                Lịch hẹn đã được xác nhận
+              </Text>
+              <Text style={{ fontSize: 13, color: '#475569', textAlign: 'center', marginBottom: 16 }}>
+                Phiếu khám đã hoàn tất không thể thanh toán lại hoặc thay đổi khung giờ.
+              </Text>
+              <Text
+                onPress={() => {
+                  setRouteHistory([]);
+                  setRoute('main');
+                  setActiveTab('appointments');
+                }}
+                style={{ color: '#0284C7', fontWeight: '700', fontSize: 14, padding: 10 }}
+              >
+                Xem lịch hẹn của tôi →
+              </Text>
+            </View>
+          );
+        }
         return (
           <BookingPaymentScreen
             doctor={selectedDoctor || bookingInfo.doctor}
@@ -337,9 +360,14 @@ function AppContent() {
                   patientInfo,
                 });
                 setSelectedDoctor(targetDoctor);
-                setBookingInfo((prev) => ({ ...prev, doctor: targetDoctor, paymentMethod: method }));
-                navigateTo('bookingSuccess');
-              } catch (error) { setActionMessage(error instanceof Error ? error.message : 'Chưa đặt được lịch. Vui lòng thử lại.'); }
+                setRouteHistory([]);
+                setBookingInfo({ doctor: targetDoctor, paymentMethod: method });
+                setRoute('bookingSuccess');
+              } catch (error) {
+                const msg = error instanceof Error ? error.message : 'Chưa đặt được lịch. Vui lòng thử lại.';
+                setActionMessage(msg);
+                Alert.alert('Không thể đặt lịch', msg);
+              }
               finally { bookingInFlight.current = false; }
             }}
           />

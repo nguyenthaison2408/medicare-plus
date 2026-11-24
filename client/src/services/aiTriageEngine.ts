@@ -7,6 +7,7 @@ import type {
 import {
   checkRedFlags,
   CLINICAL_SYMPTOM_KNOWLEDGE_BASE,
+  matchesMedicalKeyword,
   type MedicalSymptomRule,
 } from './aiMedicalKnowledge';
 import { getFollowUpQuestions } from './aiFollowUpQuestions';
@@ -23,11 +24,30 @@ export const getDoctorsForSpecialty = (
     if (category === 'dermatology') return spec.includes('da liễu') || sub.includes('da liễu');
     if (category === 'gastroenterology') return spec.includes('tiêu hóa') || sub.includes('tiêu hóa');
     if (category === 'pulmonology') return spec.includes('hô hấp') || sub.includes('hô hấp');
+    if (category === 'ent') return spec.includes('tai mũi họng') || sub.includes('tai mũi họng') || spec.includes('hô hấp');
     if (category === 'pediatrics') return spec.includes('nhi') || sub.includes('nhi');
     if (category === 'ophthalmology') return spec.includes('mắt') || sub.includes('mắt');
     if (category === 'cardiology') return spec.includes('tim') || sub.includes('tim');
     if (category === 'neurology') return spec.includes('thần kinh') || sub.includes('thần kinh');
-    if (category === 'orthopedics') return sub.includes('cột sống') || sub.includes('ngoại thần kinh') || spec.includes('thần kinh');
+    if (category === 'orthopedics') {
+      return (
+        spec.includes('cơ xương khớp') ||
+        sub.includes('cơ xương khớp') ||
+        spec.includes('chấn thương') ||
+        sub.includes('chỉnh hình') ||
+        spec.includes('ngoại khoa') ||
+        sub.includes('cột sống') ||
+        sub.includes('ngoại thần kinh')
+      );
+    }
+    if (category === 'general') {
+      return (
+        spec.includes('nội khoa') ||
+        spec.includes('đa khoa') ||
+        spec.includes('tổng quát') ||
+        sub.includes('đa khoa')
+      );
+    }
     return target && (spec.includes(target) || target.includes(spec));
   });
 
@@ -75,7 +95,7 @@ export const runClinicalTriage = (
   let bestKeywords: string[] = [];
 
   for (const rule of CLINICAL_SYMPTOM_KNOWLEDGE_BASE) {
-    const matched = rule.keywords.filter((kw) => normalized.includes(kw));
+    const matched = rule.keywords.filter((kw) => matchesMedicalKeyword(normalized, kw));
     const score = matched.reduce((acc, kw) => acc + (kw.length > 4 ? 2 : 1), 0);
 
     if (score > maxMatchedScore) {
@@ -116,25 +136,25 @@ export const runClinicalTriage = (
     };
   }
 
-  // 4. Fallback mặc định: Nội Thần kinh & Y học gia đình tổng quát
+  // 4. Fallback mặc định: Nội Tổng Quát & Đa Khoa
   const defaultDocs = getDoctorsForSpecialty('general', 'Nội khoa', options?.availableDoctors);
   return {
-    urgencyLevel: 'soon',
+    urgencyLevel: 'routine',
     triageLevel: 'routine' as TriageUrgencyLevel,
-    specialtyKey: 'neurology',
-    specialtyName: 'Nội Thần Kinh & Đa Khoa',
-    specialtyDesc: 'Khám sàng lọc triệu chứng đau đầu, mất ngủ & thể trạng mệt mỏi',
-    specialtyIcon: 'pulse',
+    specialtyKey: 'general',
+    specialtyName: 'Nội Tổng Quát & Đa Khoa',
+    specialtyDesc: 'Khám sàng lọc ban đầu & tư vấn định hướng chuyên khoa phù hợp',
+    specialtyIcon: 'medkit-outline',
     analysisText:
-      'Dựa trên mô tả triệu chứng của bạn, hệ thống khuyến nghị bạn nên khám sàng lọc ban đầu tại chuyên khoa Nội Thần kinh hoặc Bác sĩ Đa khoa để được thực hiện các xét nghiệm cơ bản, chẩn đoán phân biệt nguyên nhân gây mệt mỏi/khó chịu.',
+      'Triệu chứng bạn mô tả hiện chưa đủ đặc hiệu cho một chuyên khoa riêng biệt. Bạn nên khám sàng lọc ban đầu tại chuyên khoa Nội Tổng Quát / Đa Khoa hoặc mô tả rõ hơn vị trí đau, thời gian khởi phát và triệu chứng đi kèm để AI định hướng chính xác hơn.',
     matchedKeywords: [],
-    confidenceScore: 0.7,
+    confidenceScore: 0.65,
     recommendedDoctorIds: defaultDocs.map((d) => d.id),
     recommendedDoctors: defaultDocs,
     followUpQuestions: getFollowUpQuestions('general'),
     homeCareAdvice: [
-      'Uống đủ nước (1.5 - 2 lít/ngày), duy trì ngủ đủ giấc 7-8 tiếng.',
-      'Ghi chép nhật ký triệu chứng (thời gian khởi phát, mức độ đau, thời điểm đau tăng).',
+      'Nghỉ ngơi hợp lý, uống đủ nước (1.5 - 2 lít/ngày) và theo dõi diễn tiến triệu chứng.',
+      'Ghi chép nhật ký triệu chứng (vị trí đau, thời gian khởi phát, mức độ đau, triệu chứng kèm theo).',
       'Đến cơ sở y tế gần nhất nếu triệu chứng kéo dài hoặc tăng nặng.',
     ],
     disclaimer:

@@ -20,7 +20,9 @@
       },
       "predictiveBackGestureEnabled": false,
       "permissions": [
-        "android.permission.CAMERA"
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.READ_MEDIA_IMAGES"
       ]
     },
     "web": {
@@ -30,9 +32,16 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Cho phép SmartClinic quét mã QR phiếu khám.",
+          "cameraPermission": "Cho phép Medicare Plus sử dụng máy ảnh để quét mã QR và chụp ảnh đại diện.",
           "recordAudioAndroid": false,
           "barcodeScannerEnabled": true
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Cho phép Medicare Plus truy cập thư viện ảnh để cập nhật ảnh đại diện.",
+          "cameraPermission": "Cho phép Medicare Plus sử dụng máy ảnh để chụp ảnh đại diện."
         }
       ]
     ],

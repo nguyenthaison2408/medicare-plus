@@ -1,3 +1,5 @@
+import type { LabResultItem } from '../types/labResults';
+
 export interface SpecialtyItem {
   id: string;
   name: string;
@@ -547,4 +549,58 @@ export const PATIENT_PROFILE = {
     { label: 'Chỉ số BMI', value: '21.8', unit: 'Cân đối', highlight: false },
   ],
 };
+
+export const INITIAL_LAB_RESULTS: LabResultItem[] = [
+  {
+    id: 'lab-demo-mri-1',
+    appointmentId: 'apt-1',
+    doctorId: 'doc-1',
+    doctorName: 'TS. BS. Lê Thu Trang',
+    category: 'imaging',
+    title: 'Chụp MRI Sọ não (Không cản từ) 1.5 Tesla',
+    conclusion:
+      'Nhu mô não không thấy tổn thương khu trú, hệ thống não thất cân đối, không có dấu hiệu nhồi máu não hay xuất huyết.',
+    filePath: 'demo/mri-so-nao-1.5t.jpg',
+    fileName: 'MRI_So_Nao_1.5T.jpg',
+    mimeType: 'image/jpeg',
+    fileSizeBytes: 1843200,
+    createdAt: new Date(Date.now() - 86400000).toISOString(),
+    previewUrl:
+      'https://images.unsplash.com/photo-1559757175-5700dde675bc?w=900&auto=format&fit=crop&q=80',
+  },
+  {
+    id: 'lab-demo-xray-2',
+    appointmentId: 'apt-1',
+    doctorId: 'doc-1',
+    doctorName: 'TS. BS. Lê Thu Trang',
+    category: 'imaging',
+    title: 'X-Quang Cột sống cổ (Thẳng - Nghiêng)',
+    conclusion:
+      'Trục cột sống cổ thẳng, chưa ghi nhận gai xương hay hẹp khe đĩa đệm đáng kể.',
+    filePath: 'demo/x-quang-cot-song-co.jpg',
+    fileName: 'XQuang_Cot_Song_Co.jpg',
+    mimeType: 'image/jpeg',
+    fileSizeBytes: 1254000,
+    createdAt: new Date(Date.now() - 2 * 86400000).toISOString(),
+    previewUrl:
+      'https://images.unsplash.com/photo-1516549655169-df83a0774514?w=900&auto=format&fit=crop&q=80',
+  },
+  {
+    id: 'lab-demo-blood-3',
+    appointmentId: 'apt-1',
+    doctorId: 'doc-1',
+    doctorName: 'TS. BS. Lê Thu Trang',
+    category: 'blood',
+    title: 'Phiếu Kết Quả Sinh Hóa & Huyết Học (14 chỉ số)',
+    conclusion:
+      'Các chỉ số Glucose (5.2 mmol/L), HbA1c (5.4%), Cholesterol và chức năng gan thận nằm trong giới hạn bình thường.',
+    filePath: 'demo/ket-qua-xet-nghiem-mau.pdf',
+    fileName: 'Phieu_Xet_Nghiem_Mau_14_Chi_So.pdf',
+    mimeType: 'application/pdf',
+    fileSizeBytes: 428500,
+    createdAt: new Date(Date.now() - 2 * 86400000).toISOString(),
+    previewUrl:
+      'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+  },
+];
 

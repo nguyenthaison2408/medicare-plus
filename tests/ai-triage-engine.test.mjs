@@ -245,3 +245,22 @@ test('sanitizeGeminiReply strips markdown noise and enforces max length', () => 
   assert.equal(clipped.length, 50);
   assert.ok(clipped.endsWith('...'));
 });
+test('security guardrail: client source never embeds Gemini API keys or direct endpoints', () => {
+  const srcRoot = new URL('../client/src/', import.meta.url);
+  const walk = (dir) => {
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    let files = [];
+    for (const entry of entries) {
+      const full = new URL(entry.name + (entry.isDirectory() ? '/' : ''), dir);
+      if (entry.isDirectory()) files = files.concat(walk(full));
+      else if (/\.(ts|tsx|js|jsx)$/.test(entry.name)) files.push(full);
+    }
+    return files;
+  };
+  for (const fileUrl of walk(srcRoot)) {
+    const content = fs.readFileSync(fileUrl, 'utf8');
+    assert.equal(/EXPO_PUBLIC_GEMINI/i.test(content), false, `Forbidden env var in ${fileUrl}`);
+    assert.equal(/AIza[0-9A-Za-z_-]{20,}/.test(content), false, `Forbidden API key literal in ${fileUrl}`);
+    assert.equal(/generativelanguage\.googleapis\.com/i.test(content), false, `Direct Gemini URL in ${fileUrl}`);
+  }
+});

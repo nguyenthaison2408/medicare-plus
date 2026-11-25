@@ -12,6 +12,7 @@ import {
   getFollowUpQuestions,
 } from '../client/src/services/aiFollowUpQuestions.ts';
 import { DOCTORS } from '../client/src/data/mockData.ts';
+import { buildGeminiHistory } from '../client/src/utils/aiHistory.ts';
 
 const clean = source => stripTypeScriptTypes(source.replace(/import[\s\S]*?from\s*['"][^'"]+['"];?/g, '')).replace(/export\s+/g, '');
 const source = file => fs.readFileSync(new URL('../client/src/' + file, import.meta.url), 'utf8').replace(/\r\n/g, '\n');
@@ -217,4 +218,16 @@ test('severe canonical answer increases urgency while preserving specialty conte
   const next = refine(initial, 1, q.id, 'severe');
   assert.equal(next.urgencyLevel, 'soon');
   assert.equal(next.specialtyName, initial.specialtyName);
+});
+test('buildGeminiHistory bounds turns and extracts clinicalCard analysisText', () => {
+  const msgs = [
+    { sender: 'user', text: 'Tôi bị đau đầu' },
+    { sender: 'ai', clinicalCard: { analysisText: 'Bạn có thể khám Thần kinh.' } },
+    { sender: 'user', text: '   ' },
+    { sender: 'ai', text: 'Bạn đau mấy ngày rồi?' },
+  ];
+  const history = buildGeminiHistory(msgs, 2);
+  assert.equal(history.length, 2);
+  assert.deepEqual(history[0], { role: 'model', text: 'Bạn có thể khám Thần kinh.' });
+  assert.deepEqual(history[1], { role: 'model', text: 'Bạn đau mấy ngày rồi?' });
 });

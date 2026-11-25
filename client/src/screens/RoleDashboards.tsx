@@ -2528,7 +2528,17 @@ export const DoctorDashboardScreen: React.FC<DoctorDashboardScreenProps> = ({
             .map((item) => {
               const catMeta = LAB_CATEGORY_META[item.category] || LAB_CATEGORY_META.other;
               return (
-                <View key={item.id} style={styles.rxRow}>
+                <View
+                  key={item.id}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    paddingVertical: 10,
+                    borderBottomWidth: 1,
+                    borderBottomColor: COLORS.borderSubtle,
+                  }}
+                >
                   <View style={{ flex: 1, minWidth: 0, marginRight: 8 }}>
                     <Text style={styles.docName} numberOfLines={1}>
                       {item.title}

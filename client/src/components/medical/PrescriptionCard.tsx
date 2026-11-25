@@ -10,6 +10,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, RADIUS, SHADOWS, TYPOGRAPHY } from '../../theme';
 import { DoctorItem, PrescriptionDrug, formatRelativeDate } from '../../data/mockData';
+import type { LabResultItem } from '../../types/labResults';
+import { LAB_CATEGORY_META, isLabImageMime } from '../../utils/labResultValidation';
 import { Badge } from '../common/Badge';
 import { AppButton } from '../common/AppButton';
 
@@ -145,29 +147,43 @@ export const ActivePrescriptionCard: React.FC<ActivePrescriptionCardProps> = ({
 };
 
 export interface LabImagingCardProps {
+  labResult?: LabResultItem;
   onViewDicom?: () => void;
   onDownloadPdf?: () => void;
   style?: ViewStyle;
 }
 
 export const LabImagingCard: React.FC<LabImagingCardProps> = ({
+  labResult,
   onViewDicom,
   onDownloadPdf,
   style,
 }) => {
+  const categoryMeta = labResult
+    ? LAB_CATEGORY_META[labResult.category] || LAB_CATEGORY_META.other
+    : LAB_CATEGORY_META.imaging;
+  const isImage = labResult ? isLabImageMime(labResult.mimeType) : false;
+
   return (
     <View style={[styles.card, SHADOWS.sm, style]}>
       <View style={styles.labTopRow}>
         <View style={styles.labIconCircle}>
-          <Ionicons name="scan-outline" size={18} color={COLORS.primary} />
+          <Ionicons
+            name={(categoryMeta.icon as any) || 'scan-outline'}
+            size={18}
+            color={COLORS.primary}
+          />
         </View>
         <View style={{ flex: 1, minWidth: 0, marginLeft: 10 }}>
           <View style={styles.labBadgesRow}>
-            <Badge label="Chẩn đoán hình ảnh" variant="surface" />
-            <Badge label="Bình thường" variant="teal" />
+            <Badge label={categoryMeta.shortLabel} variant="surface" />
+            <Badge
+              label={labResult ? (isImage ? 'Hình ảnh' : 'Tệp PDF') : 'Bình thường'}
+              variant="teal"
+            />
           </View>
           <Text style={styles.labTitle} numberOfLines={1}>
-            Chụp MRI Sọ não (Không cản từ)
+            {labResult?.title || 'Chụp MRI Sọ não (Không cản từ)'}
           </Text>
         </View>
       </View>
@@ -175,8 +191,8 @@ export const LabImagingCard: React.FC<LabImagingCardProps> = ({
       <View style={styles.conclusionBox}>
         <Text style={styles.conclusionHeader}>Kết luận chuyên khoa:</Text>
         <Text style={styles.conclusionBody}>
-          Nhu mô não không thấy tổn thương khu trú, hệ thống não thất cân đối,
-          không có dấu hiệu nhồi máu não hay xuất huyết.
+          {labResult?.conclusion ||
+            'Nhu mô não không thấy tổn thương khu trú, hệ thống não thất cân đối, không có dấu hiệu nhồi máu não hay xuất huyết.'}
         </Text>
       </View>
 
@@ -188,7 +204,9 @@ export const LabImagingCard: React.FC<LabImagingCardProps> = ({
             color={COLORS.primary}
           />
           <Text style={styles.signatureText} numberOfLines={1}>
-            BS. Lê Thu Trang duyệt
+            {labResult?.doctorName
+              ? `${labResult.doctorName} duyệt`
+              : 'BS. Lê Thu Trang duyệt'}
           </Text>
         </View>
 
@@ -208,11 +226,15 @@ export const LabImagingCard: React.FC<LabImagingCardProps> = ({
             style={styles.pdfBtn}
             onPress={onDownloadPdf}
             accessibilityRole="button"
-            accessibilityLabel="Tải bản PDF kết quả chẩn đoán hình ảnh"
+            accessibilityLabel={isImage ? 'Mở ảnh kết quả' : 'Tải bản PDF kết quả'}
           >
-            <Ionicons name="download-outline" size={14} color="#FFFFFF" />
+            <Ionicons
+              name={isImage ? 'eye-outline' : 'download-outline'}
+              size={14}
+              color="#FFFFFF"
+            />
             <Text style={styles.pdfBtnText} numberOfLines={1}>
-              Bản PDF
+              {isImage ? 'Xem ảnh' : 'Bản PDF'}
             </Text>
           </TouchableOpacity>
         </View>

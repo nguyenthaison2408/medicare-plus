@@ -14,6 +14,13 @@ import { Ionicons } from '@expo/vector-icons';
 import QRCode from 'react-native-qrcode-svg';
 import { CLOUD_MODE } from '../services/supabaseClient';
 import { ClinicPatientRecordsScreen } from './ClinicPatientScreens';
+import { LabFileViewerModal } from '../components/medical/LabFileViewerModal';
+import type { LabResultItem } from '../types/labResults';
+import {
+  LAB_CATEGORY_META,
+  formatLabFileSize,
+  isLabImageMime,
+} from '../utils/labResultValidation';
 import { COLORS, GRADIENTS, LAYOUT, RADIUS, SHADOWS, SPACING, TYPOGRAPHY } from '../theme';
 import {
   DOCTORS,
@@ -1973,45 +1980,64 @@ export const LabAndImagingResultsScreen: React.FC<{
   onDownloadPDF?: () => void;
   onOpenTeleconsult?: () => void;
 }> = ({ onBack, onDownloadPDF, onOpenTeleconsult }) => {
-  const [tab, setTab] = useState('imaging');
+  const { labResults, patientProfile } = useAppContext();
+  const [tab, setTab] = useState<'all' | 'imaging' | 'blood'>('all');
   const [pdfToast, setPdfToast] = useState(false);
+  const [viewingItem, setViewingItem] = useState<LabResultItem | null>(null);
+
+  const imagingItems = labResults.filter((r) => r.category === 'imaging');
+  const bloodItems = labResults.filter(
+    (r) => r.category === 'blood' || r.category === 'pathology' || r.category === 'other'
+  );
+  const filteredResults =
+    tab === 'imaging'
+      ? imagingItems
+      : tab === 'blood'
+      ? bloodItems
+      : labResults;
+
   return (
     <View style={styles.screen}>
       <AppHeader
         title="Kết Quả Cận Lâm Sàng & CĐHA"
-        subtitle="Mã phiếu: #CLS-2024-9042 • Đã trả kết quả"
+        subtitle={`Hồ sơ: ${patientProfile.name} • ${labResults.length} kết quả`}
         onBack={onBack}
       />
       <ScrollView contentContainerStyle={styles.scrollPad}>
         {/* Meta Header Card */}
         <View style={[styles.card, SHADOWS.sm]}>
           <Badge
-            label="ĐÃ CÓ KẾT QUẢ CHÍNH THỨC"
-            variant="teal"
+            label={labResults.length > 0 ? 'ĐÃ CÓ KẾT QUẢ CHÍNH THỨC' : 'CHƯA CÓ TỆP KẾT QUẢ'}
+            variant={labResults.length > 0 ? 'teal' : 'surface'}
             showDot
           />
           <Text style={[styles.docName, { marginTop: 8 }]}>
-            Nguyễn Văn Vũ (32 tuổi • Nam • #BN-882910)
-          </Text>
-          <Text style={styles.docSub}>
-            Bác sĩ chỉ định: TS. BS. Lê Thu Trang (Nội Thần Kinh)
+            {patientProfile.name} ({patientProfile.patientCode || '#BN-882910'})
           </Text>
           <Text style={styles.docSub}>
             Cơ sở thực hiện: BV ĐHYD TP.HCM — Khoa CĐHA & Xét Nghiệm
           </Text>
           <Text style={styles.docSub}>
-            Thực hiện: {formatRelativeDate(-1)} 08:45 • Trả kết quả: 10:15
+            Đồng bộ lưu trữ bảo mật qua Supabase Storage
           </Text>
 
           <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
             <AppButton
-              title="Lưu Kết Quả PDF"
+              title={labResults[0] ? 'Mở kết quả mới nhất' : 'Lưu Kết Quả PDF'}
               variant="primary"
               size="sm"
-              leftIcon="download-outline"
+              leftIcon="eye-outline"
               fullWidth={false}
               style={{ flex: 1 }}
-              onPress={onDownloadPDF || (() => setPdfToast(true))}
+              onPress={() => {
+                if (labResults[0]) {
+                  setViewingItem(labResults[0]);
+                } else if (onDownloadPDF) {
+                  onDownloadPDF();
+                } else {
+                  setPdfToast(true);
+                }
+              }}
             />
             <AppButton
               title="Gửi hỏi Bác sĩ"
@@ -2028,34 +2054,122 @@ export const LabAndImagingResultsScreen: React.FC<{
         <SegmentedControl
           variant="box"
           selectedKey={tab}
-          onSelect={setTab}
+          onSelect={(key) => setTab(key as 'all' | 'imaging' | 'blood')}
           options={[
-            { key: 'imaging', label: 'CĐHA (MRI/X-Quang)', count: 2 },
-            { key: 'blood', label: 'Xét Nghiệm Máu', count: 14 },
+            { key: 'all', label: 'Tất cả', count: labResults.length },
+            { key: 'imaging', label: 'CĐHA (X-Quang/MRI)', count: imagingItems.length },
+            { key: 'blood', label: 'Xét nghiệm / PDF', count: bloodItems.length },
           ]}
           style={{ marginBottom: 14 }}
         />
 
-        {tab === 'imaging' && (
-          /* Diagnostic Imaging Results */
-          <View style={[styles.card, SHADOWS.sm]}>
-            <SectionHeader
-              title="Cộng Hưởng Từ Sọ Não (MRI 1.5 Tesla)"
-              subtitle="Vùng khảo sát: Sọ não & Mạch máu nội sọ (MRA)"
-            />
-            <Text style={styles.checkItemText}>
-              • Hệ thống não thất bên, não thất III và IV không giãn, cân đối qua
-              đường giữa.
+        {filteredResults.length > 0 ? (
+          filteredResults.map((item) => {
+            const catMeta = LAB_CATEGORY_META[item.category] || LAB_CATEGORY_META.other;
+            const isImg = isLabImageMime(item.mimeType);
+            return (
+              <TouchableOpacity
+                key={item.id}
+                activeOpacity={0.88}
+                onPress={() => setViewingItem(item)}
+                style={[styles.card, SHADOWS.sm]}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  {isImg && item.previewUrl ? (
+                    <Image
+                      source={{ uri: item.previewUrl }}
+                      style={{
+                        width: 56,
+                        height: 56,
+                        borderRadius: RADIUS.md,
+                        backgroundColor: '#0F172A',
+                      }}
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <View
+                      style={{
+                        width: 56,
+                        height: 56,
+                        borderRadius: RADIUS.md,
+                        backgroundColor: COLORS.primaryContainer,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Ionicons
+                        name={(catMeta.icon as any) || 'document-text-outline'}
+                        size={24}
+                        color={COLORS.primary}
+                      />
+                    </View>
+                  )}
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <View style={{ flexDirection: 'row', gap: 6, marginBottom: 4 }}>
+                      <Badge label={catMeta.shortLabel} variant="surface" />
+                      <Badge label={isImg ? 'Ảnh CĐHA' : 'PDF'} variant="teal" />
+                    </View>
+                    <Text style={styles.docName} numberOfLines={2}>
+                      {item.title}
+                    </Text>
+                    <Text style={styles.docSub} numberOfLines={1}>
+                      {item.fileName} • {formatLabFileSize(item.fileSizeBytes)}
+                    </Text>
+                  </View>
+                </View>
+
+                {item.conclusion ? (
+                  <Text
+                    style={[styles.checkItemText, { marginTop: 10 }]}
+                    numberOfLines={3}
+                  >
+                    Kết luận: {item.conclusion}
+                  </Text>
+                ) : null}
+
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginTop: 10,
+                    paddingTop: 10,
+                    borderTopWidth: 1,
+                    borderTopColor: COLORS.borderSubtle,
+                  }}
+                >
+                  <Text style={styles.docSub}>
+                    {item.doctorName || 'Bác sĩ điều trị'} •{' '}
+                    {new Date(item.createdAt).toLocaleDateString('vi-VN')}
+                  </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <Ionicons
+                      name={isImg ? 'expand-outline' : 'document-text-outline'}
+                      size={14}
+                      color={COLORS.primary}
+                    />
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: COLORS.primary }}>
+                      {isImg ? 'Mở xem ảnh' : 'Mở xem PDF'}
+                    </Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            );
+          })
+        ) : (
+          <View style={[styles.card, SHADOWS.sm, { alignItems: 'center', paddingVertical: 28 }]}>
+            <Ionicons name="folder-open-outline" size={34} color={COLORS.textMuted} />
+            <Text style={[styles.docName, { marginTop: 8 }]}>
+              Chưa có kết quả cận lâm sàng
             </Text>
-            <Text style={styles.checkItemText}>
-              • Chuỗi xung MRA TOF 3D: Đa giác Willis và các nhánh động mạch não
-              trước, giữa, sau lưu thông tốt, không phình mạch.
+            <Text style={[styles.docSub, { textAlign: 'center', marginTop: 4 }]}>
+              Khi bác sĩ tải lên phiếu xét nghiệm PDF hoặc phim chụp X-Quang/MRI, kết quả sẽ hiển thị tại đây.
             </Text>
           </View>
         )}
 
-        {tab === 'blood' && (
-          /* Detailed Lab Test Results */
+        {tab === 'blood' && !CLOUD_MODE && (
+          /* Detailed Lab Test Reference Table in Demo Mode */
           <View style={[styles.card, SHADOWS.sm]}>
             <SectionHeader
               title="Bảng 14 Chỉ Số Sinh Hóa & Huyết Học"
@@ -2084,10 +2198,15 @@ export const LabAndImagingResultsScreen: React.FC<{
           </View>
         )}
       </ScrollView>
+      <LabFileViewerModal
+        visible={Boolean(viewingItem)}
+        item={viewingItem}
+        onClose={() => setViewingItem(null)}
+      />
       <ToastBanner
         visible={pdfToast}
         title="Lưu PDF Thành Công"
-        message="Đã tải phiếu kết quả cận lâm sàng #CLS-2024-9042 về máy."
+        message="Đã tải phiếu kết quả cận lâm sàng về máy."
         onDismiss={() => setPdfToast(false)}
       />
     </View>

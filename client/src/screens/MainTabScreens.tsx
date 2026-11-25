@@ -634,7 +634,7 @@ export const EHRScreen: React.FC<EHRScreenProps> = ({
   onAskAI,
   onNavigate,
 }) => {
-  const { prescriptions, patientProfile } = useAppContext();
+  const { prescriptions, patientProfile, labResults } = useAppContext();
   const [filterKey, setFilterKey] = useState('all');
   const [toastInfo, setToastInfo] = useState<{ title: string; msg: string } | null>(
     null
@@ -642,7 +642,10 @@ export const EHRScreen: React.FC<EHRScreenProps> = ({
 
   if (CLOUD_MODE) return <View style={styles.screen}>
     <AppHeader title="Hồ sơ bệnh án điện tử" subtitle="Bệnh án đã lưu trên Supabase"
-      rightActions={[{icon:'people-outline',onPress:()=>onNavigate('familyProfiles')}]} />
+      rightActions={[
+        { icon: 'flask-outline', onPress: () => onNavigate('labImagingResults') },
+        { icon: 'people-outline', onPress: () => onNavigate('familyProfiles') },
+      ]} />
     <ClinicPatientRecordsScreen />
   </View>;
 
@@ -738,17 +741,22 @@ export const EHRScreen: React.FC<EHRScreenProps> = ({
             <SectionHeader
               title="Xét nghiệm & Chẩn đoán hình ảnh"
               leftIcon="flask-outline"
-              actionText="Xem tất cả (8)"
+              actionText={`Xem tất cả (${labResults.length})`}
               onActionPress={() => onNavigate('labImagingResults')}
             />
             <LabImagingCard
+              labResult={labResults[0]}
               onViewDicom={() => onNavigate('labImagingResults')}
-              onDownloadPdf={() =>
+              onDownloadPdf={() => {
+                if (labResults[0]) {
+                  onNavigate('labImagingResults');
+                  return;
+                }
                 setToastInfo({
                   title: 'Đã lưu PDF Kết Quả',
                   msg: 'Kết quả chụp MRI & xét nghiệm máu đã được tải về máy.',
-                })
-              }
+                });
+              }}
             />
           </AnimatedEntry>
         )}

@@ -40,13 +40,17 @@ export const LabFileViewerModal: React.FC<LabFileViewerModalProps> = ({
 
   useEffect(() => {
     if (!visible || !item) {
-      setResolvedUrl(undefined);
-      setZoomed(false);
       return;
     }
     let active = true;
-    setLoadingUrl(true);
-    resolveLabFileUrl(item.filePath, item.previewUrl)
+    Promise.resolve()
+      .then(() => {
+        if (active) {
+          setLoadingUrl(true);
+          setZoomed(false);
+        }
+        return resolveLabFileUrl(item.filePath, item.previewUrl);
+      })
       .then((url) => {
         if (active) setResolvedUrl(url);
       })

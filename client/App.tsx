@@ -110,7 +110,13 @@ function AppContent() {
     const applySession = async (userId: string | null) => {
       const request = ++generation;
       if (!userId) {
-        if (active && CLOUD_MODE) { routedUser = null; setRoute('login'); setRouteHistory([]); setActiveTab('home'); setBookingInfo({}); }
+        if (active && CLOUD_MODE && routedUser !== null) {
+          routedUser = null;
+          setRoute('login');
+          setRouteHistory([]);
+          setActiveTab('home');
+          setBookingInfo({});
+        }
         return;
       }
       clearWebHash();
@@ -132,8 +138,7 @@ function AppContent() {
         setRoute(previous => changed || ['login','splash','register'].includes(previous) ? destination : previous);
       } catch {
         if (active && request === generation) {
-          setRoute('login');
-          setActionMessage('Chưa tải được vai trò tài khoản. Vui lòng đăng nhập lại.');
+          setRoute(previous => ['login', 'splash', 'register'].includes(previous) ? 'login' : previous);
         }
       }
     };

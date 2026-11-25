@@ -27,6 +27,7 @@ import {
   fetchBhytConfigsCloud,
   upsertBhytConfigCloud,
   deleteBhytConfigCloud,
+  updateDoctorAvatarCloud,
   type DoctorScheduleItem,
   type DoctorShiftType,
   type BhytConfigItem,
@@ -103,6 +104,7 @@ export interface NewDoctorInput {
   feeNumeric: number;
   experienceYears: number;
   licenseCode: string;
+  avatar?: string;
 }
 
 export interface NewHospitalInput {
@@ -207,6 +209,7 @@ interface AppContextValue {
   doctors: DoctorItem[];
   addDoctor: (input: NewDoctorInput) => DoctorItem;
   approveDoctor: (doctorId: string) => void;
+  updateDoctorAvatar: (doctorId: string, avatarUrl: string) => Promise<void>;
   hospitals: HospitalItem[];
   addHospital: (input: NewHospitalInput) => Promise<HospitalItem>;
   refreshHospitalCatalog: () => Promise<void>;
@@ -511,6 +514,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
                       name: cd.name || existing.name,
                       specialty: cd.specialty || existing.specialty,
                       hospital: cd.hospital || existing.hospital,
+                      avatar: cd.avatar_url?.trim() || existing.avatar,
                     };
                   }
                   return {
@@ -578,6 +582,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
                   name: cd.name || existing.name,
                   specialty: cd.specialty || existing.specialty,
                   hospital: cd.hospital || existing.hospital,
+                  avatar: cd.avatar_url?.trim() || existing.avatar,
                 };
               }
               return {
@@ -818,7 +823,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
       if (consultMode !== 'clinic' && consultMode !== 'chat' && consultMode !== 'video') {
         throw new Error('Hình thức khám không hợp lệ.');
       }
-      if (paymentMethod !== 'at_clinic' && paymentMethod !== 'at_clinic_bhyt') throw new Error('Vui lòng chọn thanh toán tại cơ sở y tế.');
+      if (paymentMethod !== 'at_clinic' && paymentMethod !== 'at_clinic_bhyt' && paymentMethod !== 'vietqr') {
+        throw new Error('Vui lòng chọn thanh toán tại cơ sở y tế.');
+      }
       const isChatMode = consultMode === 'chat' || consultMode === 'video';
       const normalizedPatientInfo: PatientBookingInfo =
         isChatMode && !patientInfo.symptoms.trim().startsWith('[Tư vấn Chat]')
@@ -839,7 +846,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         room: isChatMode ? 'Phòng Tư vấn Chat Trực tuyến' : doctor.hospital,
         queueNumber: 'Đã xác nhận',
         consultMode: isChatMode ? 'chat' : 'clinic',
-        paymentMethod: appointment.payment_method,
+        paymentMethod: paymentMethod === 'vietqr' ? 'vietqr' : appointment.payment_method,
         patientName: appointment.patient_name,
         patientPhone: appointment.patient_phone,
         patientEmail: appointment.patient_email,
@@ -847,7 +854,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
       };
       selectedTicketCode.current = ticket.code;
       setLatestBooking(ticket);
-      setAppointments(prev => [clinicAppointmentToItem(appointment), ...prev.filter(item => item.id !== appointment.id)]);
+      const appItem = clinicAppointmentToItem(appointment);
+      if (paymentMethod === 'vietqr') {
+        appItem.statusBadge = 'Đã thanh toán (PayOS)';
+      }
+      setAppointments(prev => [appItem, ...prev.filter(item => item.id !== appointment.id)]);
       return ticket;
     }
     const randNum = Math.floor(1000 + Math.random() * 8999);
@@ -1175,9 +1186,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
       feeNumeric: input.feeNumeric,
       bhytSupport: 'Hỗ trợ BHYT theo quy định',
       availableText: 'Chờ duyệt CCHN',
-      avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(
-        name
-      )}&background=E0EAFF&color=006194&size=200`,
+      avatar:
+        input.avatar?.trim() ||
+        `https://ui-avatars.com/api/?name=${encodeURIComponent(
+          name
+        )}&background=E0EAFF&color=006194&size=200`,
       verified: false,
       bio: `Mã chứng chỉ hành nghề: ${input.licenseCode.trim()}. Hồ sơ đang chờ quản trị viên xác thực.`,
       strengths: [input.specialty],
@@ -1193,6 +1206,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
           ? { ...d, verified: true, availableText: 'Lịch trống: Ngày mai' }
           : d
       )
+    );
+  };
+
+  const updateDoctorAvatar = async (doctorId: string, avatarUrl: string): Promise<void> => {
+    const cleanUrl = avatarUrl.trim();
+    if (!cleanUrl) {
+      throw new Error('Vui lòng chọn ảnh hoặc nhập đường dẫn ảnh bác sĩ.');
+    }
+    if (CLOUD_MODE) {
+      const expectedUser = cloudUserIdRef.current;
+      if (!expectedUser) throw new Error('Vui lòng đăng nhập lại.');
+      const savedUrl = await updateDoctorAvatarCloud(doctorId, cleanUrl);
+      if (cloudUserIdRef.current !== expectedUser) throw new Error('Phiên đăng nhập đã thay đổi.');
+      setDoctors((prev) =>
+        prev.map((d) => (d.id === doctorId ? { ...d, avatar: savedUrl } : d))
+      );
+      return;
+    }
+    setDoctors((prev) =>
+      prev.map((d) => (d.id === doctorId ? { ...d, avatar: cleanUrl } : d))
     );
   };
 
@@ -1605,6 +1638,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         doctors,
         addDoctor,
         approveDoctor,
+        updateDoctorAvatar,
         hospitals,
         addHospital,
         refreshHospitalCatalog,

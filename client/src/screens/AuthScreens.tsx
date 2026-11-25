@@ -9,6 +9,7 @@ import {
   StyleSheet,
   Animated,
   Alert,
+  Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,6 +27,8 @@ import {
   PressableScale,
   PulsingDot,
 } from '../components';
+
+const APP_LOGO = require('../../assets/icon.png');
 
 export interface SplashScreenProps {
   onContinue: () => void;
@@ -69,13 +72,14 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onContinue }) => {
       {/* Center Identity Block */}
       <AnimatedEntry delay={40} direction="up" style={styles.splashCenter}>
         <Animated.View style={[styles.logoCircle, SHADOWS.lg, { transform: [{ scale: logoScale }] }]}>
-          <Ionicons name="medical" size={44} color={COLORS.primary} />
-          <View style={styles.sparkleBadge}>
-            <Ionicons name="sparkles" size={16} color="#FFFFFF" />
-          </View>
+          <Image
+            source={APP_LOGO}
+            style={{ width: 92, height: 92, borderRadius: 22 }}
+            resizeMode="contain"
+          />
         </Animated.View>
 
-        <Text style={styles.brandName}>MediCare Plus</Text>
+        <Text style={styles.brandName}>Medicare Plus</Text>
         <Badge
           label="Trợ lý y tế thông minh AI"
           variant="blue"
@@ -270,11 +274,15 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
         <AnimatedEntry delay={40} direction="up">
           <View style={styles.authHero}>
             <View style={[styles.authLogoBox, SHADOWS.sm]}>
-              <Ionicons name="medkit" size={28} color={COLORS.primary} />
+              <Image
+                source={APP_LOGO}
+                style={{ width: 52, height: 52, borderRadius: 12 }}
+                resizeMode="contain"
+              />
             </View>
             <Text style={styles.authTitle}>Đăng nhập</Text>
             <Text style={styles.authSub}>
-              Chào mừng bạn quay trở lại với{'\n'}MediCare Plus
+              Chào mừng bạn quay trở lại với{'\n'}Medicare Plus
             </Text>
           </View>
         </AnimatedEntry>

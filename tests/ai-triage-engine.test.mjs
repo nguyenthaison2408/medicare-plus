@@ -12,7 +12,10 @@ import {
   getFollowUpQuestions,
 } from '../client/src/services/aiFollowUpQuestions.ts';
 import { DOCTORS } from '../client/src/data/mockData.ts';
-import { buildGeminiHistory } from '../client/src/utils/aiHistory.ts';
+import {
+  buildGeminiHistory,
+  sanitizeGeminiReply,
+} from '../client/src/utils/aiHistory.ts';
 
 const clean = source => stripTypeScriptTypes(source.replace(/import[\s\S]*?from\s*['"][^'"]+['"];?/g, '')).replace(/export\s+/g, '');
 const source = file => fs.readFileSync(new URL('../client/src/' + file, import.meta.url), 'utf8').replace(/\r\n/g, '\n');
@@ -230,4 +233,15 @@ test('buildGeminiHistory bounds turns and extracts clinicalCard analysisText', (
   assert.equal(history.length, 2);
   assert.deepEqual(history[0], { role: 'model', text: 'Bạn có thể khám Thần kinh.' });
   assert.deepEqual(history[1], { role: 'model', text: 'Bạn đau mấy ngày rồi?' });
+});
+test('sanitizeGeminiReply strips markdown noise and enforces max length', () => {
+  assert.equal(sanitizeGeminiReply('   '), '');
+  assert.equal(
+    sanitizeGeminiReply('**Khuyến nghị:** Uống nhiều nước và `nghỉ ngơi`'),
+    'Khuyến nghị: Uống nhiều nước và nghỉ ngơi'
+  );
+  const longText = 'A'.repeat(120);
+  const clipped = sanitizeGeminiReply(longText, 50);
+  assert.equal(clipped.length, 50);
+  assert.ok(clipped.endsWith('...'));
 });

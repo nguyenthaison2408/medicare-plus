@@ -33,3 +33,22 @@ export function buildGeminiHistory(
   }
   return turns.slice(-maxTurns);
 }
+
+/**
+ * Normalizes Gemini markdown output for clean mobile bubble rendering
+ * and enforces a safe display length ceiling.
+ */
+export function sanitizeGeminiReply(
+  rawReply: string,
+  maxLength = 1500
+): string {
+  const cleaned = (rawReply || '')
+    .replace(/\r\n/g, '\n')
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/`{1,3}([^`]+)`{1,3}/g, '$1')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+  if (!cleaned) return '';
+  if (cleaned.length <= maxLength) return cleaned;
+  return `${cleaned.slice(0, maxLength - 3).trim()}...`;
+}

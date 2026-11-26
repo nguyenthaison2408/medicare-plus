@@ -31,7 +31,6 @@ import { ClinicPatientRecordsScreen } from './ClinicPatientScreens';
 import { refineFollowUp } from '../services/aiConversation';
 import { runClinicalTriage } from '../services/aiTriageEngine';
 import { checkEHRSafetyGuardrails } from '../services/aiSafetyGuardrails';
-import { isGeminiConfigured, runGeminiClinicalTriage } from '../services/aiGeminiService';
 import { promptImagePicker } from '../services/imagePickerService';
 import {
   HomeGreetingHeader,
@@ -1193,14 +1192,6 @@ export const AIAssistantScreen: React.FC<AIAssistantScreenProps> = ({
     const generation = ++conversationGeneration.current;
     setCurrentTriageContext(null);
 
-    const historySnapshot = extraMessages
-      .slice(-4)
-      .map((m) => ({
-        role: m.sender,
-        text: m.text || m.clinicalCard?.analysisText || '',
-      }))
-      .filter((m) => m.text.length > 0);
-
     setExtraMessages((prev) => [
       ...prev,
       { id: `usr-${prev.length + 1}`, sender: 'user', text: content, time: timeStr },
@@ -1213,9 +1204,9 @@ export const AIAssistantScreen: React.FC<AIAssistantScreenProps> = ({
     }, 80);
 
     const patientAllergies = CLOUD_MODE ? [] : patientProfile.allergies;
-    const localResult = analyzeMedicalSymptom(content, patientAllergies, doctors);
+    const analysisResult = analyzeMedicalSymptom(content, patientAllergies, doctors);
 
-    const deliverResult = (analysisResult: Omit<AIChatThreadItem, 'id' | 'sender' | 'time'>) => {
+    setTimeout(() => {
       if (conversationGeneration.current !== generation) return;
       setIsTyping(false);
       if (analysisResult.clinicalCard) {
@@ -1239,49 +1230,13 @@ export const AIAssistantScreen: React.FC<AIAssistantScreenProps> = ({
           sender: 'ai',
           time: getCurrentTimeStr(),
           ...analysisResult,
-          ...(analysisResult.clinicalCard
-            ? { clinicalCard: { ...analysisResult.clinicalCard, contextId: generation } }
-            : {}),
+          ...(analysisResult.clinicalCard ? { clinicalCard: { ...analysisResult.clinicalCard, contextId: generation } } : {}),
         },
       ]);
       setTimeout(() => {
         chatScrollRef.current?.scrollToEnd({ animated: true });
       }, 100);
-    };
-
-    // Cấp cứu đỏ Red Flag luôn xử lý tức thì tại local (0ms, không chờ mạng)
-    if (localResult.clinicalCard?.urgencyLevel === 'emergency' || !isGeminiConfigured()) {
-      setTimeout(() => deliverResult(localResult), 300);
-      return;
-    }
-
-    void runGeminiClinicalTriage(content, {
-      availableDoctors: doctors,
-      allergies: patientAllergies,
-      conversationHistory: historySnapshot,
-    }).then((geminiResult) => {
-      if (!geminiResult) {
-        deliverResult(localResult);
-        return;
-      }
-      const allergyWarning = localResult.clinicalCard?.allergyWarning;
-      deliverResult({
-        clinicalCard: {
-          urgencyLevel:
-            allergyWarning && geminiResult.urgencyLevel === 'routine'
-              ? 'soon'
-              : geminiResult.urgencyLevel,
-          analysisText: geminiResult.analysisText,
-          specialtyName: geminiResult.specialtyName,
-          specialtyDesc: geminiResult.specialtyDesc,
-          specialtyIcon: geminiResult.specialtyIcon,
-          doctors: geminiResult.recommendedDoctors || [],
-          followUpQuestions: geminiResult.followUpQuestions,
-          homeCareAdvice: geminiResult.homeCareAdvice,
-          ...(allergyWarning ? { allergyWarning } : {}),
-        },
-      });
-    });
+    }, 500);
   };
 
   const handleSelectFollowUp = (
@@ -1323,7 +1278,7 @@ export const AIAssistantScreen: React.FC<AIAssistantScreenProps> = ({
       <AppHeader
         title="Trợ lý Sức khỏe AI"
         subtitle="Hỗ trợ sàng lọc triệu chứng & gợi ý chuyên khoa"
-        badgeText={isGeminiConfigured() ? 'Gemini AI' : 'AI 24/7'}
+        badgeText="AI 24/7"
         leftIconBox="sparkles"
         rightActions={[
           {

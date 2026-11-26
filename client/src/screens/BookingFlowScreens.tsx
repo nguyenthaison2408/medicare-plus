@@ -804,7 +804,7 @@ export const BookingPaymentScreen: React.FC<BookingPaymentScreenProps> = ({
         });
         const json = await res.json();
         if (json.success && json.data) {
-          setPayOsData({ ...json.data, isDirectQr: false });
+          setPayOsData(json.data);
           setPayOsModalVisible(true);
           return;
         }
@@ -815,20 +815,9 @@ export const BookingPaymentScreen: React.FC<BookingPaymentScreenProps> = ({
         setPayOsLoading(false);
       }
 
-      const memoCode = `MEDICARE ${String(Date.now()).slice(-6)}`;
-      setPayOsData({
-        isDirectQr: true,
-        bin: '970436',
-        bankName: 'Vietcombank (CN Tân Bình)',
-        accountName: 'BV MEDICARE PLUS Y TE SO',
-        accountNumber: '988241029',
-        amount: 2000,
-        description: memoCode,
-        directQrImageUrl: `https://img.vietqr.io/image/VCB-988241029-compact2.png?amount=2000&addInfo=${encodeURIComponent(
-          memoCode
-        )}&accountName=${encodeURIComponent('BV MEDICARE PLUS Y TE SO')}`,
-      });
-      setPayOsModalVisible(true);
+      const message = 'Chưa kết nối được dịch vụ thanh toán. Vui lòng thử lại hoặc chọn thanh toán tại viện.';
+      if (Platform.OS === 'web' && typeof window !== 'undefined') window.alert(message);
+      else Alert.alert('Chưa thể thanh toán', message);
       return;
     }
 
@@ -1304,15 +1293,7 @@ export const BookingPaymentScreen: React.FC<BookingPaymentScreenProps> = ({
                 </Text>
 
                 {/* QR Code */}
-                {payOsData?.directQrImageUrl ? (
-                  <View style={styles.payOsQrWrapper}>
-                    <Image
-                      source={{ uri: payOsData.directQrImageUrl }}
-                      style={{ width: 220, height: 260, borderRadius: 10 }}
-                      resizeMode="contain"
-                    />
-                  </View>
-                ) : payOsData?.qrCode ? (
+                {payOsData?.qrCode ? (
                   <View style={styles.payOsQrWrapper}>
                     <Image
                       source={{
@@ -1362,33 +1343,12 @@ export const BookingPaymentScreen: React.FC<BookingPaymentScreenProps> = ({
                   </View>
                 </View>
 
-                {payOsData?.isDirectQr ? (
-                  <TouchableOpacity
-                    style={[styles.payOsWebBtn, { backgroundColor: COLORS.secondary, marginTop: 12 }]}
-                    disabled={submitting}
-                    onPress={async () => {
-                      if (submitting) return;
-                      setSubmitting(true);
-                      try {
-                        setPayOsModalVisible(false);
-                        const normalized = normalizePatientBookingInfo(patientInfo);
-                        await onPaymentSuccess('vietqr', normalized);
-                      } finally {
-                        setSubmitting(false);
-                      }
-                    }}
-                  >
-                    <Ionicons name="checkmark-circle-outline" size={18} color="#FFFFFF" />
-                    <Text style={styles.payOsWebBtnText}>Tôi đã chuyển khoản — Xác nhận lịch</Text>
-                  </TouchableOpacity>
-                ) : (
-                  <View style={styles.payOsWaitingRow}>
-                    <ActivityIndicator size="small" color={COLORS.primary} />
-                    <Text style={styles.payOsWaitingText}>
-                      Đang chờ hệ thống ngân hàng xác nhận chuyển khoản...
-                    </Text>
-                  </View>
-                )}
+                <View style={styles.payOsWaitingRow}>
+                  <ActivityIndicator size="small" color={COLORS.primary} />
+                  <Text style={styles.payOsWaitingText}>
+                    Đang chờ hệ thống ngân hàng xác nhận chuyển khoản...
+                  </Text>
+                </View>
 
                 {/* Open PayOS Web checkout button */}
                 {payOsData?.checkoutUrl ? (

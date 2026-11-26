@@ -41,7 +41,8 @@
         "expo-image-picker",
         {
           "photosPermission": "Cho phép Medicare Plus truy cập thư viện ảnh để cập nhật ảnh đại diện.",
-          "cameraPermission": "Cho phép Medicare Plus sử dụng máy ảnh để chụp ảnh đại diện."
+          "cameraPermission": "Cho phép Medicare Plus sử dụng máy ảnh để chụp ảnh đại diện.",
+          "microphonePermission": false
         }
       ]
     ],

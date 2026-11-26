@@ -239,3 +239,16 @@ test('leg and joint pain route to orthopedics (accented & unaccented), never neu
   assert.equal(fallback.specialtyKey, 'general', 'Unknown symptoms must fall back to general medicine, never neurology');
   assert.ok(fallback.specialtyName.includes('Nội Tổng Quát'));
 });
+
+test('mobile booking refuses another doctor at the same time before sending a cloud write', async () => {
+ const text=source('context/AppContext.tsx');const a=text.indexOf('  const createBooking =');const b=text.indexOf('    if (CLOUD_MODE) {\n      if (consultMode',a);assert.ok(a>=0&&b>a);
+ const code=stripTypeScriptTypes(text.slice(a,b)+' return null; };');let calls=0;
+ const invoke=vm.runInNewContext(code+';createBooking',{CLOUD_MODE:true,cloudUserIdRef:{current:'patient-a'},appointments:[{status:'upcoming',startsAt:'2026-11-27T09:00:00+07:00',patientId:'patient-a',doctor:{id:'doc-2',name:'Other doctor'}}],toClinicStart:()=> '2026-11-27T09:00:00+07:00',bookClinicAppointment:()=>calls++});
+ await assert.rejects(invoke({doctor:{id:'doc-1',name:'Doctor'},day:{fullDate:'27/11/2026'},slot:{time:'09:00'}}),/2 bác sĩ/);assert.equal(calls,0);
+});
+
+test('client source never embeds provider API credentials or bypasses PayOS verification',()=>{
+ const files=fs.readdirSync(new URL('../client/src/',import.meta.url),{recursive:true}).filter(p=>/\.(ts|tsx)$/.test(p));
+ for(const p of files)assert.doesNotMatch(source(p),/EXPO_PUBLIC_(?:GEMINI|GROQ).*KEY|generativelanguage\.googleapis\.com|api\.groq\.com/,p);
+ const payment=source('screens/BookingFlowScreens.tsx');assert.doesNotMatch(payment,/isDirectQr|directQrImageUrl|Tôi đã chuyển khoản/);
+});

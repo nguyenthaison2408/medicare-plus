@@ -2,26 +2,29 @@
 const assert = require('assert');
 const app = require('../src/app');
 const http = require('http');
-const { getPayOSClient, setPayOSClient } = require('../src/controllers/paymentController');
+const { setPayOSClient } = require('../src/controllers/paymentController');
+const clinicOrders = require('../src/services/clinicPayosOrders');
 
-// Đảm bảo môi trường CI (không có file .env chứa API Key thực) vẫn pass kiểm thử thanh toán an toàn
-if (!getPayOSClient()) {
-  setPayOSClient({
-    paymentRequests: {
-      create: async (data) => ({
+const payosRequests = [];
+const providerPayments = new Map();
+setPayOSClient({
+  paymentRequests: {
+    create: async (data) => {
+      payosRequests.push(data);
+      return {
         checkoutUrl: 'https://pay.payos.vn/web/mock-test-order',
-        qrCode: '00020101021238570010A000000727012700069704220113VQRQANUZS2008',
-        accountNumber: 'VQRQANUZS2008',
-        accountName: 'MEDICARE PLUS TEST',
-        bin: '970422',
-      }),
-      get: async (orderCode) => ({ status: 'PAID' })
+        qrCode: 'test-qr-payload',
+      };
     },
-    webhooks: {
-      verify: async (body) => body.data || body
+    get: async (orderCode) => providerPayments.get(orderCode)
+  },
+  webhooks: {
+    verify: async (body) => {
+      if (body.signature !== 'test-signature') throw new Error('Invalid signature');
+      return body.data;
     }
-  });
-}
+  }
+});
 
 console.log('🧪 Đang chạy bộ kiểm thử tự động API (MediCare Plus Automated Test Suite)...');
 
@@ -189,7 +192,7 @@ server.listen(5099, async () => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        amount: 2000,
+        amount: 350000,
         description: 'TEST MEDICARE',
         patientName: 'Nguyen Van Test',
         patientPhone: '0988776655'
@@ -200,6 +203,35 @@ server.listen(5099, async () => {
     assert.strictEqual(payData.success, true);
     assert.ok(payData.data.orderCode);
     assert.ok(payData.data.checkoutUrl);
+    assert.strictEqual(payData.data.amount, 350000);
+    assert.strictEqual(payosRequests.at(-1).amount, 350000);
+
+    const requestPayment = (amount) => fetch(`${baseUrl}/payments/create-payment-link`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amount }),
+    });
+    const secondRes = await requestPayment(250000);
+    const second = (await secondRes.json()).data;
+    assert.strictEqual(second.amount, 250000);
+    assert.strictEqual(payosRequests.at(-1).amount, 250000);
+    assert.strictEqual((await requestPayment(0)).status, 400);
+    assert.strictEqual(payosRequests.length, 2);
+
+    const statusOf = async (code) => {
+      const res = await fetch(`${baseUrl}/payments/status/${code}`);
+      return (await res.json()).data.status;
+    };
+    providerPayments.set(second.orderCode, {
+      orderCode: second.orderCode, status: 'PAID', amount: 250000,
+      amountPaid: 249000, amountRemaining: 1000,
+    });
+    assert.strictEqual(await statusOf(second.orderCode), 'PENDING');
+    providerPayments.set(second.orderCode, {
+      orderCode: second.orderCode, status: 'PAID', amount: 250000,
+      amountPaid: 250000, amountRemaining: 0,
+    });
+    assert.strictEqual(await statusOf(second.orderCode), 'PAID');
     assert.ok(payData.data.qrCode);
     console.log(`   ✅ Test 11 Passed: Tạo VietQR PayOS thành công với OrderCode ${payData.data.orderCode}.`);
 
@@ -210,11 +242,12 @@ server.listen(5099, async () => {
     assert.strictEqual(statusRes.status, 200);
     assert.strictEqual(statusData.success, true);
     assert.strictEqual(statusData.data.orderCode, payData.data.orderCode);
+    assert.strictEqual(statusData.data.status, 'PENDING');
     console.log(`   ✅ Test 12 Passed: Tra cứu trạng thái thành công (Status: ${statusData.data.status}).`);
 
     // Test 13: PayOS - Giả lập Webhook thanh toán thành công
     console.log('👉 [Test 13]: Kiểm tra Webhook PayOS cập nhật trạng thái đơn hàng...');
-    const webhookRes = await fetch(`${baseUrl}/payments/payos-webhook`, {
+    const sendWebhook = (signature, amount) => fetch(`${baseUrl}/payments/payos-webhook`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -222,14 +255,21 @@ server.listen(5099, async () => {
         desc: 'success',
         data: {
           orderCode: payData.data.orderCode,
-          amount: 2000,
+          amount,
+          code: '00',
           description: 'TEST MEDICARE',
           accountNumber: payData.data.accountNumber,
           reference: 'FT2400000000',
           transactionDateTime: new Date().toISOString()
-        }
+        },
+        signature,
       })
     });
+    assert.strictEqual((await sendWebhook('invalid', 350000)).status, 400);
+    assert.strictEqual(await statusOf(payData.data.orderCode), 'PENDING');
+    assert.strictEqual((await sendWebhook('test-signature', 1000)).status, 200);
+    assert.strictEqual(await statusOf(payData.data.orderCode), 'PENDING');
+    const webhookRes = await sendWebhook('test-signature', 350000);
     const webhookData = await webhookRes.json();
     assert.strictEqual(webhookRes.status, 200);
     assert.strictEqual(webhookData.success, true);
@@ -244,8 +284,46 @@ server.listen(5099, async () => {
     assert.ok(paidStatusData.data.paidAt);
     console.log('   ✅ Test 14 Passed: Trạng thái đơn hàng đã chuyển sang PAID chuẩn xác.');
 
+    const cloudOrders = new Map();
+    clinicOrders.getPatient = async (token) => ['patient-a', 'patient-b'].includes(token) ? token : null;
+    clinicOrders.getDoctorFee = async () => 350000;
+    clinicOrders.isSlotAvailable = async () => true;
+    clinicOrders.createOrder = async (order) => cloudOrders.set(order.order_code, order);
+    clinicOrders.getOrder = async (code) => cloudOrders.get(code);
+    clinicOrders.markPaid = async (code) => {
+      const order = cloudOrders.get(code);
+      order.paid_at = new Date().toISOString();
+      return order.paid_at;
+    };
+    const createCloudPayment = (amount) => fetch(`${baseUrl}/payments/create-payment-link`, {
+      method: 'POST',
+      headers: { Authorization: 'Bearer patient-a', 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        amount,
+        doctorId: 'doc-1',
+        startsAt: new Date(Date.now() + 86400000).toISOString(),
+      }),
+    });
+    assert.strictEqual((await createCloudPayment(1000)).status, 409);
+    assert.strictEqual(cloudOrders.size, 0);
+    const cloudRes = await createCloudPayment(350000);
+    assert.strictEqual(cloudRes.status, 200);
+    const cloudCode = (await cloudRes.json()).data.orderCode;
+    const cloudStatus = (token) => fetch(`${baseUrl}/payments/status/${cloudCode}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    assert.strictEqual((await cloudStatus('patient-b')).status, 404);
+    assert.strictEqual((await (await cloudStatus('patient-a')).json()).data.status, 'PENDING');
+    providerPayments.set(cloudCode, {
+      orderCode: cloudCode, status: 'PAID', amount: 350000,
+      amountPaid: 350000, amountRemaining: 0,
+    });
+    assert.strictEqual((await (await cloudStatus('patient-a')).json()).data.status, 'PAID');
+    assert.ok(cloudOrders.get(cloudCode).paid_at);
+    console.log('   ✅ Test 15 Passed: PayOS Cloud validates the fee and records verified payment.');
+
     // Tổng kết kết quả
-    console.log('\n🎉 TẤT CẢ 14/14 BÀI KIỂM THỬ ĐÃ PASS THÀNH CÔNG! (100% PASS RATE)');
+    console.log('\n🎉 TẤT CẢ 15/15 BÀI KIỂM THỬ ĐÃ PASS THÀNH CÔNG! (100% PASS RATE)');
 
     server.closeAllConnections?.();
     server.close(() => {

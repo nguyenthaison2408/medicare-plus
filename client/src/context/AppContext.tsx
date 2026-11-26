@@ -493,6 +493,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         const supabase = getSupabase();
         const { data: { session } } = await supabase.auth.getSession();
         if (!mounted || request !== generation) return;
+        if (cloudUserIdRef.current !== (session?.user.id ?? null)) setLabResults([]);
         cloudUserIdRef.current = session?.user.id ?? null;
         if (!session) {
           setAppointments([]);
@@ -687,7 +688,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
             })
           );
         } catch {
-          // Lab results table may not exist on older DB deployments; keep empty silently.
+          if (mounted && request === generation) setLabResults([]);
         }
       } catch (error) {
         if (mounted && request === generation) setCloudSyncError(error instanceof Error ? error.message : 'Không tải được dữ liệu trực tuyến.');

@@ -70,6 +70,19 @@ begin
     raise exception 'Đường dẫn lưu trữ tệp không hợp lệ.' using errcode = '22023';
   end if;
 
+  if p_file_path not like 'appointments/' || v_apt.id::text || '/%'
+     or p_file_path ~ '(^|/)\.\.(/|$)' then
+    raise exception 'INVALID_LAB_APPOINTMENT_PATH' using errcode = '22023';
+  end if;
+  if exists (select 1 from public.clinic_lab_results where file_path = trim(p_file_path)) then
+    raise exception 'LAB_FILE_ALREADY_LINKED' using errcode = '22023';
+  end if;
+  if to_regclass('storage.objects') is not null then
+    if not exists (select 1 from storage.objects where bucket_id = 'clinic-lab-results' and name = p_file_path) then
+      raise exception 'LAB_FILE_NOT_UPLOADED' using errcode = '22023';
+    end if;
+  end if;
+
   insert into public.clinic_lab_results (
     appointment_id,
     patient_id,

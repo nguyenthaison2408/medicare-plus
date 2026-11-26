@@ -45,6 +45,7 @@ export function inferLabMimeType(
     return normalizedMime as LabAllowedMimeType;
   }
 
+  if (normalizedMime && normalizedMime !== 'application/octet-stream') return null;
   const lowerName = (fileName || '').trim().toLowerCase();
   if (lowerName.endsWith('.pdf')) return 'application/pdf';
   if (lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg')) return 'image/jpeg';

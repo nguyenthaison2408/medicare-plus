@@ -57,7 +57,7 @@ export async function resolveLabFileUrl(
     .storage.from(LAB_STORAGE_BUCKET)
     .createSignedUrl(filePath, 3600);
   if (error || !data?.signedUrl) {
-    return fallbackUrl;
+    return undefined;
   }
   return data.signedUrl;
 }
@@ -80,13 +80,7 @@ export async function fetchLabResultsCloud(role: string): Promise<LabResultItem[
   }
 
   const rows = (data || []) as CloudLabResultRow[];
-  const items = await Promise.all(
-    rows.map(async (row) => {
-      const signedUrl = await resolveLabFileUrl(row.file_path);
-      return toLabResult(row, signedUrl);
-    })
-  );
-  return items;
+  return rows.map((row) => toLabResult(row));
 }
 
 export async function uploadLabResultCloud(
@@ -164,8 +158,7 @@ export async function uploadLabResultCloud(
   }
 
   const row = data as CloudLabResultRow;
-  const signedUrl = await resolveLabFileUrl(row.file_path, input.file.localPreviewUrl);
-  return toLabResult(row, signedUrl);
+  return toLabResult(row);
 }
 
 export async function deleteLabResultCloud(resultId: string): Promise<void> {

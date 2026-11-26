@@ -1,3 +1,15 @@
+-- Storage permissions follow the appointment's assigned doctor, never all doctors.
+create or replace function clinic_private.can_manage_lab_path(p_path text)
+returns boolean language sql stable security definer set search_path = '' as $$
+ select exists(select 1 from public.clinic_appointments a
+ where split_part(p_path,'/',1)='appointments'
+ and split_part(p_path,'/',2)=a.id::text
+ and p_path !~ '(^|/)\.\.(/|$)'
+ and clinic_private.can_write_record(a.doctor_id));
+$$;
+revoke all on function clinic_private.can_manage_lab_path(text) from public, anon;
+grant execute on function clinic_private.can_manage_lab_path(text) to authenticated;
+
 -- Migration 3: Configure Supabase Storage bucket and policies for clinic-lab-results
 -- Wrapped in schema check so local PGlite verification without storage schema succeeds cleanly.
 do $$
@@ -25,11 +37,7 @@ begin
         to authenticated
         with check (
           bucket_id = 'clinic-lab-results'
-          and exists (
-            select 1 from public.clinic_profiles p
-            where p.id = (select auth.uid())
-              and p.role in ('doctor', 'admin')
-          )
+          and clinic_private.can_manage_lab_path(name)
         )
     $pol$;
 
@@ -41,11 +49,7 @@ begin
         to authenticated
         using (
           bucket_id = 'clinic-lab-results'
-          and exists (
-            select 1 from public.clinic_profiles p
-            where p.id = (select auth.uid())
-              and p.role in ('doctor', 'admin')
-          )
+          and clinic_private.can_manage_lab_path(name)
         )
     $pol$;
 
@@ -58,11 +62,7 @@ begin
         using (
           bucket_id = 'clinic-lab-results'
           and (
-            exists (
-              select 1 from public.clinic_profiles p
-              where p.id = (select auth.uid())
-                and p.role in ('doctor', 'admin')
-            )
+            clinic_private.can_manage_lab_path(name)
             or exists (
               select 1 from public.clinic_lab_results r
               where r.file_path = name

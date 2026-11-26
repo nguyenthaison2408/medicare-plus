@@ -1,3 +1,4 @@
+﻿import fs from 'node:fs';import vm from 'node:vm';import {stripTypeScriptTypes} from 'node:module';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
@@ -72,3 +73,14 @@ test('explicit unsupported MIME cannot be disguised by a PDF extension',()=>{
  assert.equal(validateLabFileMeta('payload.pdf','text/html',1024).ok,false);
  assert.equal(validateLabFileMeta('report.pdf','application/octet-stream',1024).ok,true);
 });
+
+test('private file authorization failure never reuses a cached signed URL',async()=>{
+ const f=labService({storage:{from:()=>({createSignedUrl:async()=>({data:null,error:{message:'Denied'}})})}});
+ assert.equal(await f.resolveLabFileUrl('appointments/private/file.pdf','https://old-signed.test'),undefined);
+});
+test('lab list does not eagerly mint or retain signed file URLs',async()=>{
+ let signs=0;const f=labService({storage:{from:()=>({createSignedUrl:async()=>{signs++;return{data:{signedUrl:'cached'}}}})},from:()=>({select:()=>({order:async()=>({data:[{id:'test',file_path:'appointments/test/file.pdf'}],error:null})})})});
+ const results=await f.fetchLabResultsCloud('patient');assert.equal(results.length,1);assert.equal(results[0].previewUrl,undefined);assert.equal(signs,0);
+});
+function labService(client){const code=stripTypeScriptTypes(fs.readFileSync(new URL('../client/src/services/clinicLabResults.ts',import.meta.url),'utf8').replace(/import[\s\S]*?from\s*['"][^'"]+['"];?/g,'')).replace(/export\s+/g,'');return vm.runInNewContext(code+';({resolveLabFileUrl,fetchLabResultsCloud})',{CLOUD_MODE:true,getSupabase:()=>client});}
+

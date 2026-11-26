@@ -22,5 +22,5 @@ Client (App / Web)
 3. Client gọi qua `askGeminiEdgeAssistant()` trong `client/src/services/aiEdgeClient.ts` và tự động fallback về `aiTriageEngine` cục bộ nếu mất mạng hoặc chưa đăng nhập.
 
 ## 4. Kiểm thử tự động
-- `npm run test:ai`: **19/19 tests PASS**, bao gồm kiểm tra `sanitizeGeminiReply`, `buildGeminiHistory`, và bài test bảo mật quét toàn bộ `client/src/` để đảm bảo không rò rỉ API Key.
+- `npm run test:ai`: **26/26 tests PASS**, bao gồm kiểm tra `sanitizeGeminiReply`, `buildGeminiHistory`, và bài test bảo mật quét toàn bộ `client/src/` để đảm bảo không rò rỉ API Key.
 - `npm run lint` & `npm run typecheck`: **0 lỗi, 0 cảnh báo**.

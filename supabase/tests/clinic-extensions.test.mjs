@@ -13,6 +13,10 @@ try{
  await check('all current migrations apply to clean PostgreSQL',async()=>{});
  for(const [name,id] of Object.entries(ids))await db.query('insert into auth.users values($1,$2)',[id,JSON.stringify({full_name:'Test '+name,phone:'0901234567'})]);
  for(const role of ['doctor','reception','admin'])await db.query('update clinic_profiles set role=$1,doctor_id=$2 where id=$3',[role,role==='doctor'?'doc-1':null,ids[role]]);
+ await check('PayOS backend service role can read profile roles and doctor fees',async()=>{
+  const privileges=(await db.query("select has_table_privilege('service_role','public.clinic_profiles','SELECT') as profiles,has_table_privilege('service_role','public.clinic_doctors','SELECT') as doctors")).rows[0];
+  assert.equal(privileges.profiles,true);assert.equal(privileges.doctors,true);
+ });
  const paidSlot = (await db.query(
   "select (((now() at time zone 'Asia/Ho_Chi_Minh')::date+2)+time '11:00') at time zone 'Asia/Ho_Chi_Minh' as value"
  )).rows[0].value;

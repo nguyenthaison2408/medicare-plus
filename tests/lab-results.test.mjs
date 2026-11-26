@@ -67,3 +67,8 @@ test('5. File size formatter and MIME helpers produce expected outputs', () => {
   assert.equal(inferLabMimeType('doc.webp', ''), 'image/webp');
   assert.equal(inferLabMimeType('doc.docx', ''), null);
 });
+
+test('explicit unsupported MIME cannot be disguised by a PDF extension',()=>{
+ assert.equal(validateLabFileMeta('payload.pdf','text/html',1024).ok,false);
+ assert.equal(validateLabFileMeta('report.pdf','application/octet-stream',1024).ok,true);
+});

@@ -73,6 +73,7 @@ export interface AppointmentItem {
   doctor: DoctorItem;
   dateLabel: string;
   timeRange: string;
+  startsAt?: string;
   queueNumber?: string;
   room?: string;
   status: 'upcoming' | 'completed' | 'cancelled';

@@ -23,3 +23,5 @@ create index if not exists clinic_lab_results_appointment_idx
 
 create index if not exists clinic_lab_results_doctor_idx
   on public.clinic_lab_results(doctor_id, created_at desc);
+
+create unique index if not exists clinic_lab_results_file_path_idx on public.clinic_lab_results(file_path);

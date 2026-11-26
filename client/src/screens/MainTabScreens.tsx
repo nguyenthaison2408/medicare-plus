@@ -31,6 +31,7 @@ import { ClinicPatientRecordsScreen } from './ClinicPatientScreens';
 import { refineFollowUp } from '../services/aiConversation';
 import { runClinicalTriage } from '../services/aiTriageEngine';
 import { checkEHRSafetyGuardrails } from '../services/aiSafetyGuardrails';
+import { promptImagePicker } from '../services/imagePickerService';
 import {
   HomeGreetingHeader,
   SearchBar,
@@ -1423,48 +1424,14 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
   const [profileToast, setProfileToast] = useState<string | null>(null);
 
   const pickAvatarFromDevice = (onPicked: (dataUri: string) => void) => {
-    if (Platform.OS !== 'web' || typeof document === 'undefined') {
-      Alert.alert(
-        'Chọn ảnh đại diện',
-        'Tính năng tải ảnh trực tiếp từ máy tính đang hỗ trợ trên trình duyệt Web.'
-      );
-      return;
-    }
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
-    input.onchange = () => {
-      const file = input.files?.[0];
-      if (!file) return;
-      if (file.size > 5 * 1024 * 1024) {
-        setEditError('Ảnh tải lên không vượt quá 5MB.');
-        return;
-      }
-      const reader = new FileReader();
-      reader.onload = () => {
-        const result = typeof reader.result === 'string' ? reader.result : '';
-        if (!result) return;
-        const img = new window.Image();
-        img.onload = () => {
-          const maxDim = 320;
-          const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
-          const canvas = document.createElement('canvas');
-          canvas.width = Math.max(1, Math.round(img.width * scale));
-          canvas.height = Math.max(1, Math.round(img.height * scale));
-          const ctx = canvas.getContext('2d');
-          if (ctx) {
-            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-            onPicked(canvas.toDataURL('image/jpeg', 0.85));
-          } else {
-            onPicked(result);
-          }
-        };
-        img.onerror = () => onPicked(result);
-        img.src = result;
-      };
-      reader.readAsDataURL(file);
-    };
-    input.click();
+    promptImagePicker({
+      title: 'Ảnh đại diện',
+      message: 'Bạn muốn chụp ảnh mới hay chọn ảnh có sẵn trong thư viện?',
+      aspect: [1, 1],
+      quality: 0.6,
+      onSuccess: onPicked,
+      onError: (msg) => setEditError(msg),
+    });
   };
 
   const handleQuickAvatarUpload = () => {

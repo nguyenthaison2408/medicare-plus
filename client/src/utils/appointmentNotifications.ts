@@ -23,12 +23,12 @@ export function buildAppointmentNotifications(
   for (const appointment of appointments) {
     const startsAt = Date.parse(appointment.startsAt ?? '');
     const hasKnownStart = Number.isFinite(startsAt);
-    const isUpcoming = appointment.status === 'upcoming';
+    const kind = appointment.status === 'upcoming' ? 'reminder' : appointment.status;
+    const isUpcoming = kind === 'reminder';
     if (isUpcoming && (!hasKnownStart || startsAt <= nowMs)) continue;
 
     const when = hasKnownStart ? clinicDateTime.format(startsAt) : appointment.timeRange;
     const place = appointment.mode === 'video' ? 'Khám trực tuyến' : appointment.doctor.hospital;
-    const kind = isUpcoming ? 'reminder' : appointment.status;
     const title = kind === 'reminder'
       ? 'Nhắc lịch khám sắp tới'
       : kind === 'completed' ? 'Lịch khám đã hoàn thành' : 'Lịch khám đã hủy';

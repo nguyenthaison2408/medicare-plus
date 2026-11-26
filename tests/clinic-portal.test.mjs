@@ -44,6 +44,64 @@ test('avatar-only profile update preserves an omitted phone and supplies initiat
 });
 const toClinicStart=vm.runInNewContext(clean(read('client/src/utils/bookingSlots.ts'))+';toClinicStart');
 function service(file,names,client){return vm.runInNewContext(clean(read(file))+';({'+names.join(',')+'})',{CLOUD_MODE:true,getSupabase:()=>client,toClinicStart});}
+test('clinic appointment reads can be scoped to the patient and include the linked record',async()=>{
+ const filters=[];
+ const query={
+  select(fields){assert.match(fields,/clinic_medical_records\(diagnosis, medications, notes\)/);return this;},
+  eq(column,value){filters.push([column,value]);return this;},
+  order:async()=>({data:[],error:null}),
+ };
+ const api=service('client/src/services/clinicCloud.ts',['listClinicAppointments'],{from:()=>query});
+ await api.listClinicAppointments('patient-a');
+ await api.listClinicAppointments();
+ assert.deepEqual(filters,[['patient_id','patient-a']]);
+});
+
+test('completed visit cards show their own database diagnosis or an empty state',()=>{
+ const doctor={id:'doc-1',name:'Bác sĩ QA',hospital:'Cơ sở QA'};
+ const {clinicAppointmentToItem,visitDiagnosisText}=vm.runInNewContext(
+  clean(read('client/src/services/clinicAdapters.ts'))+';({clinicAppointmentToItem,visitDiagnosisText})',
+  {DOCTORS:[doctor]}
+ );
+ const row={doctor_id:doctor.id,status:'COMPLETED',starts_at:'2026-11-25T08:00:00+07:00'};
+ const rows=[
+  {...row,id:'visit-a',clinic_medical_records:{diagnosis:'Kết quả A'}},
+  {...row,id:'visit-b',clinic_medical_records:[{diagnosis:'Kết quả B'}]},
+  {...row,id:'visit-c',clinic_medical_records:null},
+ ];
+ const screen=read('client/src/screens/MainTabScreens.tsx');
+ const completedTab=screen.slice(screen.indexOf("{statusTab === 'completed'"));
+ assert.match(completedTab,/completedList\.map\(\(apt\)/);
+ assert.match(completedTab,/\{visitDiagnosisText\(apt\)\}/);
+ assert.match(completedTab,/onNavigate\('postConsultSummary', apt\.id\)/);
+ assert.deepEqual(rows.map(row=>visitDiagnosisText(clinicAppointmentToItem(row))),[
+  'Chẩn đoán: Kết quả A',
+  'Chẩn đoán: Kết quả B',
+  'Chưa có chẩn đoán được bác sĩ lưu.',
+ ]);
+});
+
+test('appointment notifications prioritize future reminders and reflect actual appointment status',()=>{
+ const build=vm.runInNewContext(
+  clean(read('client/src/utils/appointmentNotifications.ts'))+';buildAppointmentNotifications'
+ );
+ const now=Date.parse('2026-11-26T02:00:00Z');
+ const make=(id,status,startsAt)=>({
+  id,status,startsAt,mode:'clinic',doctor:{name:'Bác sĩ QA',hospital:'Cơ sở QA'},
+ });
+ const result=build([
+  make('later','upcoming','2026-11-26T11:00:00+07:00'),
+  make('cancelled','cancelled','2026-11-26T10:00:00+07:00'),
+  make('elapsed','upcoming','2026-11-26T09:00:00+07:00'),
+  make('next','upcoming','2026-11-26T09:30:00+07:00'),
+  make('done','completed','2026-11-25T09:00:00+07:00'),
+ ],now);
+ assert.deepEqual(Array.from(result,item=>[item.appointmentId,item.kind]),[
+  ['next','reminder'],['later','reminder'],['cancelled','cancelled'],['done','completed'],
+ ]);
+ assert.match(result[0].description,/09:30.*Bác sĩ QA.*Cơ sở QA/);
+ assert.equal(build([],now).length,0);
+});
 test('editing a shift updates its id instead of creating a new date/shift row',async()=>{
  let updatedId,payload;const table={update:p=>{payload=p;return table;},eq:(column,id)=>{updatedId=id;return table;},select:()=>table,single:async()=>({data:{id:updatedId,...payload},error:null}),upsert:()=>{throw Error('Should update existing id');}};
  const api=service('client/src/services/clinicAdmin.ts',['upsertDoctorScheduleCloud'],{from:()=>table});

@@ -33,6 +33,7 @@ export function clinicAppointmentToItem(appointment: ClinicAppointment): Appoint
     patientPhone: appointment.patient_phone,
     patientEmail: appointment.patient_email,
     symptoms: appointment.symptoms,
+    diagnosis: clinicRecord(appointment)?.diagnosis?.trim() || undefined,
     statusBadge: appointment.status === 'CHECKED_IN' ? 'Đã có mặt'
       : appointment.status === 'COMPLETED' ? 'Đã hoàn tất khám'
       : appointment.status === 'CANCELLED' ? 'Đã hủy'

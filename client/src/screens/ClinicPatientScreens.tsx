@@ -23,7 +23,7 @@ function useClinicData() {
     if(!expected){setRows([]);setProfile(null);setLoadedOwner(null);setError('');setLoading(false);return;}
     setLoading(true);
     try {
-      const [nextProfile,nextRows]=await Promise.all([loadClinicProfile(),listClinicAppointments()]);
+      const [nextProfile,nextRows]=await Promise.all([loadClinicProfile(),listClinicAppointments(expected)]);
       if(generation.current!==request)return;
       if(nextProfile.id!==expected)throw new Error('Phiên đăng nhập đã thay đổi. Vui lòng tải lại.');
       setProfile(nextProfile);setRows(nextRows);setLoadedOwner(expected);setError('');

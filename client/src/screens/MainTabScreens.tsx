@@ -29,6 +29,7 @@ import { useAppContext } from '../context/AppContext';
 import { CLOUD_MODE } from '../services/supabaseClient';
 import { ClinicPatientRecordsScreen } from './ClinicPatientScreens';
 import { visitDiagnosisText } from '../services/clinicAdapters';
+import { buildAppointmentNotifications } from '../utils/appointmentNotifications';
 import { refineFollowUp } from '../services/aiConversation';
 import { runClinicalTriage } from '../services/aiTriageEngine';
 import { checkEHRSafetyGuardrails } from '../services/aiSafetyGuardrails';
@@ -123,8 +124,14 @@ export interface HomeScreenProps {
   onBookDoctor: (doctor: DoctorItem) => void;
   onAskAI: () => void;
   onOpenProfile: () => void;
-  onNavigate: (routeKey: string) => void;
+  onNavigate: (routeKey: string, appointmentId?: string) => void;
 }
+
+const notificationStyles = {
+  reminder: { icon: 'calendar-outline', color: COLORS.primary, background: COLORS.primaryContainer },
+  completed: { icon: 'checkmark-circle-outline', color: COLORS.secondary, background: COLORS.tintTeal },
+  cancelled: { icon: 'close-circle-outline', color: COLORS.error, background: COLORS.errorContainer },
+} as const;
 
 export const HomeScreen: React.FC<HomeScreenProps> = ({
   onSelectDoctor,
@@ -147,6 +154,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   const [selectedMapHospital, setSelectedMapHospital] = useState<HospitalItem | null>(null);
   const [notificationsVisible, setNotificationsVisible] = useState(false);
   const insets = useSafeAreaInsets();
+  const notifications = notificationsVisible ? buildAppointmentNotifications(appointments) : [];
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -498,6 +506,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               backgroundColor: COLORS.surface,
               borderTopLeftRadius: RADIUS.xl,
               borderTopRightRadius: RADIUS.xl,
+              maxHeight: '80%',
               padding: SPACING.lg,
               paddingBottom: Math.max(insets.bottom, SPACING.lg),
             }}
@@ -534,96 +543,63 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               </TouchableOpacity>
             </View>
 
-            {[
-              {
-                id: 'notif-apt',
-                icon: 'calendar-outline' as const,
-                color: COLORS.primary,
-                bg: COLORS.primaryContainer,
-                title: 'Nhắc lịch khám sắp tới (09:30)',
-                desc: 'Khám Nội Thần Kinh với TS. BS. Lê Thu Trang tại BV ĐHYD TP.HCM.',
-                route: 'appointments',
-              },
-              {
-                id: 'notif-med',
-                icon: 'alarm-outline' as const,
-                color: COLORS.secondary,
-                bg: COLORS.tintTeal,
-                title: 'Nhắc uống thuốc theo đơn',
-                desc: 'Paracetamol 500mg & Magnesi-B6 • Ghi nhận cữ uống trong ngày.',
-                route: 'medLog',
-              },
-              {
-                id: 'notif-lab',
-                icon: 'flask-outline' as const,
-                color: COLORS.primary,
-                bg: COLORS.surfaceContainerLow,
-                title: 'Đã có kết quả MRI & Xét nghiệm',
-                desc: 'Kết quả chụp cộng hưởng từ (MRI) sọ não và sinh hóa máu đã cập nhật.',
-                route: 'labImagingResults',
-              },
-            ].map((item) => (
-              <TouchableOpacity
-                key={item.id}
-                activeOpacity={0.85}
-                accessibilityRole="button"
-                accessibilityLabel={`${item.title}. ${item.desc}`}
-                onPress={() => {
-                  setNotificationsVisible(false);
-                  onNavigate(item.route);
-                }}
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  padding: SPACING.md,
-                  borderRadius: RADIUS.md,
-                  backgroundColor: COLORS.background,
-                  marginBottom: SPACING.sm,
-                  borderWidth: 1,
-                  borderColor: COLORS.borderSubtle,
-                }}
-              >
-                <View
-                  style={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: 20,
-                    backgroundColor: item.bg,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    marginRight: SPACING.md,
-                  }}
-                >
-                  <Ionicons name={item.icon} size={20} color={item.color} />
-                </View>
-                <View style={{ flex: 1, marginRight: SPACING.xs }}>
-                  <Text
-                    style={{
-                      fontSize: TYPOGRAPHY.body,
-                      fontWeight: '700',
-                      color: COLORS.textPrimary,
-                      marginBottom: 2,
-                    }}
-                  >
-                    {item.title}
-                  </Text>
-                  <Text
-                    style={{
-                      fontSize: TYPOGRAPHY.caption,
-                      color: COLORS.textSecondary,
-                      lineHeight: 17,
-                    }}
-                  >
-                    {item.desc}
-                  </Text>
-                </View>
-                <Ionicons
-                  name="chevron-forward"
-                  size={18}
-                  color={COLORS.textMuted}
-                />
-              </TouchableOpacity>
-            ))}
+            {!notifications.length ? (
+              <Text style={{ color: COLORS.textSecondary }}>Bạn chưa có thông báo lịch khám.</Text>
+            ) : (
+              <ScrollView style={{ flexShrink: 1 }}>
+                {notifications.map((item) => {
+                  const appearance = notificationStyles[item.kind];
+                  const canOpen = item.kind !== 'cancelled';
+                  return (
+                    <TouchableOpacity
+                      key={item.appointmentId}
+                      activeOpacity={0.85}
+                      disabled={!canOpen}
+                      accessibilityRole={canOpen ? 'button' : 'text'}
+                      accessibilityLabel={`${item.title}. ${item.description}`}
+                      onPress={() => {
+                        setNotificationsVisible(false);
+                        if (item.kind === 'completed') onNavigate('postConsultSummary', item.appointmentId);
+                        else onNavigate('appointments');
+                      }}
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        padding: SPACING.md,
+                        borderRadius: RADIUS.md,
+                        backgroundColor: COLORS.background,
+                        marginBottom: SPACING.sm,
+                        borderWidth: 1,
+                        borderColor: COLORS.borderSubtle,
+                      }}
+                    >
+                      <View
+                        style={{
+                          width: 40,
+                          height: 40,
+                          borderRadius: 20,
+                          backgroundColor: appearance.background,
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          marginRight: SPACING.md,
+                        }}
+                      >
+                        <Ionicons name={appearance.icon} size={20} color={appearance.color} />
+                      </View>
+                      <View style={{ flex: 1, marginRight: SPACING.xs }}>
+                        <Text style={{ fontSize: TYPOGRAPHY.body, fontWeight: '700', color: COLORS.textPrimary, marginBottom: 2 }}>
+                          {item.title}
+                        </Text>
+                        <Text style={{ fontSize: TYPOGRAPHY.caption, color: COLORS.textSecondary, lineHeight: 17 }}>
+                          {item.description}
+                        </Text>
+                      </View>
+                      {canOpen && <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />}
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            )}
           </View>
         </View>
       </Modal>

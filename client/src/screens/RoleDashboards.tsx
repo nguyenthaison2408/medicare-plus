@@ -36,6 +36,10 @@ import {
   type ConsultMessageItem,
 } from '../services/clinicChat';
 import { ClinicStaffScreen, extractBookingCode } from './ClinicStaffScreen';
+import { DoctorLabUploadModal } from '../components/medical/DoctorLabUploadModal';
+import { LabFileViewerModal } from '../components/medical/LabFileViewerModal';
+import type { LabResultItem } from '../types/labResults';
+import { LAB_CATEGORY_META, formatLabFileSize } from '../utils/labResultValidation';
 import { promptImagePicker } from '../services/imagePickerService';
 import {
   AppHeader,
@@ -1906,7 +1910,13 @@ export const DoctorDashboardScreen: React.FC<DoctorDashboardScreenProps> = ({
     diagnosisNote,
     setDiagnosisNote,
     cloudProfile,
+    labResults,
+    uploadLabResult,
+    deleteLabResult,
   } = useAppContext();
+
+  const [labUploadVisible, setLabUploadVisible] = useState(false);
+  const [viewingLabItem, setViewingLabItem] = useState<LabResultItem | null>(null);
 
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const [doctorCameraVisible, setDoctorCameraVisible] = useState(false);
@@ -2468,6 +2478,92 @@ export const DoctorDashboardScreen: React.FC<DoctorDashboardScreenProps> = ({
                 setTimeout(() => onNavigate('postConsultSummary'), 600);
               }
             }}
+          />
+        </View>
+
+        {/* Kết quả Cận lâm sàng (PDF / X-Quang) - Supabase Storage */}
+        <View style={[styles.card, SHADOWS.sm]}>
+          <SectionHeader
+            title="Kết quả Cận lâm sàng (PDF / X-Quang)"
+            leftIcon="scan-outline"
+            badgeText={`${labResults.filter((r) => !activePatient || r.appointmentId === activePatient.id || r.patientId === cloudProfile?.id).length} tệp`}
+            badgeVariant="teal"
+          />
+          <Text style={[styles.docSub, { marginBottom: 10 }]}>
+            Tải lên kết quả xét nghiệm máu (PDF) hoặc hình ảnh X-Quang / MRI để bệnh nhân mở xem ngay trên hồ sơ bệnh án.
+          </Text>
+          {labResults
+            .filter((r) => !activePatient || r.appointmentId === activePatient.id || !CLOUD_MODE)
+            .map((item) => {
+              const catMeta = LAB_CATEGORY_META[item.category] || LAB_CATEGORY_META.other;
+              return (
+                <View
+                  key={item.id}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    paddingVertical: 10,
+                    borderBottomWidth: 1,
+                    borderBottomColor: COLORS.borderSubtle,
+                  }}
+                >
+                  <View style={{ flex: 1, minWidth: 0, marginRight: 8 }}>
+                    <Text style={styles.docName} numberOfLines={1}>
+                      {item.title}
+                    </Text>
+                    <Text style={styles.docSub} numberOfLines={1}>
+                      {catMeta.shortLabel} • {item.fileName} ({formatLabFileSize(item.fileSizeBytes)})
+                    </Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', gap: 6 }}>
+                    <TouchableOpacity
+                      onPress={() => setViewingLabItem(item)}
+                      style={{
+                        paddingHorizontal: 10,
+                        paddingVertical: 6,
+                        borderRadius: RADIUS.sm,
+                        backgroundColor: COLORS.primaryContainer,
+                      }}
+                    >
+                      <Text style={{ fontSize: 12, fontWeight: '700', color: COLORS.primary }}>
+                        Xem
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={async () => {
+                        try {
+                          await deleteLabResult(item.id);
+                          setToastMessage(`Đã xóa kết quả "${item.title}".`);
+                        } catch (err) {
+                          setToastMessage(
+                            err instanceof Error ? err.message : 'Không thể xóa tệp kết quả.'
+                          );
+                        }
+                      }}
+                      style={{
+                        paddingHorizontal: 10,
+                        paddingVertical: 6,
+                        borderRadius: RADIUS.sm,
+                        backgroundColor: COLORS.errorContainer,
+                      }}
+                    >
+                      <Text style={{ fontSize: 12, fontWeight: '700', color: COLORS.error }}>
+                        Xóa
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              );
+            })}
+          <AppButton
+            title="+ Tải lên kết quả PDF / X-Quang"
+            variant="tonal"
+            size="md"
+            leftIcon="cloud-upload-outline"
+            style={{ marginTop: 10 }}
+            onPress={() => setLabUploadVisible(true)}
+            disabled={!activePatient}
           />
         </View>
       </ScrollView>
@@ -3274,6 +3370,24 @@ export const DoctorDashboardScreen: React.FC<DoctorDashboardScreenProps> = ({
         {activeTab === 'chat' && renderDoctorChat()}
         {activeTab === 'profile' && renderDoctorProfile()}
       </View>
+
+      <DoctorLabUploadModal
+        visible={labUploadVisible}
+        appointmentId={activePatient?.id || 'apt-1'}
+        patientName={activePatientName}
+        onClose={() => setLabUploadVisible(false)}
+        onUpload={uploadLabResult}
+        onSuccess={(created) =>
+          setToastMessage(
+            `Đã tải lên "${created.title}" lên Supabase Storage cho BN ${activePatientName}.`
+          )
+        }
+      />
+      <LabFileViewerModal
+        visible={Boolean(viewingLabItem)}
+        item={viewingLabItem}
+        onClose={() => setViewingLabItem(null)}
+      />
 
       {/* Doctor Bottom Bar */}
       <View style={[styles.roleTabBar, SHADOWS.md]}>

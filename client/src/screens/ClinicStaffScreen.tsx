@@ -68,17 +68,8 @@ export function computeQueueNumber(
   appointments: ClinicAppointment[],
   bookingCodeOrId: string
 ): string {
-  const active = [...appointments]
-    .filter((a) => a.status !== 'CANCELLED')
-    .sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime());
-  const normalizedTarget = bookingCodeOrId.trim().toUpperCase();
-  const idx = active.findIndex(
-    (a) =>
-      a.id === bookingCodeOrId ||
-      a.booking_code.trim().toUpperCase() === normalizedTarget
-  );
-  const seq = idx >= 0 ? idx + 1 : active.length + 1;
-  return `STT ${String(seq).padStart(2, '0')}`;
+  const target = appointments.find(a => a.id === bookingCodeOrId || a.booking_code.trim().toUpperCase() === bookingCodeOrId.trim().toUpperCase());
+  return target?.queue_number ? 'STT ' + String(target.queue_number).padStart(2,'0') : 'Chưa cấp STT';
 }
 
 export function ClinicStaffScreen({
@@ -113,7 +104,8 @@ export function ClinicStaffScreen({
   const [bookingCode, setBookingCode] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<StaffStatusFilter>('pending');
-  const [checkedInTicket, setCheckedInTicket] = useState<CheckedInQueueTicket | null>(null);
+  const [pendingTicketCode, setPendingTicketCode] = useState<string | null>(null);
+  const [issuedTicket, setCheckedInTicket] = useState<CheckedInQueueTicket | null>(null);
   const [selected, setSelected] = useState<ClinicAppointment | null>(null);
   const [diagnosis, setDiagnosis] = useState('');
   const [medicineName, setMedicineName] = useState('');
@@ -143,7 +135,8 @@ export function ClinicStaffScreen({
         patient_phone: item.patientPhone || '0901 234 567',
         patient_email: item.patientEmail || '',
         symptoms: item.symptoms || 'Khám tổng quát',
-        starts_at: item.startsAt || new Date().toISOString(),
+        starts_at: item.startsAt || '',
+        queue_number: Number(item.queueNumber?.match(/\d+/)?.[0]) || null,
         status,
         payment_method: 'at_clinic',
         payment_status: 'UNPAID',
@@ -193,33 +186,46 @@ export function ClinicStaffScreen({
     finally { setBusy(false); }
   };
 
-  const issueQueueTicket = (code: string, matched?: ClinicAppointment) => {
+  const issueQueueTicket = useCallback((code: string, matched?: ClinicAppointment) => {
     const target =
       matched ||
       appointments.find((a) => a.booking_code.trim().toUpperCase() === code.trim().toUpperCase());
-    const queueNumber = computeQueueNumber(appointments, target?.id || code);
-    const timeLabel = target
+    if (!target || target.status !== 'CHECKED_IN' || !target.queue_number) throw new Error('Chưa nhận được STT đã xác nhận. Vui lòng tải lại lịch khám.');
+    const queueNumber = computeQueueNumber([target], target.id);
+    const timeLabel = target.starts_at
       ? new Date(target.starts_at).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })
-      : new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+      : 'Xem giờ hẹn trên phiếu gốc';
+    setPendingTicketCode(null);
     setCheckedInTicket({
       queueNumber,
       patientName: target?.patient_name || 'Bệnh nhân đã tiếp đón',
       bookingCode: target?.booking_code || code,
       timeLabel,
-      roomLabel: 'Phòng khám chuyên khoa • Tầng 2',
+      roomLabel: 'Quầy tiếp đón sẽ hướng dẫn phòng khám',
     });
-  };
+  }, [appointments]);
 
-  const executeCheckIn = async (code: string, matched?: ClinicAppointment) => {
+  const checkedInTicket = useMemo<CheckedInQueueTicket | null>(() => {
+    if (!pendingTicketCode) return issuedTicket;
+    const target=appointments.find(a=>a.booking_code.toUpperCase()===pendingTicketCode.toUpperCase() && a.status==='CHECKED_IN' && a.queue_number);
+    return target ? {
+      queueNumber:computeQueueNumber([target],target.id),patientName:target.patient_name,bookingCode:target.booking_code,
+      timeLabel:target.starts_at ? new Date(target.starts_at).toLocaleString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh'}) : 'Xem giờ hẹn trên phiếu gốc',
+      roomLabel:'Quầy tiếp đón sẽ hướng dẫn phòng khám'
+    } : null;
+  }, [appointments,pendingTicketCode,issuedTicket]);
+
+  const executeCheckIn = async (code: string) => {
     if (CLOUD_MODE) {
-      await checkInClinic(code);
+      const checked = await checkInClinic(code);
+      issueQueueTicket(code, checked);
     } else {
       const ok = await contextCheckInByCode(code);
       if (!ok) {
         throw new Error(`Không tìm thấy lịch hẹn chờ tiếp đón với mã ${code}.`);
       }
     }
-    issueQueueTicket(code, matched);
+    if (!CLOUD_MODE) setPendingTicketCode(code);
   };
 
   const handlePrintOrShareTicket = async () => {
@@ -235,10 +241,18 @@ export function ClinicStaffScreen({
     ].join('\n');
 
     if (Platform.OS === 'web' && typeof window !== 'undefined') {
-      if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
-        navigator.clipboard.writeText(slipText).catch(() => {});
-      }
-      window.alert(`Đã sao chép phiếu STT!\n\n${slipText}`);
+      const printWindow = window.open('', '_blank');
+      if (!printWindow) { setError('Trình duyệt chặn cửa sổ in. Vui lòng cho phép popup rồi thử lại.'); return; }
+      try {
+        printWindow.opener = null;
+        printWindow.document.title = 'Phiếu số thứ tự MediCare Plus';
+        const text = printWindow.document.createElement('pre');
+        text.style.whiteSpace='pre-wrap';
+        text.textContent=slipText;
+        printWindow.document.body.appendChild(text);
+        printWindow.focus();
+        printWindow.print();
+      } catch { printWindow.close(); setError('Không mở được hộp thoại in. Vui lòng thử lại.'); }
       return;
     }
 
@@ -310,7 +324,7 @@ export function ClinicStaffScreen({
                 <Text style={styles.queueSlipTitle}>PHIẾU CẤP SỐ THỨ TỰ TẠI QUẦY</Text>
               </View>
               <TouchableOpacity
-                onPress={() => setCheckedInTicket(null)}
+                onPress={() => { setCheckedInTicket(null); setPendingTicketCode(null); }}
                 accessibilityLabel="Đóng phiếu STT"
               >
                 <Ionicons name="close-circle-outline" size={22} color={COLORS.textSecondary} />
@@ -496,7 +510,7 @@ export function ClinicStaffScreen({
                     disabled={busy}
                     onPress={() => {
                       void perform(async () => {
-                        await executeCheckIn(appointment.booking_code, appointment);
+                        await executeCheckIn(appointment.booking_code);
                         setSuccessMsg(`Đã tiếp đón bệnh nhân ${appointment.patient_name} (${queueLabel})!`);
                       });
                     }}

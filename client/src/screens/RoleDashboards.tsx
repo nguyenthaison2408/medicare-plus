@@ -1841,7 +1841,7 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({
           { key: 'schedules', label: 'Lịch trực', icon: 'time' },
           { key: 'appointments', label: 'Điều phối', icon: 'calendar' },
           { key: 'settings', label: 'BHYT', icon: 'shield-checkmark' },
-          ...(CLOUD_MODE ? [{ key: 'reception', label: 'Tiếp đón', icon: 'qr-code' }] : []),
+          { key: 'reception', label: 'Tiếp đón', icon: 'qr-code' },
         ].map((t) => {
           const active = activeTab === t.key;
           return (

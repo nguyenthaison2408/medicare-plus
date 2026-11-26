@@ -1,3 +1,4 @@
+import {buildGeminiHistory,sanitizeGeminiReply} from '../client/src/utils/aiHistory.ts';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
@@ -251,4 +252,47 @@ test('client source never embeds provider API credentials or bypasses PayOS veri
  const files=fs.readdirSync(new URL('../client/src/',import.meta.url),{recursive:true}).filter(p=>/\.(ts|tsx)$/.test(p));
  for(const p of files)assert.doesNotMatch(source(p),/EXPO_PUBLIC_(?:GEMINI|GROQ).*KEY|generativelanguage\.googleapis\.com|api\.groq\.com/,p);
  const payment=source('screens/BookingFlowScreens.tsx');assert.doesNotMatch(payment,/isDirectQr|directQrImageUrl|Tôi đã chuyển khoản/);
+});
+
+test('buildGeminiHistory bounds turns and extracts clinicalCard analysisText', () => {
+  const msgs = [
+    { sender: 'user', text: 'Tôi bị đau đầu' },
+    { sender: 'ai', clinicalCard: { analysisText: 'Bạn có thể khám Thần kinh.' } },
+    { sender: 'user', text: '   ' },
+    { sender: 'ai', text: 'Bạn đau mấy ngày rồi?' },
+  ];
+  const history = buildGeminiHistory(msgs, 2);
+  assert.equal(history.length, 2);
+  assert.deepEqual(history[0], { role: 'model', text: 'Bạn có thể khám Thần kinh.' });
+  assert.deepEqual(history[1], { role: 'model', text: 'Bạn đau mấy ngày rồi?' });
+});
+test('sanitizeGeminiReply strips markdown noise and enforces max length', () => {
+  assert.equal(sanitizeGeminiReply('   '), '');
+  assert.equal(
+    sanitizeGeminiReply('**Khuyến nghị:** Uống nhiều nước và `nghỉ ngơi`'),
+    'Khuyến nghị: Uống nhiều nước và nghỉ ngơi'
+  );
+  const longText = 'A'.repeat(120);
+  const clipped = sanitizeGeminiReply(longText, 50);
+  assert.equal(clipped.length, 50);
+  assert.ok(clipped.endsWith('...'));
+});
+test('security guardrail: client source never embeds Gemini API keys or direct endpoints', () => {
+  const srcRoot = new URL('../client/src/', import.meta.url);
+  const walk = (dir) => {
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    let files = [];
+    for (const entry of entries) {
+      const full = new URL(entry.name + (entry.isDirectory() ? '/' : ''), dir);
+      if (entry.isDirectory()) files = files.concat(walk(full));
+      else if (/\.(ts|tsx|js|jsx)$/.test(entry.name)) files.push(full);
+    }
+    return files;
+  };
+  for (const fileUrl of walk(srcRoot)) {
+    const content = fs.readFileSync(fileUrl, 'utf8');
+    assert.equal(/EXPO_PUBLIC_GEMINI/i.test(content), false, `Forbidden env var in ${fileUrl}`);
+    assert.equal(/AIza[0-9A-Za-z_-]{20,}/.test(content), false, `Forbidden API key literal in ${fileUrl}`);
+    assert.equal(/generativelanguage\.googleapis\.com/i.test(content), false, `Direct Gemini URL in ${fileUrl}`);
+  }
 });

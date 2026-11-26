@@ -1210,17 +1210,9 @@ export const BookingPaymentScreen: React.FC<BookingPaymentScreenProps> = ({
                   Thông tin chuyển khoản VietQR 24/7
                 </Text>
               </View>
-              <View style={styles.qrRow}>
-                <View style={styles.qrMockThumbnail}>
-                  <Ionicons name="qr-code" size={54} color={COLORS.primary} />
-                </View>
-                <View style={{ flex: 1, marginLeft: 12 }}>
-                  <Text style={styles.qrBankName}>Vietcombank • CN Tân Bình</Text>
-                  <Text style={styles.qrAccountNum}>STK: 988241029</Text>
-                  <Text style={styles.qrOwnerName}>BV MEDICARE PLUS Y TẾ SỐ</Text>
-                  <Text style={styles.qrMemo}>Nội dung: SC241029 8892</Text>
-                </View>
-              </View>
+              <Text style={styles.clinicInstructionText}>
+                Nhấn “Quét mã VietQR (PayOS)” để nhận mã QR, tài khoản thụ hưởng và nội dung chuyển khoản của giao dịch. Lịch chỉ được xác nhận sau khi dịch vụ thanh toán báo thành công.
+              </Text>
             </View>
           ) : (
             <View style={[styles.onlineTransferBox, SHADOWS.sm]}>

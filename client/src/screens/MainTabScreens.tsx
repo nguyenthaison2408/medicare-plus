@@ -33,6 +33,10 @@ import { runClinicalTriage } from '../services/aiTriageEngine';
 import { checkEHRSafetyGuardrails } from '../services/aiSafetyGuardrails';
 import { promptImagePicker } from '../services/imagePickerService';
 import {
+  askGeminiEdgeAssistant,
+  buildGeminiHistory,
+} from '../services/aiEdgeClient';
+import {
   HomeGreetingHeader,
   SearchBar,
   AIHeroBanner,
@@ -1193,11 +1197,12 @@ export const AIAssistantScreen: React.FC<AIAssistantScreenProps> = ({
     ).padStart(2, '0')}`;
   };
 
-  const handleSend = (customText?: string) => {
+  const handleSend = async (customText?: string) => {
     const content = (customText ?? inputMsg).trim();
     if (!content || isTyping) return;
     const timeStr = getCurrentTimeStr();
     const generation = ++conversationGeneration.current;
+    const historySnapshot = buildGeminiHistory(extraMessages);
     setCurrentTriageContext(null);
 
     setExtraMessages((prev) => [
@@ -1213,38 +1218,64 @@ export const AIAssistantScreen: React.FC<AIAssistantScreenProps> = ({
 
     const patientAllergies = CLOUD_MODE ? [] : patientProfile.allergies;
     const analysisResult = analyzeMedicalSymptom(content, patientAllergies, doctors);
+    const isEmergency = analysisResult.clinicalCard?.urgencyLevel === 'emergency';
 
-    setTimeout(() => {
-      if (conversationGeneration.current !== generation) return;
-      setIsTyping(false);
-      if (analysisResult.clinicalCard) {
-        setCurrentTriageContext({
-          id: generation,
-          specialtyName: analysisResult.clinicalCard.specialtyName,
-          specialtyDesc: analysisResult.clinicalCard.specialtyDesc,
-          specialtyIcon: analysisResult.clinicalCard.specialtyIcon,
-          urgencyLevel: analysisResult.clinicalCard.urgencyLevel,
-          doctors: analysisResult.clinicalCard.doctors,
-          homeCareAdvice: analysisResult.clinicalCard.homeCareAdvice,
-          remainingFollowUps: analysisResult.clinicalCard.followUpQuestions || [],
-          accumulatedRisk: 0,
+    const edgeReply = isEmergency
+      ? null
+      : await askGeminiEdgeAssistant({
+          message: content,
+          allergies: patientAllergies,
+          history: historySnapshot,
         });
-      }
 
-      setExtraMessages((prev) => [
-        ...prev,
-        {
-          id: `ai-${prev.length + 1}`,
-          sender: 'ai',
-          time: getCurrentTimeStr(),
-          ...analysisResult,
-          ...(analysisResult.clinicalCard ? { clinicalCard: { ...analysisResult.clinicalCard, contextId: generation } } : {}),
-        },
-      ]);
-      setTimeout(() => {
-        chatScrollRef.current?.scrollToEnd({ animated: true });
-      }, 100);
-    }, 500);
+    if (conversationGeneration.current !== generation) return;
+
+    const mergedResult =
+      edgeReply && edgeReply.reply
+        ? analysisResult.clinicalCard
+          ? {
+              ...analysisResult,
+              clinicalCard: {
+                ...analysisResult.clinicalCard,
+                analysisText: edgeReply.reply,
+              },
+            }
+          : {
+              ...analysisResult,
+              text: edgeReply.reply,
+            }
+        : analysisResult;
+
+    setIsTyping(false);
+    if (mergedResult.clinicalCard) {
+      setCurrentTriageContext({
+        id: generation,
+        specialtyName: mergedResult.clinicalCard.specialtyName,
+        specialtyDesc: mergedResult.clinicalCard.specialtyDesc,
+        specialtyIcon: mergedResult.clinicalCard.specialtyIcon,
+        urgencyLevel: mergedResult.clinicalCard.urgencyLevel,
+        doctors: mergedResult.clinicalCard.doctors,
+        homeCareAdvice: mergedResult.clinicalCard.homeCareAdvice,
+        remainingFollowUps: mergedResult.clinicalCard.followUpQuestions || [],
+        accumulatedRisk: 0,
+      });
+    }
+
+    setExtraMessages((prev) => [
+      ...prev,
+      {
+        id: `ai-${prev.length + 1}`,
+        sender: 'ai',
+        time: getCurrentTimeStr(),
+        ...mergedResult,
+        ...(mergedResult.clinicalCard
+          ? { clinicalCard: { ...mergedResult.clinicalCard, contextId: generation } }
+          : {}),
+      },
+    ]);
+    setTimeout(() => {
+      chatScrollRef.current?.scrollToEnd({ animated: true });
+    }, 100);
   };
 
   const handleSelectFollowUp = (

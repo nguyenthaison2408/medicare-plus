@@ -79,11 +79,20 @@ export const FOLLOW_UP_TEMPLATES: Record<SymptomCategory, FollowUpQuestion[]> = 
   orthopedics: [
     {
       id: 'ortho_radiation',
-      question: 'Cơn đau lưng / cổ vai gáy có lan ra các vị trí khác không?',
+      question: 'Cơn đau chân / tay / khớp hoặc cột sống có kèm dấu hiệu nào sau đây không?',
       options: [
-        { label: 'Chỉ đau tại chỗ', value: 'local', riskModifier: 0 },
-        { label: 'Lan xuống cánh tay / bàn tay', value: 'radiate_arm', riskModifier: 2 },
-        { label: 'Lan tê buốt xuống mông và chân', value: 'radiate_leg', riskModifier: 3 },
+        { label: 'Chỉ đau mỏi tại chỗ, không sưng', value: 'local', riskModifier: 0 },
+        { label: 'Sưng, nóng đỏ hoặc bầm tím sau va chạm', value: 'swelling_trauma', riskModifier: 2 },
+        { label: 'Lan tê buốt dọc chân hoặc cánh tay', value: 'radiate_leg', riskModifier: 3 },
+      ],
+    },
+    {
+      id: 'ortho_mobility',
+      question: 'Mức độ ảnh hưởng đến việc đi lại / vận động của bạn?',
+      options: [
+        { label: 'Vẫn đi lại, cử động bình thường', value: 'normal', riskModifier: 0 },
+        { label: 'Đau khi đi lại hoặc đứng lâu', value: 'limited', riskModifier: 1 },
+        { label: 'Khó cử động hoặc không thể chịu lực', value: 'severe_immobility', riskModifier: 3 },
       ],
     },
   ],

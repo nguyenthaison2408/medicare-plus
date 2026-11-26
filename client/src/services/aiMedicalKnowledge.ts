@@ -78,10 +78,52 @@ export const RED_FLAG_SYMPTOMS: { keywords: string[]; protocol: string }[] = [
   },
 ];
 
+export const stripVietnameseAccents = (input: string): string =>
+  (input || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')
+    .toLowerCase();
+
+const escapeRegexKeyword = (value: string): string =>
+  value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+export const matchesMedicalKeyword = (normalizedText: string, keyword: string): boolean => {
+  const cleanText = ` ${(normalizedText || '').toLowerCase()} `;
+  const cleanKw = (keyword || '').trim().toLowerCase();
+  if (!cleanKw) return false;
+
+  const boundaryPattern = new RegExp(
+    `(?:^|[\\s,.;:!?()\\-/"'])${escapeRegexKeyword(cleanKw)}(?:$|[\\s,.;:!?()\\-/"'])`,
+    'i'
+  );
+  if (boundaryPattern.test(cleanText)) {
+    return true;
+  }
+
+  // Hỗ trợ người dùng gõ tiếng Việt không dấu cho cụm từ rõ nghĩa (>= 2 từ)
+  if (cleanKw.includes(' ')) {
+    const asciiText = ` ${stripVietnameseAccents(normalizedText)} `;
+    const asciiKw = stripVietnameseAccents(cleanKw);
+    const asciiPattern = new RegExp(
+      `(?:^|[\\s,.;:!?()\\-/"'])${escapeRegexKeyword(asciiKw)}(?:$|[\\s,.;:!?()\\-/"'])`,
+      'i'
+    );
+    return asciiPattern.test(asciiText);
+  }
+
+  return false;
+};
+
 export const checkRedFlags = (normalizedText: string): RedFlagAssessment => {
   const lower = normalizedText.toLowerCase();
 
-  if (lower.includes('cấp cứu') || lower.includes('nguy kịch') || lower.includes('115')) {
+  if (
+    matchesMedicalKeyword(lower, 'cấp cứu') ||
+    matchesMedicalKeyword(lower, 'nguy kịch') ||
+    matchesMedicalKeyword(lower, '115')
+  ) {
     return {
       isEmergency: true,
       triggerPhrase: 'yêu cầu hỗ trợ cấp cứu',
@@ -93,7 +135,7 @@ export const checkRedFlags = (normalizedText: string): RedFlagAssessment => {
 
   for (const item of RED_FLAG_SYMPTOMS) {
     for (const kw of item.keywords) {
-      if (lower.includes(kw)) {
+      if (matchesMedicalKeyword(lower, kw)) {
         return {
           isEmergency: true,
           triggerPhrase: kw,
@@ -223,30 +265,62 @@ export const CLINICAL_SYMPTOM_KNOWLEDGE_BASE: MedicalSymptomRule[] = [
   },
   {
     category: 'orthopedics',
-    specialtyName: 'Cơ Xương Khớp & Cột Sống',
-    specialtyDesc: 'Thoát vị đĩa đệm, đau cột sống & thoái hóa khớp',
+    specialtyName: 'Cơ Xương Khớp & Chấn Thương Chỉnh Hình',
+    specialtyDesc: 'Đau chân tay, khớp gối, cột sống, bong gân & thoái hóa khớp',
     specialtyIcon: 'fitness',
     keywords: [
+      'đau chân',
+      'nhức chân',
+      'mỏi chân',
+      'sưng chân',
+      'đau bắp chân',
+      'đau bàn chân',
+      'đau gót chân',
+      'đau cổ chân',
+      'trẹo chân',
+      'đau tay',
+      'đau cổ tay',
+      'đau cánh tay',
+      'đau vai',
+      'đau bả vai',
+      'đau đầu gối',
+      'đau gối',
+      'khớp gối',
+      'mỏi gối',
+      'đau khớp',
+      'sưng khớp',
+      'viêm khớp',
+      'thoái hóa khớp',
+      'cứng khớp',
       'đau lưng',
+      'đau thắt lưng',
       'cột sống',
       'thoát vị',
+      'thoát vị đĩa đệm',
       'cổ vai gáy',
+      'đau cổ',
       'thần kinh tọa',
       'tê chân',
       'tê tay',
-      'khớp gối',
-      'đau khớp',
-      'gút',
+      'chuột rút',
+      'căng cơ',
+      'đau cơ',
+      'nhức xương',
+      'đau xương',
+      'gãy xương',
+      'trật khớp',
       'bong gân',
-      'mỏi gối',
+      'chấn thương',
+      'gút',
+      'gout',
     ],
     defaultUrgency: 'urgent',
     baseAnalysis:
-      'Đau nhức vùng cổ vai gáy hoặc đau thắt lưng lan dọc xuống chân là dấu hiệu cảnh báo chèn ép rễ thần kinh hoặc thoái hóa cột sống. Cần khám chuyên khoa để kiểm tra vận động phản xạ và chụp X-quang/MRI.',
+      'Triệu chứng đau nhức chân tay, đau khớp, căng cơ, bong gân hoặc đau cột sống thuộc nhóm bệnh lý Cơ Xương Khớp & Chấn thương chỉnh hình. Bác sĩ chuyên khoa cần thăm khám vận động, kiểm tra khớp/dây chằng và có thể chỉ định chụp X-quang, siêu âm khớp hoặc MRI để xác định chính xác nguyên nhân.',
     homeCareTips: [
-      'Tránh mang vác vật nặng hoặc xoay người đột ngột.',
-      'Chườm ấm nhẹ nhàng vùng cơ bị co cứng 15-20 phút mỗi lần.',
-      'Duy trì tư thế ngồi thẳng lưng và đổi tư thế sau mỗi 45 phút.',
+      'Hạn chế vận động mạnh, đứng lâu hoặc mang vác nặng ở vùng chân/khớp đang đau.',
+      'Nếu mới sưng đau do va chạm hoặc bong gân trong 48 giờ đầu: chườm lạnh 15 phút/lần và kê cao chân.',
+      'Nếu đau mỏi cơ mạn tính không sưng nóng: chườm ấm nhẹ nhàng 15-20 phút và không tự ý bóp rượu thuốc mạnh.',
     ],
   },
   {
@@ -325,6 +399,35 @@ export const CLINICAL_SYMPTOM_KNOWLEDGE_BASE: MedicalSymptomRule[] = [
       'Không cào gãi làm tổn thương bề mặt da, cắt ngắn móng tay.',
       'Tắm bằng nước ấm vừa phải, tránh xà phòng có chất tẩy rửa mạnh.',
       'Mặc đồ cotton mềm rộng rãi, tránh tiếp xúc các chất nghi gây dị ứng.',
+    ],
+  },
+  {
+    category: 'ent',
+    specialtyName: 'Tai - Mũi - Họng',
+    specialtyDesc: 'Viêm xoang, viêm tai giữa, viêm amidan & đau họng',
+    specialtyIcon: 'ear-outline',
+    keywords: [
+      'đau tai',
+      'ù tai',
+      'viêm tai',
+      'nghe kém',
+      'viêm xoang',
+      'nghẹt mũi',
+      'viêm mũi dị ứng',
+      'viêm amidan',
+      'đau họng',
+      'nuốt đau',
+      'khàn tiếng',
+      'mất tiếng',
+      'chảy máu cam',
+    ],
+    defaultUrgency: 'routine',
+    baseAnalysis:
+      'Triệu chứng đau tai, ù tai, nghẹt mũi xoang hoặc đau rát họng nuốt vướng thường gặp trong các bệnh lý Tai - Mũi - Họng như viêm tai giữa, viêm xoang cấp hoặc viêm amidan. Nên nội soi Tai Mũi Họng để đánh giá chính xác.',
+    homeCareTips: [
+      'Rửa mũi và súc họng bằng nước muối sinh lý 0.9% hằng ngày.',
+      'Uống nước ấm, hạn chế đồ uống quá lạnh hoặc cay nóng.',
+      'Không tự ý dùng tăm bông ngoáy sâu vào ống tai khi đang đau tai.',
     ],
   },
 ];

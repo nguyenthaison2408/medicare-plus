@@ -1,4 +1,4 @@
-
+﻿
 const assert = require('assert');
 const app = require('../src/app');
 const http = require('http');
@@ -321,6 +321,28 @@ server.listen(5099, async () => {
     assert.strictEqual((await (await cloudStatus('patient-a')).json()).data.status, 'PAID');
     assert.ok(cloudOrders.get(cloudCode).paid_at);
     console.log('   ✅ Test 15 Passed: PayOS Cloud validates the fee and records verified payment.');
+    const cloudWebhookRes = await createCloudPayment(350000);
+    const webhookOrder = (await cloudWebhookRes.json()).data.orderCode;
+    let cloudMarks = 0;
+    const markPaid = clinicOrders.markPaid;
+    clinicOrders.markPaid = async code => { cloudMarks++; return markPaid(code); };
+    const deliver = (data, signature = 'test-signature') => fetch(baseUrl+'/payments/payos-webhook', {
+      method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({data,signature})
+    });
+    assert.strictEqual((await deliver({orderCode:webhookOrder,code:'00',amount:350000},'bad')).status,400);
+    assert.strictEqual((await deliver({orderCode:webhookOrder,code:'00',amount:1000})).status,200);
+    assert.strictEqual((await deliver({orderCode:webhookOrder,code:'01',amount:350000})).status,200);
+    assert.strictEqual(cloudMarks,0);
+    clinicOrders.markPaid = async () => {throw new Error('Simulated storage outage');};
+    assert.strictEqual((await deliver({orderCode:webhookOrder,code:'00',amount:350000})).status,500);
+    assert.ok(!cloudOrders.get(webhookOrder).paid_at);
+    clinicOrders.markPaid = async code => {cloudMarks++;return markPaid(code);};
+    assert.strictEqual((await deliver({orderCode:webhookOrder,code:'00',amount:350000})).status,200);
+    assert.ok(cloudOrders.get(webhookOrder).paid_at);
+    assert.strictEqual((await deliver({orderCode:webhookOrder,code:'00',amount:350000})).status,200);
+    assert.strictEqual(cloudMarks,1);
+    console.log('   PASS: signed cloud webhook persists payment without polling, retries failures and is idempotent.');
+
 
     // Tổng kết kết quả
     console.log('\n🎉 TẤT CẢ 15/15 BÀI KIỂM THỬ ĐÃ PASS THÀNH CÔNG! (100% PASS RATE)');
@@ -338,3 +360,5 @@ server.listen(5099, async () => {
     });
   }
 });
+
+

@@ -204,6 +204,9 @@ const handleWebhook = async (req, res) => {
 
     const orderCode = verifiedData.orderCode;
     const code = verifiedData.code;
+    if (!Number.isSafeInteger(orderCode) || orderCode <= 0) {
+      return res.status(400).json({ success: false, message: 'Invalid PayOS order code' });
+    }
     console.log(`[PayOS Webhook] Nhận thông báo giao dịch cho Order #${orderCode}, mã kết quả:`, code);
 
     const order = orders.get(Number(orderCode));
@@ -217,6 +220,13 @@ const handleWebhook = async (req, res) => {
         if (apt) {
           apt.paymentStatus = 'PAID';
         }
+      }
+    }
+
+    if (!order && code === '00') {
+      const cloudOrder = await clinicOrders.getOrder(orderCode);
+      if (cloudOrder && verifiedData.amount === cloudOrder.amount && !cloudOrder.paid_at) {
+        await clinicOrders.markPaid(orderCode);
       }
     }
 

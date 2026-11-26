@@ -45,6 +45,23 @@ npm run preview:web         # localhost:4173
 
 Chế độ cloud dùng EXPO_PUBLIC_DATA_MODE=supabase cùng URL và publishable key trong client/.env.local. Cấu hình email là tùy chọn, đăng ký Auth không phụ thuộc webhook phiếu hẹn. Công cụ migration/cloud-test yêu cầu cấu hình quản trị riêng; cloud-test có thể tạo dữ liệu QA và phải dọn đúng fixture.
 
+### Kết nối APK với backend PayOS
+
+Áp dụng migration `202611260001_clinic_payos_orders.sql` vào dự án Supabase dùng chung giữa client và backend. Cấu hình backend theo [server/.env.example](server/.env.example), gồm URL Supabase, khóa service role, ba khóa PayOS và URL điều hướng sau thanh toán. Giữ các khóa PayOS và service role ở backend.
+
+**Kiểm tra trên mạng LAN**
+
+1. Từ thư mục gốc, chạy `npm run dev:server`. Kết nối điện thoại và máy chạy server vào cùng Wi-Fi. Trên Windows, dùng `ipconfig` để tìm IPv4 của máy và cho phép kết nối đến cổng 5000 trên mạng riêng.
+2. Mở `http://<IP-LAN>:5000/api/v1/health` trên trình duyệt điện thoại. Dùng URL `http://<IP-LAN>:5000/api/v1` cho `EXPO_PUBLIC_API_URL` trong `client/.env.local` khi chạy Expo cục bộ. Một số bản Android chặn HTTP. Khi đó dùng URL HTTPS cho APK. Chỉ dùng HTTP LAN với môi trường và tài khoản thử nghiệm.
+
+**Triển khai backend trên Render**
+
+1. Tạo Node Web Service, kết nối repo và chọn nhánh cần triển khai. Để Root Directory ở gốc repo. Đặt Build Command là `npm ci --prefix server`, Start Command là `npm --prefix server start` và Health Check Path là `/api/v1/health`. [Hướng dẫn Express trên Render](https://render.com/docs/deploy-node-express-app).
+2. Khai báo các biến trong `server/.env.example` trên Render, để Render cấp `PORT`, và đặt `PAYOS_RETURN_URL` cùng `PAYOS_CANCEL_URL` trỏ đến trang HTTPS phù hợp. Kiểm tra `https://<service>.onrender.com/api/v1/health`.
+3. Đặt `EXPO_PUBLIC_API_URL=https://<service>.onrender.com/api/v1` trong môi trường EAS `preview` hoặc `production` tương ứng. Chạy `npx eas-cli@latest build --platform android --profile preview` trong `client` để tạo lại APK. [Biến môi trường EAS](https://docs.expo.dev/eas/environment-variables/).
+
+Khi kiểm tra, chọn bác sĩ và đối chiếu phí khám với số tiền trong PayOS. Sau khi backend xác nhận đã nhận đủ tiền, nhấn **Hoàn tất đặt lịch**. Kiểm tra Supabase lưu `payment_method = 'vietqr'` và `payment_status = 'PAID'`. Giờ khám được kiểm tra lại khi hoàn tất. Nếu giờ đã có người đặt trong lúc thanh toán, liên hệ bộ phận vận hành để đối soát bằng mã giao dịch PayOS hiển thị trên ứng dụng.
+
 ## Bằng chứng kỹ thuật
 
 - Main/PR #43: CI Node 22 và 24 đạt. Bộ local gồm **241 ca**: 16 trợ lý, 27 portal, 32 staff, 5 auth, 5 validation, 29 SQL lõi, 93 SQL mở rộng và 34 API/hồi quy.

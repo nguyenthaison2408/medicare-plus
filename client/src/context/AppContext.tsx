@@ -185,6 +185,7 @@ interface AppContextValue {
     slot?: TimeSlotItem;
     consultMode?: string;
     paymentMethod: string;
+    payOsOrderCode?: number;
     patientInfo: PatientBookingInfo;
   }) => Promise<LatestBookingTicket>;
   cancelAppointment: (appointmentId: string) => Promise<void>;
@@ -522,6 +523,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
                       specialty: cd.specialty || existing.specialty,
                       hospital: cd.hospital || existing.hospital,
                       avatar: cd.avatar_url?.trim() || existing.avatar,
+                      fee: cd.fee_vnd ? `${cd.fee_vnd.toLocaleString('vi-VN')} đ` : existing.fee,
+                      feeNumeric: cd.fee_vnd ?? existing.feeNumeric,
                     };
                   }
                   return {
@@ -537,8 +540,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
                     reviewCount: 50,
                     patientCount: '1k+',
                     responseTime: '< 15p',
-                    fee: '300.000 đ',
-                    feeNumeric: 300000,
+                    fee: `${(cd.fee_vnd ?? 300000).toLocaleString('vi-VN')} đ`,
+                    feeNumeric: cd.fee_vnd ?? 300000,
                     bhytSupport: 'Hỗ trợ BHYT',
                     availableText: 'Trống hôm nay',
                     avatar: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=300&auto=format&fit=crop&q=80',
@@ -590,6 +593,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
                   specialty: cd.specialty || existing.specialty,
                   hospital: cd.hospital || existing.hospital,
                   avatar: cd.avatar_url?.trim() || existing.avatar,
+                  fee: cd.fee_vnd ? `${cd.fee_vnd.toLocaleString('vi-VN')} đ` : existing.fee,
+                  feeNumeric: cd.fee_vnd ?? existing.feeNumeric,
                 };
               }
               return {
@@ -605,8 +610,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
                 reviewCount: 50,
                 patientCount: '1k+',
                 responseTime: '< 15p',
-                fee: '300.000 đ',
-                feeNumeric: 300000,
+                fee: `${(cd.fee_vnd ?? 300000).toLocaleString('vi-VN')} đ`,
+                feeNumeric: cd.fee_vnd ?? 300000,
                 bhytSupport: 'Hỗ trợ BHYT',
                 availableText: 'Trống hôm nay',
                 avatar: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=300&auto=format&fit=crop&q=80',
@@ -830,6 +835,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     slot,
     consultMode = 'clinic',
     paymentMethod,
+    payOsOrderCode,
     patientInfo,
   }: {
     doctor: DoctorItem;
@@ -837,6 +843,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     slot?: TimeSlotItem;
     consultMode?: string;
     paymentMethod: string;
+    payOsOrderCode?: number;
     patientInfo: PatientBookingInfo;
   }): Promise<LatestBookingTicket> => {
     const chosenDay = day || BOOKING_DAYS[1];
@@ -904,7 +911,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         doctor,
         chosenDay,
         chosenSlot,
-        normalizedPatientInfo
+        normalizedPatientInfo,
+        paymentMethod,
+        payOsOrderCode
       );
       const ticket: LatestBookingTicket = {
         code: appointment.booking_code, doctor, dayLabel: chosenDay.dayLabel, fullDate: chosenDay.fullDate,
@@ -912,7 +921,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         room: isChatMode ? 'Phòng Tư vấn Chat Trực tuyến' : doctor.hospital,
         queueNumber: 'Đã xác nhận',
         consultMode: isChatMode ? 'chat' : 'clinic',
-        paymentMethod: paymentMethod === 'vietqr' ? 'vietqr' : appointment.payment_method,
+        paymentMethod: appointment.payment_method,
         patientName: appointment.patient_name,
         patientPhone: appointment.patient_phone,
         patientEmail: appointment.patient_email,
@@ -921,9 +930,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
       selectedTicketCode.current = ticket.code;
       setLatestBooking(ticket);
       const appItem = clinicAppointmentToItem(appointment);
-      if (paymentMethod === 'vietqr') {
-        appItem.statusBadge = 'Đã thanh toán (PayOS)';
-      }
       setAppointments(prev => [appItem, ...prev.filter(item => item.id !== appointment.id)]);
       return ticket;
     }

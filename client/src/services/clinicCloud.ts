@@ -14,6 +14,7 @@ export interface ClinicDoctor {
   specialty: string;
   hospital: string;
   active: boolean;
+  fee_vnd?: number;
   avatar_url?: string;
   created_at?: string;
 }
@@ -289,17 +290,22 @@ export async function bookClinicAppointment(
   doctor: DoctorItem,
   day: DaySlotItem,
   slot: TimeSlotItem,
-  patientInfo: PatientBookingInfo
+  patientInfo: PatientBookingInfo,
+  paymentMethod: 'at_clinic' | 'at_clinic_bhyt' | 'vietqr',
+  payOsOrderCode?: number
 ): Promise<ClinicAppointment> {
-  const { data, error } = await getSupabase().rpc('clinic_book_appointment', {
+  const booking = {
     p_doctor_id: doctor.id,
     p_starts_at: toClinicStart(day, slot),
-    p_payment_method: 'at_clinic',
     p_patient_name: patientInfo.fullName,
     p_patient_phone: patientInfo.phone,
     p_patient_email: patientInfo.email,
     p_symptoms: patientInfo.symptoms,
-  });
+  };
+  const supabase = getSupabase();
+  const { data, error } = paymentMethod === 'vietqr'
+    ? await supabase.rpc('clinic_book_paid_appointment', { ...booking, p_order_code: payOsOrderCode })
+    : await supabase.rpc('clinic_book_appointment', { ...booking, p_payment_method: paymentMethod });
   checkError(error);
   return data as ClinicAppointment;
 }

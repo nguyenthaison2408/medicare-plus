@@ -5,6 +5,7 @@ const check=async(name,fn)=>{await fn();console.log('PASS EXT '+(++count)+': '+n
 async function as(id){await db.exec('reset role');await db.query("select set_config('request.jwt.claim.sub',$1,false)",[id||'']);await db.exec(id?'set role authenticated':'set role anon');}
 const denied=fn=>assert.rejects(fn,e=>e.code==='42501');
 try{
+ await db.exec('create role service_role noinherit bypassrls');
  await db.exec("create role anon noinherit;create role authenticated noinherit;create schema auth;create table auth.users(id uuid primary key,raw_user_meta_data jsonb not null default '{}'::jsonb);create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;grant usage on schema auth to anon,authenticated;grant execute on function auth.uid() to anon,authenticated;alter default privileges in schema public grant all on tables to anon,authenticated;");
  await db.exec("create schema storage; create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]); create table storage.objects(id uuid default gen_random_uuid(),bucket_id text,name text,primary key(bucket_id,name)); alter table storage.objects enable row level security;grant usage on schema storage to authenticated; grant select,insert,delete on storage.objects to authenticated;");
  const directory=new URL('../migrations/',import.meta.url);
@@ -12,6 +13,38 @@ try{
  await check('all current migrations apply to clean PostgreSQL',async()=>{});
  for(const [name,id] of Object.entries(ids))await db.query('insert into auth.users values($1,$2)',[id,JSON.stringify({full_name:'Test '+name,phone:'0901234567'})]);
  for(const role of ['doctor','reception','admin'])await db.query('update clinic_profiles set role=$1,doctor_id=$2 where id=$3',[role,role==='doctor'?'doc-1':null,ids[role]]);
+ await check('PayOS backend service role can read profile roles and doctor fees',async()=>{
+  const privileges=(await db.query("select has_table_privilege('service_role','public.clinic_profiles','SELECT') as profiles,has_table_privilege('service_role','public.clinic_doctors','SELECT') as doctors")).rows[0];
+  assert.equal(privileges.profiles,true);assert.equal(privileges.doctors,true);
+ });
+ const paidSlot = (await db.query(
+  "select (((now() at time zone 'Asia/Ho_Chi_Minh')::date+2)+time '11:00') at time zone 'Asia/Ho_Chi_Minh' as value"
+ )).rows[0].value;
+ const bookPaid = (code=123456, doctor='doc-1') => db.query(
+  "select clinic_book_paid_appointment($1,$2,$3,'Test Patient','0901234567','test@example.com','General consultation') as appointment",
+  [code, doctor, paidSlot]
+ );
+ await db.exec('set role service_role');
+ await db.query("insert into clinic_payos_orders(order_code,patient_id,doctor_id,starts_at,amount) values(123456,$1,'doc-1',$2,350000)",[ids.a,paidSlot]);
+ await as(ids.a);
+ await check('patients cannot mark PayOS orders paid',()=>denied(()=>db.query('update clinic_payos_orders set paid_at=now()')));
+ await check('unpaid PayOS orders cannot book',()=>denied(()=>bookPaid()));
+ await db.exec('reset role; set role service_role');
+ await db.query('update clinic_payos_orders set paid_at=now() where order_code=123456');
+ await as(ids.b);
+ await check('another patient cannot use a verified PayOS order',()=>denied(()=>bookPaid()));
+ await as(ids.a);
+ await check('a verified PayOS order cannot be used for another doctor',()=>denied(()=>bookPaid(123456,'doc-2')));
+ await check('verified PayOS booking persists VietQR and paid status and can safely be retried',async()=>{
+  const first = (await bookPaid()).rows[0].appointment;
+  assert.equal(first.payment_method,'vietqr');
+  assert.equal(first.payment_status,'PAID');
+  const retry = (await bookPaid()).rows[0].appointment;
+  assert.equal(retry.id,first.id);
+  const stored = (await db.query('select payment_method,payment_status from clinic_appointments where id=$1',[first.id])).rows[0];
+  assert.deepEqual(stored,{payment_method:'vietqr',payment_status:'PAID'});
+ });
+ await db.exec('reset role');
  await check('the patient slot index rejects another doctor and releases the slot on cancellation', async()=>{
   const {rows:[{startsAt}]} = await db.query(
    "select (((now() at time zone 'Asia/Ho_Chi_Minh')::date + 2) + time '10:30') at time zone 'Asia/Ho_Chi_Minh' as \"startsAt\""

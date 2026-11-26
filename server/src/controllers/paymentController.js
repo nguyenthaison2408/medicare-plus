@@ -107,7 +107,10 @@ const createPaymentLink = async (req, res) => {
     
     // PayOS requires orderCode as positive integer (<= 9007199254740991)
     const orderCode = Number(String(Date.now()).slice(-6) + Math.floor(100 + Math.random() * 899));
-    const finalAmount = Number(amount) > 0 ? Number(amount) : 2000; // Mặc định 2.000đ để test an toàn
+    if (!Number.isSafeInteger(amount) || amount <= 0) {
+      return res.status(400).json({ success: false, message: 'Số tiền phải là số nguyên dương.' });
+    }
+    const finalAmount = amount;
     
     const cleanDesc = sanitizeDescription(description);
 

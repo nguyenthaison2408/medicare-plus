@@ -797,7 +797,7 @@ export const BookingPaymentScreen: React.FC<BookingPaymentScreenProps> = ({
           headers: { 'Content-Type': 'application/json' },
           signal: controller.signal,
           body: JSON.stringify({
-            amount: 2000,
+            amount: doctor.feeNumeric,
             description: `MEDICARE ${doctor.name.slice(0, 10)}`,
             patientName: normalized.fullName,
             patientPhone: normalized.phone,
@@ -810,7 +810,7 @@ export const BookingPaymentScreen: React.FC<BookingPaymentScreenProps> = ({
           return;
         }
       } catch {
-        // Fallback sang VietQR ngân hàng trực tiếp khi dùng APK không nối localhost:5000
+        // The connection message below also covers network timeouts.
       } finally {
         clearTimeout(timeout);
         setPayOsLoading(false);
@@ -1235,7 +1235,7 @@ export const BookingPaymentScreen: React.FC<BookingPaymentScreenProps> = ({
         topLabel={isAtClinic ? 'Thanh toán tại viện với BHYT' : selectedMethod === 'vietqr' ? 'Cổng thanh toán: VIETQR (PAYOS)' : `Cổng thanh toán: ${selectedMethod.toUpperCase()}`}
         topLabelIcon={isAtClinic ? 'business-outline' : 'qr-code-outline'}
         priceLabel="Cần thanh toán:"
-        priceValue={isAtClinic ? '0 đ' : selectedMethod === 'vietqr' ? '2.000 đ' : doctor.fee}
+        priceValue={isAtClinic ? '0 đ' : selectedMethod === 'vietqr' ? formatCurrency(doctor.feeNumeric) : doctor.fee}
         buttonTitle={isAtClinic ? 'Xác nhận đặt lịch' : selectedMethod === 'vietqr' ? 'Quét mã VietQR (PayOS)' : 'Thanh toán ngay'}
         disabled={submitting || payOsLoading}
         loading={submitting || payOsLoading}
@@ -1275,7 +1275,7 @@ export const BookingPaymentScreen: React.FC<BookingPaymentScreenProps> = ({
                 <Ionicons name="checkmark-circle" size={64} color={COLORS.success} />
                 <Text style={styles.payOsSuccessTitle}>Thanh toán thành công!</Text>
                 <Text style={styles.payOsSuccessSub}>
-                  Hệ thống PayOS đã xác nhận chuyển khoản {Number(payOsData?.amount || 2000).toLocaleString('vi-VN')} đ. Đang chuyển đến phiếu hẹn điện tử...
+                  Hệ thống PayOS đã xác nhận chuyển khoản {formatCurrency(payOsData.amount)}.
                 </Text>
                 <ActivityIndicator size="small" color={COLORS.success} style={{ marginTop: 12 }} />
               </View>
@@ -1325,7 +1325,7 @@ export const BookingPaymentScreen: React.FC<BookingPaymentScreenProps> = ({
                   <View style={styles.payOsInfoRow}>
                     <Text style={styles.payOsLabel}>Số tiền chuyển:</Text>
                     <Text style={[styles.payOsValue, { color: '#E11D48', fontWeight: '800', fontSize: 16 }]}>
-                      {Number(payOsData?.amount || 2000).toLocaleString('vi-VN')} đ
+                      {payOsData ? formatCurrency(payOsData.amount) : '—'}
                     </Text>
                   </View>
                   <View style={styles.payOsInfoRow}>

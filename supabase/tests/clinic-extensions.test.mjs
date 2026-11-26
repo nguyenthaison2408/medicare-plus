@@ -6,6 +6,7 @@ async function as(id){await db.exec('reset role');await db.query("select set_con
 const denied=fn=>assert.rejects(fn,e=>e.code==='42501');
 try{
  await db.exec("create role anon noinherit;create role authenticated noinherit;create schema auth;create table auth.users(id uuid primary key,raw_user_meta_data jsonb not null default '{}'::jsonb);create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;grant usage on schema auth to anon,authenticated;grant execute on function auth.uid() to anon,authenticated;alter default privileges in schema public grant all on tables to anon,authenticated;");
+ await db.exec("create schema storage; create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]); create table storage.objects(id uuid default gen_random_uuid(),bucket_id text,name text,primary key(bucket_id,name)); alter table storage.objects enable row level security;grant usage on schema storage to authenticated; grant select,insert,delete on storage.objects to authenticated;");
  const directory=new URL('../migrations/',import.meta.url);
  for(const name of fs.readdirSync(directory).filter(n=>n.endsWith('.sql')).sort())await db.exec(fs.readFileSync(new URL(name,directory),'utf8'));
  await check('all current migrations apply to clean PostgreSQL',async()=>{});
@@ -186,6 +187,40 @@ try{
   await as(ids.a);
   await check('patient receives doctor reply in thread',async()=>assert.equal((await db.query('select id from clinic_consult_messages')).rows.length,2));
   assert.ok(msg.id);
+ }
+ if(tables.includes('clinic_lab_results')){
+  await db.exec('reset role');
+  const labApt=(await db.query("insert into clinic_appointments(patient_id,doctor_id,patient_name,patient_phone,starts_at,status) values($1,'doc-1','Test a','0901234567',now()-interval '3 days','COMPLETED') returning id",[ids.a])).rows[0].id;
+  const addLab=(apt=labApt,cat='imaging',title='Chụp MRI Sọ não 1.5T',conc='Bình thường',path='appointments/'+labApt+'/mri.pdf',name='mri.pdf',mime='application/pdf',size=204800)=>db.query('select row_to_json(r) as res from public.clinic_add_lab_result($1,$2,$3,$4,$5,$6,$7,$8) r',[apt,cat,title,conc,path,name,mime,size]);
+  await as(ids.a);
+  await check('patient cannot upload lab results',async()=>denied(()=>addLab()));
+  await as(ids.reception);
+  await check('reception cannot upload lab results',async()=>denied(()=>addLab()));
+  await as(ids.doctor);
+  await db.query("insert into storage.objects(bucket_id,name) values('clinic-lab-results',$1)",['appointments/'+labApt+'/mri.pdf']);
+  const createdLab=(await addLab()).rows[0].res;
+  await check('assigned doctor can read the uploaded object',async()=>assert.equal((await db.query('select name from storage.objects')).rows.length,1));
+  await check('RPC refuses referencing an unrelated appointment path',async()=>assert.rejects(()=>addLab(labApt,'imaging','Wrong path','','appointments/other/file.pdf'),e=>e.code==='22023'));
+  await check('RPC refuses referencing an object not uploaded',async()=>assert.rejects(()=>addLab(labApt,'imaging','Missing file','','appointments/'+labApt+'/missing.pdf'),e=>e.code==='22023'));
+  await db.exec('reset role'); await db.query("update clinic_profiles set doctor_id='doc-2' where id=$1",[ids.doctor]); await as(ids.doctor);
+  await check('unassigned doctor cannot read another doctor lab object',async()=>assert.equal((await db.query('select name from storage.objects')).rows.length,0));
+  await check('unassigned doctor cannot delete another doctor lab object',async()=>assert.equal((await db.query('delete from storage.objects returning name')).rows.length,0));
+  await check('unassigned doctor cannot upload into another appointment',async()=>denied(()=>db.query("insert into storage.objects(bucket_id,name) values('clinic-lab-results',$1)",['appointments/'+labApt+'/spoof.pdf'])));
+  await db.exec('reset role');await db.query("update clinic_profiles set doctor_id='doc-1' where id=$1",[ids.doctor]);await as(ids.doctor);
+  await check('assigned doctor can upload validated lab result',async()=>{assert.equal(createdLab.patient_id,ids.a);assert.equal(createdLab.category,'imaging');assert.equal(createdLab.mime_type,'application/pdf');});
+  await check('invalid lab mime type is rejected',async()=>assert.rejects(()=>addLab(labApt,'imaging','File lỗi','','lab/x.exe','x.exe','application/x-msdownload',1024),e=>e.code==='22023'));
+  await check('oversized lab file over 10MB is rejected',async()=>assert.rejects(()=>addLab(labApt,'imaging','File quá lớn','','lab/big.pdf','big.pdf','application/pdf',10485761),e=>e.code==='22023'));
+  await as(ids.a);
+  await check('patient can read own lab storage object',async()=>assert.equal((await db.query('select name from storage.objects')).rows.length,1));
+  await check('patient can read own lab result',async()=>assert.equal((await db.query('select id from clinic_lab_results')).rows.length,1));
+  await check('patient cannot delete lab result',async()=>denied(()=>db.query('select public.clinic_delete_lab_result($1)',[createdLab.id])));
+  await as(ids.b);
+  await check('another patient cannot read lab storage object',async()=>assert.equal((await db.query('select name from storage.objects')).rows.length,0));
+  await check('another patient cannot read other patient lab result',async()=>assert.equal((await db.query('select id from clinic_lab_results')).rows.length,0));
+  await as(null);
+  await check('anonymous user cannot read lab results',async()=>denied(()=>db.query('select id from clinic_lab_results')));
+  await as(ids.doctor);
+  await check('assigned doctor can delete lab result',async()=>{const del=(await db.query('select row_to_json(r) as res from public.clinic_delete_lab_result($1) r',[createdLab.id])).rows[0].res;assert.equal(del.id,createdLab.id);});
  }
  console.log(count+' PostgreSQL extension checks passed.');
 }finally{await db.close();}

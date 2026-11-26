@@ -327,3 +327,20 @@ test('cloud records refuse a profile for another authenticated owner',async()=>{
 test('cloud records ignore loads completed after screen unmount',async()=>{
  const h=patientDataHarness();h.render();await settlePatientData();h.unmount();h.resolve('patient-a','profile',{id:'patient-a'});h.resolve('patient-a','rows',[{id:'late'}]);await settlePatientData();const v=h.render();assert.equal(v.rows.length,0);assert.equal(v.profile,null);
 });
+
+test('mock visit completion stores only that visit diagnosis, medications and notes',async()=>{
+ let visits=[{id:'a',status:'upcoming'},{id:'b',status:'completed',diagnosis:'Other visit',medications:[{name:'Medicine B',dosage:'Instructions B'}]}];
+ const input=[{name:'Medicine A',dosage:'Instructions A'}];
+ const invoke=contextFunction('completeAppointment','checkInAppointment',{CLOUD_MODE:false,setAppointments:fn=>{visits=fn(visits);},Alert:{alert:()=>{}}});
+ assert.equal(await invoke('a',' Diagnosis A ',input,' Notes A '),true);
+ input[0].name='Changed caller input';
+ assert.equal(visits[0].diagnosis,'Diagnosis A');assert.equal(visits[0].medications[0].name,'Medicine A');assert.equal(visits[0].recordNotes,'Notes A');
+ assert.equal(visits[1].diagnosis,'Other visit');assert.equal(visits[1].medications[0].name,'Medicine B');
+});
+test('cloud appointment adapter keeps prescription and notes tied to the selected visit',()=>{
+ const doctor={id:'doc-1',name:'QA',hospital:'QA'};
+ const api=vm.runInNewContext(clean(read('client/src/services/clinicAdapters.ts'))+';({clinicAppointmentToItem})',{DOCTORS:[doctor]});
+ const row={id:'a',doctor_id:'doc-1',status:'COMPLETED',starts_at:'2026-11-25T08:00:00+07:00',clinic_medical_records:[{diagnosis:'A',medications:[{name:'Medicine A',dosage:'Instructions A'}],notes:'Notes A'}]};
+ const one=api.clinicAppointmentToItem(row),two=api.clinicAppointmentToItem({...row,id:'b',clinic_medical_records:null});
+ assert.equal(one.medications[0].name,'Medicine A');assert.equal(one.recordNotes,'Notes A');assert.equal(two.medications,undefined);assert.equal(two.recordNotes,undefined);
+});

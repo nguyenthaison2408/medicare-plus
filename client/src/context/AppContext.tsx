@@ -1015,7 +1015,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         setPrescriptions(clinicPrescriptions(rows));
       } else {
         setAppointments(prev => prev.map(a => a.id === appointmentId
-          ? { ...a, status: 'completed', statusBadge: 'Đã hoàn tất khám', diagnosis: diagnosis?.trim() || a.diagnosis } : a));
+          ? { ...a, status: 'completed', statusBadge: 'Đã hoàn tất khám', diagnosis: diagnosis?.trim() || a.diagnosis, medications: medications?.map(drug => ({ ...drug })) ?? a.medications, recordNotes: notes?.trim() ?? a.recordNotes } : a));
       }
       return true;
     } catch (error) {

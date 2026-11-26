@@ -85,6 +85,8 @@ export interface AppointmentItem {
   patientEmail?: string;
   symptoms?: string;
   diagnosis?: string;
+  medications?: { name: string; dosage: string }[];
+  recordNotes?: string;
 }
 
 export interface PrescriptionDrug {

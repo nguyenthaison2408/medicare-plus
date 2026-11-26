@@ -1836,6 +1836,11 @@ export const PostConsultSummaryScreen: React.FC<{
                 <Text style={styles.docName}>{visit.doctor.name}</Text>
                 <Text style={styles.docSub}>{visit.timeRange}</Text>
                 <Text style={styles.checkItemText}>{visitDiagnosisText(visit)}</Text>
+                <Text style={styles.docName}>Đơn thuốc</Text>
+                {visit.medications?.length ? visit.medications.map((drug,index) => (
+                  <Text key={index} style={styles.checkItemText}>{drug.name} — {drug.dosage}</Text>
+                )) : <Text style={styles.checkItemText}>Ca khám này không có thuốc được lưu.</Text>}
+                {visit.recordNotes ? <Text style={styles.checkItemText}>Dặn dò: {visit.recordNotes}</Text> : null}
               </>
             ) : (
               <Text style={styles.checkItemText}>Không tìm thấy lịch khám này.</Text>

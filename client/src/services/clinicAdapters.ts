@@ -39,6 +39,8 @@ export function clinicAppointmentToItem(appointment: ClinicAppointment): Appoint
     patientEmail: appointment.patient_email,
     symptoms: appointment.symptoms,
     diagnosis: clinicRecord(appointment)?.diagnosis?.trim() || undefined,
+    medications: clinicRecord(appointment)?.medications?.map(drug => ({ ...drug })),
+    recordNotes: clinicRecord(appointment)?.notes?.trim() || undefined,
     statusBadge: appointment.status === 'CHECKED_IN' ? 'Đã có mặt'
       : appointment.status === 'COMPLETED' ? 'Đã hoàn tất khám'
       : appointment.status === 'CANCELLED' ? 'Đã hủy'

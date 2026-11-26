@@ -63,6 +63,7 @@ function AppContent() {
   const bookingInFlight = useRef(false);
   const [route, setRoute] = useState<string>('login');
   const [actionMessage, setActionMessage] = useState('');
+  const [summaryAppointmentId, setSummaryAppointmentId] = useState<string>();
 
   const [routeHistory, setRouteHistory] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<MainTabKey>('home');
@@ -171,8 +172,9 @@ function AppContent() {
     return () => { active = false; generation += 1; subscription.unsubscribe(); linkingSub?.remove(); };
   }, []);
 
-  const navigateTo = (nextRoute: string) => {
+  const navigateTo = (nextRoute: string, appointmentId?: string) => {
     setActionMessage('');
+    if (nextRoute === 'postConsultSummary') setSummaryAppointmentId(appointmentId);
     if (['home', 'records', 'appointments', 'ai', 'profile'].includes(nextRoute)) {
       setRoute('main');
       setActiveTab(nextRoute as MainTabKey);
@@ -481,6 +483,7 @@ function AppContent() {
       case 'postConsultSummary':
         return (
           <PostConsultSummaryScreen
+            appointmentId={summaryAppointmentId}
             onBack={() => goBack('main')}
             onNavigate={navigateTo}
             onRebookDoctor={handleOpenBooking}

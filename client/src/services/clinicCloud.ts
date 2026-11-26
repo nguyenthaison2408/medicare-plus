@@ -263,9 +263,11 @@ export async function signOutClinic(): Promise<void> {
   checkError(error);
 }
 
-export async function listClinicAppointments(): Promise<ClinicAppointment[]> {
-  const { data, error } = await getSupabase().from('clinic_appointments')
-    .select('*, clinic_medical_records(diagnosis, medications, notes)').order('starts_at', { ascending: false });
+export async function listClinicAppointments(patientId?: string): Promise<ClinicAppointment[]> {
+  const query = getSupabase().from('clinic_appointments')
+    .select('*, clinic_medical_records(diagnosis, medications, notes)');
+  if (patientId) query.eq('patient_id', patientId);
+  const { data, error } = await query.order('starts_at', { ascending: false });
   checkError(error);
   return (data || []) as ClinicAppointment[];
 }

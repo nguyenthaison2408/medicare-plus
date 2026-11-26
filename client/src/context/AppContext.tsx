@@ -568,7 +568,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         if (!mounted || request !== generation) return;
         setCloudProfile(profile);
         const [cloudAppointments, cloudDoctors, families, reviews, schedules, configs, hospitalCatalog] = await Promise.all([
-          listClinicAppointments().catch(() => []),
+          listClinicAppointments(profile.role === 'patient' ? profile.id : undefined).catch(() => []),
           listClinicDoctors().catch(() => []),
           fetchFamilyMembersCloud().catch(() => []),
           (profile.role === 'admin'
@@ -1015,7 +1015,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         setPrescriptions(clinicPrescriptions(rows));
       } else {
         setAppointments(prev => prev.map(a => a.id === appointmentId
-          ? { ...a, status: 'completed', statusBadge: 'Đã hoàn tất khám' } : a));
+          ? { ...a, status: 'completed', statusBadge: 'Đã hoàn tất khám', diagnosis: diagnosis?.trim() || a.diagnosis, medications: medications?.map(drug => ({ ...drug })) ?? a.medications, recordNotes: notes?.trim() ?? a.recordNotes } : a));
       }
       return true;
     } catch (error) {

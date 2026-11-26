@@ -23,7 +23,7 @@ function useClinicData() {
     if(!expected){setRows([]);setProfile(null);setLoadedOwner(null);setError('');setLoading(false);return;}
     setLoading(true);
     try {
-      const [nextProfile,nextRows]=await Promise.all([loadClinicProfile(),listClinicAppointments()]);
+      const [nextProfile,nextRows]=await Promise.all([loadClinicProfile(),listClinicAppointments(expected)]);
       if(generation.current!==request)return;
       if(nextProfile.id!==expected)throw new Error('Phiên đăng nhập đã thay đổi. Vui lòng tải lại.');
       setProfile(nextProfile);setRows(nextRows);setLoadedOwner(expected);setError('');
@@ -84,14 +84,14 @@ function CompletedVisitReview({doctorId}:{doctorId:string}) {
   </View>;
 }
 
-export function ClinicPatientRecordsScreen() {
+export function ClinicPatientRecordsScreen({appointmentId}:{appointmentId?:string}) {
   const {rows,profile,loading,error,refresh}=useClinicData();
-  const records=rows.filter(row=>clinicRecord(row));
+  const records=rows.filter(row=>(!appointmentId || row.id===appointmentId) && clinicRecord(row));
   return <ScrollView contentContainerStyle={styles.page}>
     <Text style={styles.heading}>Bệnh án của tôi</Text>
     <Status loading={loading} error={error}/>
     <Action label="Tải lại bệnh án" onPress={()=>{void refresh();}}/>
-    {!loading&&!records.length?<Text style={styles.copy}>Chưa có bệnh án được bác sĩ lưu.</Text>:null}
+    {!loading&&!error&&!records.length?<Text style={styles.copy}>{appointmentId ? 'Chưa có bệnh án cho lịch khám này.' : 'Chưa có bệnh án được bác sĩ lưu.'}</Text>:null}
     {records.map((row,index)=>{const record=clinicRecord(row)!;return <View key={row.id} style={styles.card}>
       <Text style={styles.title}>{doctorName(row)}</Text><Text>{dateLabel(row)}</Text>
       <Text style={styles.copy}>Chẩn đoán: {record.diagnosis}</Text>

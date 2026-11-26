@@ -44,6 +44,7 @@ import { useAppContext } from '../context/AppContext';
 import { calculateBhytBenefit } from '../services/clinicAdmin';
 import { CLOUD_MODE, getSupabase } from '../services/supabaseClient';
 import { listClinicSlots, toClinicStart } from '../services/clinicCloud';
+import { filterFutureBookingSlots, isFutureBookingSlot } from '../utils/bookingSlots';
 import {
   hasPatientBookingErrors,
   normalizePatientBookingInfo,
@@ -455,6 +456,18 @@ export const BookingSlotScreen: React.FC<BookingSlotScreenProps> = ({
   const [consultMode, setConsultMode] = useState('clinic');
   const [selectedDayId, setSelectedDayId] = useState('d2');
   const [selectedSlot, setSelectedSlot] = useState<TimeSlotItem>(TIME_SLOTS[3]);
+  const [nowMs, setNowMs] = useState(Date.now);
+
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>;
+    const updateClock = () => {
+      const now = Date.now();
+      setNowMs(now);
+      timer = setTimeout(updateClock, 60_000 - (now % 60_000));
+    };
+    updateClock();
+    return () => clearTimeout(timer);
+  }, []);
 
   const currentDay =
     BOOKING_DAYS.find((d) => d.id === selectedDayId) || BOOKING_DAYS[1];
@@ -514,7 +527,7 @@ export const BookingSlotScreen: React.FC<BookingSlotScreenProps> = ({
       : slot
   );
 
-  const visibleSlots: TimeSlotItem[] = CLOUD_MODE
+  const daySlots: TimeSlotItem[] = CLOUD_MODE
     ? slotsReady
       ? remoteSlots.map((slot) =>
           slot.status === 'booked' || isSlotTakenByMyAppointment(slot)
@@ -524,7 +537,8 @@ export const BookingSlotScreen: React.FC<BookingSlotScreenProps> = ({
       : TIME_SLOTS.map((slot) => ({ ...slot, status: 'booked' as const }))
     : demoShiftAwareSlots;
 
-  const hasPersonalConflictToday = TIME_SLOTS.some((slot) => isSlotTakenByMyAppointment(slot));
+  const visibleSlots = filterFutureBookingSlots(currentDay, daySlots, nowMs);
+  const hasPersonalConflictToday = visibleSlots.some(isSlotTakenByMyAppointment);
   const firstOpenSlot = visibleSlots.find((slot) => slot.status !== 'booked') || null;
   const effectiveSlot: TimeSlotItem | null = visibleSlots.some(
     (slot) => slot.id === selectedSlot.id && slot.status !== 'booked'
@@ -601,12 +615,18 @@ export const BookingSlotScreen: React.FC<BookingSlotScreenProps> = ({
           style={{ marginBottom: 16 }}
         />
 
-        <TimeSlotGrid
-          slots={visibleSlots}
-          selectedSlotId={effectiveSlot?.id || ''}
-          onSelectSlot={setSelectedSlot}
-          style={{ marginBottom: 16 }}
-        />
+        {visibleSlots.length > 0 ? (
+          <TimeSlotGrid
+            slots={visibleSlots}
+            selectedSlotId={effectiveSlot?.id || ''}
+            onSelectSlot={setSelectedSlot}
+            style={{ marginBottom: 16 }}
+          />
+        ) : (
+          <Text style={{ color: COLORS.textSecondary, marginBottom: 16 }}>
+            Ngày này không còn khung giờ khám sắp tới. Vui lòng chọn ngày khác.
+          </Text>
+        )}
         {hasPersonalConflictToday ? (
           <Text style={{ fontSize: 12, color: COLORS.warning, marginBottom: 12, fontWeight: '600' }}>
             • Các khung giờ bạn đã có lịch hẹn (kể cả với bác sĩ khác) được tự động khóa để tránh đặt trùng giờ.
@@ -650,6 +670,11 @@ export const BookingSlotScreen: React.FC<BookingSlotScreenProps> = ({
         loading={CLOUD_MODE && !slotsReady && !slotError}
         onButtonPress={() => {
           if (!effectiveSlot) return;
+          const now = Date.now();
+          if (!isFutureBookingSlot(currentDay, effectiveSlot, now)) {
+            setNowMs(now);
+            return;
+          }
           onConfirmBooking({
             doctor,
             day: currentDay,
@@ -791,6 +816,12 @@ export const BookingPaymentScreen: React.FC<BookingPaymentScreenProps> = ({
 
   const submitBooking = async (method: PaymentMethodType) => {
     if (submitting || payOsLoading || (CLOUD_MODE && (!day || !slot))) return;
+    if (!isFutureBookingSlot(currentDay, currentSlot, Date.now())) {
+      const message = 'Giờ khám đã qua. Vui lòng quay lại và chọn giờ khác.';
+      if (Platform.OS === 'web' && typeof window !== 'undefined') window.alert(message);
+      else Alert.alert('Giờ khám không còn khả dụng', message);
+      return;
+    }
     const errors = validatePatientBookingInfo(patientInfo);
     setPatientErrors(errors);
     if (hasPatientBookingErrors(errors)) {

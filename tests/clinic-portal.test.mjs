@@ -42,7 +42,8 @@ test('avatar-only profile update preserves an omitted phone and supplies initiat
  let payload,owner;const invoke=contextFunction('updatePatientProfile','saveDoctorSchedule',{CLOUD_MODE:true,cloudUserIdRef:{current:'patient-a'},updateClinicProfile:async(value,id)=>{payload=value;owner=id;return {id};},setCloudProfile:()=>{}});
  await invoke({name:'Patient QA',avatar:'qa-avatar'});assert.equal(payload.phone,undefined);assert.equal(owner,'patient-a');
 });
-function service(file,names,client){return vm.runInNewContext(clean(read(file))+';({'+names.join(',')+'})',{CLOUD_MODE:true,getSupabase:()=>client});}
+const toClinicStart=vm.runInNewContext(clean(read('client/src/utils/bookingSlots.ts'))+';toClinicStart');
+function service(file,names,client){return vm.runInNewContext(clean(read(file))+';({'+names.join(',')+'})',{CLOUD_MODE:true,getSupabase:()=>client,toClinicStart});}
 test('editing a shift updates its id instead of creating a new date/shift row',async()=>{
  let updatedId,payload;const table={update:p=>{payload=p;return table;},eq:(column,id)=>{updatedId=id;return table;},select:()=>table,single:async()=>({data:{id:updatedId,...payload},error:null}),upsert:()=>{throw Error('Should update existing id');}};
  const api=service('client/src/services/clinicAdmin.ts',['upsertDoctorScheduleCloud'],{from:()=>table});

@@ -14,7 +14,7 @@ try{
  for(const [name,id] of Object.entries(ids))await db.query('insert into auth.users values($1,$2)',[id,JSON.stringify({full_name:'Test '+name,phone:'0901234567'})]);
  for(const role of ['doctor','reception','admin'])await db.query('update clinic_profiles set role=$1,doctor_id=$2 where id=$3',[role,role==='doctor'?'doc-1':null,ids[role]]);
  const paidSlot = (await db.query(
-  "select (((now() at time zone 'Asia/Ho_Chi_Minh')::date+2)+time '10:30') at time zone 'Asia/Ho_Chi_Minh' as value"
+  "select (((now() at time zone 'Asia/Ho_Chi_Minh')::date+2)+time '11:00') at time zone 'Asia/Ho_Chi_Minh' as value"
  )).rows[0].value;
  const bookPaid = (code=123456, doctor='doc-1') => db.query(
   "select clinic_book_paid_appointment($1,$2,$3,'Test Patient','0901234567','test@example.com','General consultation') as appointment",
@@ -41,6 +41,28 @@ try{
   assert.deepEqual(stored,{payment_method:'vietqr',payment_status:'PAID'});
  });
  await db.exec('reset role');
+ await check('the patient slot index rejects another doctor and releases the slot on cancellation', async()=>{
+  const {rows:[{startsAt}]} = await db.query(
+   "select (((now() at time zone 'Asia/Ho_Chi_Minh')::date + 2) + time '10:30') at time zone 'Asia/Ho_Chi_Minh' as \"startsAt\""
+  );
+  await as(ids.a);
+  const book = (doctorId) => db.query('select clinic_book_appointment($1,$2) as booking',[doctorId,startsAt]);
+  // PGlite queues queries on one connection. The hosted suite covers parallel connections.
+  const results = await Promise.allSettled([book('doc-1'), book('doc-2')]);
+  const [success] = results.filter(result=>result.status==='fulfilled');
+  const [conflict] = results.filter(result=>result.status==='rejected');
+  assert.equal(results.filter(result=>result.status==='fulfilled').length,1);
+  assert.equal(conflict?.reason.code,'23505');
+  assert.equal(conflict.reason.constraint,'clinic_one_active_booking_per_patient_slot');
+
+  const first = success.value.rows[0].booking;
+  const otherDoctor = first.doctor_id==='doc-1' ? 'doc-2' : 'doc-1';
+  await db.query('select clinic_cancel_appointment($1)',[first.id]);
+  const replacement = (await book(otherDoctor)).rows[0].booking;
+  assert.equal(replacement.doctor_id,otherDoctor);
+  await db.query('select clinic_cancel_appointment($1)',[replacement.id]);
+  await db.exec('reset role');
+ });
  const tables=(await db.query("select tablename from pg_tables where schemaname='public'")).rows.map(x=>x.tablename);
  if(tables.includes('clinic_hospitals')){
   const addHospital=(name='Bệnh viện Kiểm thử',latitude=10.75,longitude=106.67)=>db.query("select public.clinic_admin_add_hospital($1,'123 Đường Kiểm thử, TP.HCM','02812345678',$2,$3) as hospital",[name,latitude,longitude]);
@@ -252,8 +274,8 @@ try{
   await check('assigned doctor can delete lab result',async()=>{const del=(await db.query('select row_to_json(r) as res from public.clinic_delete_lab_result($1) r',[createdLab.id])).rows[0].res;assert.equal(del.id,createdLab.id);});
  }
  await db.exec('reset role');
- const queueVisit=async(doc,date,status='CHECKED_IN')=>(await db.query("insert into clinic_appointments(patient_id,doctor_id,patient_name,patient_phone,starts_at,status) values($1,$2,'QA Queue','0901234567',$3,$4) returning id,queue_number",[ids.a,doc,date,status])).rows[0];
- const q1=await queueVisit('doc-1','2098-01-01T08:00:00+07:00'),q2=await queueVisit('doc-1','2098-01-01T08:30:00+07:00'),q3=await queueVisit('doc-2','2098-01-01T08:00:00+07:00'),q4=await queueVisit('doc-1','2098-01-02T08:00:00+07:00');
+ const queueVisit=async(doc,date,patientId=ids.a)=>(await db.query("insert into clinic_appointments(patient_id,doctor_id,patient_name,patient_phone,starts_at,status) values($1,$2,'QA Queue','0901234567',$3,'CHECKED_IN') returning id,queue_number",[patientId,doc,date])).rows[0];
+ const q1=await queueVisit('doc-1','2098-01-01T08:00:00+07:00'),q2=await queueVisit('doc-1','2098-01-01T08:30:00+07:00'),q3=await queueVisit('doc-2','2098-01-01T08:00:00+07:00',ids.b),q4=await queueVisit('doc-1','2098-01-02T08:00:00+07:00');
  await check('queue allocation is per doctor and clinic day',async()=>{assert.equal(q1.queue_number,1);assert.equal(q2.queue_number,2);assert.equal(q3.queue_number,1);assert.equal(q4.queue_number,1);});
  await db.query("update clinic_appointments set status='CANCELLED' where id=$1",[q1.id]);
  await check('cancelled queue numbers are never reused',async()=>assert.equal((await queueVisit('doc-1','2098-01-01T09:00:00+07:00')).queue_number,3));

@@ -1,3 +1,4 @@
+import {buildGeminiHistory,sanitizeGeminiReply} from '../client/src/utils/aiHistory.ts';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
@@ -12,10 +13,6 @@ import {
   getFollowUpQuestions,
 } from '../client/src/services/aiFollowUpQuestions.ts';
 import { DOCTORS } from '../client/src/data/mockData.ts';
-import {
-  buildGeminiHistory,
-  sanitizeGeminiReply,
-} from '../client/src/utils/aiHistory.ts';
 
 const clean = source => stripTypeScriptTypes(source.replace(/import[\s\S]*?from\s*['"][^'"]+['"];?/g, '')).replace(/export\s+/g, '');
 const source = file => fs.readFileSync(new URL('../client/src/' + file, import.meta.url), 'utf8').replace(/\r\n/g, '\n');
@@ -222,6 +219,41 @@ test('severe canonical answer increases urgency while preserving specialty conte
   assert.equal(next.urgencyLevel, 'soon');
   assert.equal(next.specialtyName, initial.specialtyName);
 });
+
+test('leg and joint pain route to orthopedics (accented & unaccented), never neurology or pulmonology', () => {
+  const accented = engine.runClinicalTriage('Tôi bị đau chân và sưng cổ chân');
+  assert.equal(accented.specialtyKey, 'orthopedics');
+  assert.ok(accented.specialtyName.includes('Cơ Xương Khớp'));
+  assert.equal(
+    accented.recommendedDoctors.some((d) => d.id === 'doc-1'),
+    false,
+    'Orthopedics must not recommend headache neurologist doc-1'
+  );
+
+  const unaccented = engine.runClinicalTriage('bac si cho toi hoi toi bi dau chan');
+  assert.equal(unaccented.specialtyKey, 'orthopedics', 'Should route unaccented "dau chan" to orthopedics and ignore "ho" inside "cho"');
+
+  const ent = engine.runClinicalTriage('Tôi bị đau tai và nghẹt mũi');
+  assert.equal(ent.specialtyKey, 'ent');
+
+  const fallback = engine.runClinicalTriage('Hôm nay tôi thấy người hơi uể oải');
+  assert.equal(fallback.specialtyKey, 'general', 'Unknown symptoms must fall back to general medicine, never neurology');
+  assert.ok(fallback.specialtyName.includes('Nội Tổng Quát'));
+});
+
+test('mobile booking refuses another doctor at the same time before sending a cloud write', async () => {
+ const text=source('context/AppContext.tsx');const a=text.indexOf('  const createBooking =');const b=text.indexOf('    if (CLOUD_MODE) {\n      if (consultMode',a);assert.ok(a>=0&&b>a);
+ const code=stripTypeScriptTypes(text.slice(a,b)+' return null; };');let calls=0;
+ const invoke=vm.runInNewContext(code+';createBooking',{CLOUD_MODE:true,cloudUserIdRef:{current:'patient-a'},appointments:[{status:'upcoming',startsAt:'2026-11-27T09:00:00+07:00',patientId:'patient-a',doctor:{id:'doc-2',name:'Other doctor'}}],toClinicStart:()=> '2026-11-27T09:00:00+07:00',bookClinicAppointment:()=>calls++});
+ await assert.rejects(invoke({doctor:{id:'doc-1',name:'Doctor'},day:{fullDate:'27/11/2026'},slot:{time:'09:00'}}),/2 bác sĩ/);assert.equal(calls,0);
+});
+
+test('client source never embeds provider API credentials or bypasses PayOS verification',()=>{
+ const files=fs.readdirSync(new URL('../client/src/',import.meta.url),{recursive:true}).filter(p=>/\.(ts|tsx)$/.test(p));
+ for(const p of files)assert.doesNotMatch(source(p),/EXPO_PUBLIC_(?:GEMINI|GROQ).*KEY|generativelanguage\.googleapis\.com|api\.groq\.com/,p);
+ const payment=source('screens/BookingFlowScreens.tsx');assert.doesNotMatch(payment,/isDirectQr|directQrImageUrl|Tôi đã chuyển khoản/);
+});
+
 test('buildGeminiHistory bounds turns and extracts clinicalCard analysisText', () => {
   const msgs = [
     { sender: 'user', text: 'Tôi bị đau đầu' },

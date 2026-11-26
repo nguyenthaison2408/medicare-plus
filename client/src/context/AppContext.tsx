@@ -3,7 +3,7 @@ import { Alert } from 'react-native';
 import { CLOUD_MODE, getSupabase } from '../services/supabaseClient';
 import {
   bookClinicAppointment, cancelClinicAppointment, checkInClinic, completeClinicAppointment, listClinicAppointments, listClinicDoctors,
-  loadClinicProfile, subscribeClinicAppointments, updateClinicProfile, type ClinicProfile, type ClinicAppointment, type ClinicMedication,
+  loadClinicProfile, subscribeClinicAppointments, toClinicStart, updateClinicProfile, type ClinicProfile, type ClinicAppointment, type ClinicMedication,
 } from '../services/clinicCloud';
 import { clinicAppointmentToItem, clinicPrescriptions, clinicRecord } from '../services/clinicAdapters';
 import {
@@ -811,6 +811,50 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   }): Promise<LatestBookingTicket> => {
     const chosenDay = day || BOOKING_DAYS[1];
     const chosenSlot = slot || TIME_SLOTS[3];
+    const targetStartIso = toClinicStart(chosenDay, chosenSlot);
+    const targetStartMs = new Date(targetStartIso).getTime();
+
+    const isSameAppointmentSlot = (apt: AppointmentItem): boolean => {
+      if (apt.status !== 'upcoming') return false;
+      if (apt.startsAt) {
+        return new Date(apt.startsAt).getTime() === targetStartMs;
+      }
+      return (
+        apt.dateLabel.includes(chosenDay.fullDate) &&
+        apt.dateLabel.includes(chosenSlot.time)
+      );
+    };
+
+    const existingConflict = appointments.find((apt) => {
+      if (!isSameAppointmentSlot(apt)) return false;
+      if (CLOUD_MODE && cloudUserIdRef.current && apt.patientId) {
+        return apt.patientId === cloudUserIdRef.current;
+      }
+      return true;
+    });
+
+    if (existingConflict) {
+      if (existingConflict.doctor.id === doctor.id) {
+        throw new Error(
+          `Bạn đã đặt lịch với ${doctor.name} vào khung giờ ${chosenSlot.time} ngày ${chosenDay.fullDate}. Lịch đã đặt không thể đặt trùng hoặc thay đổi.`
+        );
+      }
+      throw new Error(
+        `Bạn đã có lịch hẹn với ${existingConflict.doctor.name} vào khung giờ ${chosenSlot.time} ngày ${chosenDay.fullDate}. Không thể đặt 2 bác sĩ cùng một khung giờ.`
+      );
+    }
+
+    if (!CLOUD_MODE) {
+      const doctorSlotTaken = appointments.some(
+        (apt) => apt.doctor.id === doctor.id && isSameAppointmentSlot(apt)
+      );
+      if (doctorSlotTaken) {
+        throw new Error(
+          `Khung giờ ${chosenSlot.time} ngày ${chosenDay.fullDate} của ${doctor.name} đã có người đặt. Vui lòng chọn khung giờ khác.`
+        );
+      }
+    }
+
     if (CLOUD_MODE) {
       if (consultMode !== 'clinic' && consultMode !== 'chat' && consultMode !== 'video') {
         throw new Error('Hình thức khám không hợp lệ.');
@@ -880,6 +924,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
       doctor,
       dateLabel: `${chosenDay.dayLabel} (${chosenDay.fullDate}) • ${chosenSlot.time}`,
       timeRange: `${chosenSlot.time}, ${chosenDay.dayLabel} ${chosenDay.fullDate}`,
+      startsAt: targetStartIso,
       queueNumber: newTicket.queueNumber,
       room: isVideo
         ? 'Tư vấn trực tuyến qua ứng dụng'

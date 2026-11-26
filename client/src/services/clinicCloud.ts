@@ -61,6 +61,7 @@ export interface ClinicAppointment {
   symptoms: string;
   starts_at: string;
   status: 'CONFIRMED' | 'CHECKED_IN' | 'COMPLETED' | 'CANCELLED';
+  queue_number?: number | null;
   payment_method: string;
   payment_status: 'UNPAID' | 'PAID';
   clinic_medical_records?: ClinicMedicalRecord | ClinicMedicalRecord[] | null;
@@ -315,9 +316,10 @@ export async function cancelClinicAppointment(id: string): Promise<void> {
   checkError(error);
 }
 
-export async function checkInClinic(bookingCode: string): Promise<void> {
-  const { error } = await getSupabase().rpc('clinic_check_in', { p_booking_code: bookingCode.trim() });
+export async function checkInClinic(bookingCode: string): Promise<ClinicAppointment> {
+  const { data, error } = await getSupabase().rpc('clinic_check_in', { p_booking_code: bookingCode.trim() });
   checkError(error);
+  return data as ClinicAppointment;
 }
 
 export async function completeClinicAppointment(id: string, diagnosis: string, medications: ClinicMedication[], notes: string): Promise<void> {

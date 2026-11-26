@@ -1055,8 +1055,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         return true;
       }
       const target = appointments.find(a => a.code?.toUpperCase() === trimmed);
-      if (!target) throw new Error(`Không tìm thấy phiếu hẹn với mã ${trimmed}.`);
-      setAppointments(prev => prev.map(a => a.id === target.id ? { ...a, statusBadge: 'Đã có mặt' } : a));
+      if (!target || target.status !== 'upcoming') throw new Error('Phiếu hẹn đã hủy, đã hoàn thành hoặc không tồn tại.');
+      setAppointments(prev => {
+        const current=prev.find(a=>a.id===target.id);
+        if (!current || current.status !== 'upcoming') return prev;
+        const day=current.startsAt?.slice(0,10) || current.dateLabel;
+        const max=prev.filter(a=>a.doctor.id===current.doctor.id && (a.startsAt?.slice(0,10)||a.dateLabel)===day).reduce((n,a)=>Math.max(n,Number(a.queueNumber?.match(/\d+/)?.[0])||0),0);
+        const queueNumber=current.queueNumber?.match(/\d+/) ? current.queueNumber : 'STT '+String(max+1).padStart(2,'0');
+        return prev.map(a=>a.id===current.id?{...a,queueNumber,statusBadge:'Đã có mặt'}:a);
+      });
       return true;
     } catch (error) {
       Alert.alert('Tiếp đón bệnh nhân', error instanceof Error ? error.message : 'Không thể tiếp đón. Vui lòng tải lại lịch khám.');

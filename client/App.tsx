@@ -84,6 +84,7 @@ function AppContent() {
       phone?: string;
     };
   }>({});
+  const [mockReceptionMode, setMockReceptionMode] = useState(false);
   const { width } = useWindowDimensions();
   const isTablet = width > 700;
 
@@ -222,8 +223,11 @@ function AppContent() {
     navigateTo('bookingSlot');
   };
 
-  const handleRoleLoginSuccess = (role: UserRole) => {
+  const handleRoleLoginSuccess = (role: UserRole, email?: string) => {
     setRouteHistory([]);
+    const lower = (email || '').trim().toLowerCase();
+    const isMockReception = !CLOUD_MODE && (lower.includes('reception') || lower.includes('tiepdon'));
+    setMockReceptionMode(isMockReception);
     if (role === 'admin') {
       setRoute('adminPortal');
     } else if (role === 'doctor') {
@@ -237,6 +241,7 @@ function AppContent() {
   const handleLogout = async () => {
     try {
       if (SUPABASE_CONFIGURED) await signOutClinic();
+      setMockReceptionMode(false);
       setRouteHistory([]);
       setRoute('login');
     } catch (error) { setActionMessage(error instanceof Error ? error.message : 'Chưa đăng xuất được. Vui lòng thử lại.'); }
@@ -252,7 +257,7 @@ function AppContent() {
       case 'login':
         return (
           <LoginScreen
-            onLoginSuccess={(role) => handleRoleLoginSuccess(role)}
+            onLoginSuccess={(role, email) => handleRoleLoginSuccess(role, email)}
             onGoRegister={() => navigateTo('register')}
             onBack={() => navigateTo('splash')}
           />
@@ -270,7 +275,9 @@ function AppContent() {
         );
       case 'adminPortal':
         if (CLOUD_MODE && !cloudProfile) return <Text>Đang tải tài khoản...</Text>;
-        if (CLOUD_MODE && cloudProfile?.role === 'reception') return <ClinicStaffScreen onLogout={() => { void handleLogout(); }} />;
+        if ((CLOUD_MODE && cloudProfile?.role === 'reception') || (!CLOUD_MODE && mockReceptionMode)) {
+          return <ClinicStaffScreen onLogout={() => { void handleLogout(); }} />;
+        }
         return (
           <AdminDashboardScreen
             onLogout={() => { void handleLogout(); }}

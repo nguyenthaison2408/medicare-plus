@@ -24,7 +24,7 @@ export function clinicAppointmentToItem(appointment: ClinicAppointment): Appoint
   return {
     id: appointment.id, code: appointment.booking_code, doctor,
     dateLabel: label, timeRange: label, startsAt: appointment.starts_at,
-    queueNumber: appointment.status === 'CHECKED_IN' ? 'Đã có mặt' : 'Đã xác nhận',
+    queueNumber: appointment.queue_number ? 'STT '+String(appointment.queue_number).padStart(2,'0') : appointment.status === 'CHECKED_IN' ? 'Đã có mặt' : 'Đã xác nhận',
     room: isChatConsult ? 'Phòng Tư vấn Chat Trực tuyến' : doctor.hospital,
     status: appointment.status === 'COMPLETED' ? 'completed' : appointment.status === 'CANCELLED' ? 'cancelled' : 'upcoming',
     mode: isChatConsult ? 'video' : 'clinic',

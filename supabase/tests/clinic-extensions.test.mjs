@@ -251,5 +251,15 @@ try{
   await as(ids.doctor);
   await check('assigned doctor can delete lab result',async()=>{const del=(await db.query('select row_to_json(r) as res from public.clinic_delete_lab_result($1) r',[createdLab.id])).rows[0].res;assert.equal(del.id,createdLab.id);});
  }
+ await db.exec('reset role');
+ const queueVisit=async(doc,date,status='CHECKED_IN')=>(await db.query("insert into clinic_appointments(patient_id,doctor_id,patient_name,patient_phone,starts_at,status) values($1,$2,'QA Queue','0901234567',$3,$4) returning id,queue_number",[ids.a,doc,date,status])).rows[0];
+ const q1=await queueVisit('doc-1','2098-01-01T08:00:00+07:00'),q2=await queueVisit('doc-1','2098-01-01T08:30:00+07:00'),q3=await queueVisit('doc-2','2098-01-01T08:00:00+07:00'),q4=await queueVisit('doc-1','2098-01-02T08:00:00+07:00');
+ await check('queue allocation is per doctor and clinic day',async()=>{assert.equal(q1.queue_number,1);assert.equal(q2.queue_number,2);assert.equal(q3.queue_number,1);assert.equal(q4.queue_number,1);});
+ await db.query("update clinic_appointments set status='CANCELLED' where id=$1",[q1.id]);
+ await check('cancelled queue numbers are never reused',async()=>assert.equal((await queueVisit('doc-1','2098-01-01T09:00:00+07:00')).queue_number,3));
+ await check('repeated check-in keeps the issued queue number',async()=>assert.equal((await db.query("update clinic_appointments set status='CHECKED_IN',queue_number=99 where id=$1 returning queue_number",[q2.id])).rows[0].queue_number,2));
+ await as(ids.reception);const receptionQueue=(await db.query('select queue_number from clinic_appointments where id=$1',[q2.id])).rows[0].queue_number;
+ await as(ids.doctor);await check('reception and assigned doctor read the same stored number',async()=>assert.equal((await db.query('select queue_number from clinic_appointments where id=$1',[q2.id])).rows[0].queue_number,receptionQueue));
+ await check('authenticated users cannot manipulate queue counters',async()=>denied(()=>db.query('update clinic_private.daily_queue_counters set last_number=0')));
  console.log(count+' PostgreSQL extension checks passed.');
 }finally{await db.close();}

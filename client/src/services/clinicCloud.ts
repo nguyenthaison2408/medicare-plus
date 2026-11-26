@@ -2,7 +2,10 @@ import { Linking, Platform } from 'react-native';
 import Constants from 'expo-constants';
 import type { DaySlotItem, DoctorItem, TimeSlotItem } from '../data/mockData';
 import type { PatientBookingInfo } from '../utils/bookingValidation';
+import { toClinicStart } from '../utils/bookingSlots';
 import { getSupabase } from './supabaseClient';
+
+export { toClinicStart };
 
 export type ClinicRole = 'patient' | 'doctor' | 'reception' | 'admin';
 export interface ClinicDoctor {
@@ -68,6 +71,7 @@ export interface ClinicAppointment {
 
 const errorMessages: Record<string, string> = {
   SLOT_ALREADY_BOOKED: 'Khung giờ này vừa được người khác đặt. Vui lòng chọn giờ khác.',
+  clinic_one_active_booking_per_patient_slot: 'Bạn đã có lịch hẹn vào khung giờ này. Vui lòng chọn giờ khác.',
   OUTSIDE_DOCTOR_SHIFT: 'Bác sĩ không có ca trực trong khung giờ này. Vui lòng chọn khung giờ thuộc ca trực.',
   INVALID_BOOKING_TIME: 'Giờ khám đã qua hoặc không nằm trong lịch làm việc.',
   INVALID_BOOKING_DATE: 'Ngày khám không hợp lệ. Vui lòng chọn lại.',
@@ -270,11 +274,6 @@ export async function listClinicDoctors(): Promise<ClinicDoctor[]> {
     .select('*').eq('active', true);
   checkError(error);
   return (data || []) as ClinicDoctor[];
-}
-
-export function toClinicStart(day: DaySlotItem, slot: TimeSlotItem): string {
-  const [date, month, year] = day.fullDate.split('/');
-  return `${year}-${month.padStart(2, '0')}-${date.padStart(2, '0')}T${slot.time}:00+07:00`;
 }
 
 export async function listClinicSlots(doctorId: string, day: DaySlotItem): Promise<{ starts_at: string; is_booked: boolean }[]> {

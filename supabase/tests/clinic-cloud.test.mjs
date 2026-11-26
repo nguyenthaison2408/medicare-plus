@@ -76,6 +76,20 @@ try {
     assert.equal(result.patient_name,'Nguyễn Văn An');assert.equal(result.patient_phone,'0901234567');
     ok(await patientA.client.rpc('clinic_cancel_appointment',{p_appointment_id:result.id}));
   });
+  await check('concurrent bookings for one patient and two doctors create exactly one appointment', async () => {
+    const request = (doctorId) => patientA.client.rpc('clinic_book_appointment', {
+      p_doctor_id: doctorId, p_starts_at: startsAt, p_payment_method: 'at_clinic',
+      p_patient_name: 'Demo Patient A', p_patient_phone: '0901234567',
+      p_patient_email: patientA.email, p_symptoms: 'Đau đầu kéo dài hai ngày',
+    });
+    const results = await Promise.all([request('doc-1'), request('doc-2')]);
+    const successes = results.filter(result => !result.error);
+    const conflicts = results.filter(result => result.error?.code === '23505');
+    assert.equal(successes.length, 1);
+    assert.equal(conflicts.length, 1);
+    assert.match(conflicts[0].error.message, /clinic_one_active_booking_per_patient_slot/);
+    ok(await patientA.client.rpc('clinic_cancel_appointment', {p_appointment_id: successes[0].data.id}));
+  });
   await check('50 concurrent hosted booking requests create exactly one appointment and 49 conflicts', async () => {
     const results = await Promise.all(Array.from({length:50}, () => patientA.client.rpc('clinic_book_appointment', {
       p_doctor_id:'doc-1',p_starts_at:startsAt,p_payment_method:'at_clinic',

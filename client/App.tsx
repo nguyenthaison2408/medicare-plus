@@ -348,8 +348,8 @@ function AppContent() {
             consultMode={bookingInfo.consultMode}
             patient={bookingInfo.patient}
             onBack={() => goBack('bookingSlot')}
-            onPaymentSuccess={async (method, patientInfo: PatientBookingInfo) => {
-              if (bookingInFlight.current) return;
+            onPaymentSuccess={async (method, patientInfo: PatientBookingInfo, payOsOrderCode) => {
+              if (bookingInFlight.current) return false;
               bookingInFlight.current = true;
               try {
                 const targetDoctor = selectedDoctor || bookingInfo.doctor;
@@ -358,15 +358,18 @@ function AppContent() {
                   day: bookingInfo.day, slot: bookingInfo.slot,
                   consultMode: bookingInfo.consultMode, paymentMethod: method,
                   patientInfo,
+                  payOsOrderCode,
                 });
                 setSelectedDoctor(targetDoctor);
                 setRouteHistory([]);
                 setBookingInfo({ doctor: targetDoctor, paymentMethod: method });
                 setRoute('bookingSuccess');
+                return true;
               } catch (error) {
                 const msg = error instanceof Error ? error.message : 'Chưa đặt được lịch. Vui lòng thử lại.';
                 setActionMessage(msg);
                 Alert.alert('Không thể đặt lịch', msg);
+                return false;
               }
               finally { bookingInFlight.current = false; }
             }}

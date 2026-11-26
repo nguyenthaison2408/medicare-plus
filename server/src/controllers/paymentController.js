@@ -1,7 +1,9 @@
 const fs = require('fs');
 const path = require('path');
+const { randomBytes } = require('node:crypto');
 const { PayOS } = require('@payos/node');
 const { appointments } = require('../data/mockData');
+const clinicOrders = require('../services/clinicPayosOrders');
 
 // Hàm hỗ trợ nạp biến môi trường nếu chưa được nạp
 function ensureEnvLoaded() {
@@ -103,14 +105,34 @@ const createPaymentLink = async (req, res) => {
       });
     }
 
-    const { appointmentId, amount, description, patientName, patientPhone } = req.body;
+    const { appointmentId, amount, description, patientName, patientPhone, doctorId, startsAt } = req.body;
     
     // PayOS requires orderCode as positive integer (<= 9007199254740991)
-    const orderCode = Number(String(Date.now()).slice(-6) + Math.floor(100 + Math.random() * 899));
+    const orderCode = randomBytes(6).readUIntBE(0, 6) || 1;
     if (!Number.isSafeInteger(amount) || amount <= 0) {
       return res.status(400).json({ success: false, message: 'Số tiền phải là số nguyên dương.' });
     }
     const finalAmount = amount;
+    const cloudBooking = doctorId !== undefined || startsAt !== undefined;
+    if (cloudBooking) {
+      if (typeof doctorId !== 'string' || !doctorId || typeof startsAt !== 'string' ||
+          !Number.isFinite(Date.parse(startsAt)) || Date.parse(startsAt) <= Date.now()) {
+        return res.status(400).json({ success: false, message: 'Thông tin lịch khám không hợp lệ.' });
+      }
+      const token = req.get('Authorization')?.match(/^Bearer (\S+)$/i)?.[1];
+      const patientId = await clinicOrders.getPatient(token);
+      if (!patientId) return res.status(401).json({ success: false, message: 'Vui lòng đăng nhập lại.' });
+      if (await clinicOrders.getDoctorFee(doctorId) !== finalAmount) {
+        return res.status(409).json({ success: false, message: 'Phí khám đã thay đổi. Vui lòng tải lại thông tin bác sĩ.' });
+      }
+      if (!await clinicOrders.isSlotAvailable(doctorId, startsAt, token)) {
+        return res.status(409).json({ success: false, message: 'Giờ khám không còn khả dụng. Vui lòng chọn lại.' });
+      }
+      await clinicOrders.createOrder({
+        order_code: orderCode, patient_id: patientId, doctor_id: doctorId,
+        starts_at: startsAt, amount: finalAmount,
+      });
+    }
     
     const cleanDesc = sanitizeDescription(description);
 
@@ -130,7 +152,7 @@ const createPaymentLink = async (req, res) => {
     const paymentLinkRes = await payos.paymentRequests.create(paymentData);
 
     // Lưu thông tin đơn để đối soát
-    orders.set(orderCode, {
+    if (!cloudBooking) orders.set(orderCode, {
       orderCode,
       appointmentId,
       amount: finalAmount,
@@ -177,15 +199,15 @@ const handleWebhook = async (req, res) => {
       verifiedData = await payos.webhooks.verify(webhookBody);
     } catch (verifyErr) {
       console.warn('[PayOS Webhook] Signature verification notice:', verifyErr.message);
-      verifiedData = webhookBody.data || webhookBody;
+      return res.status(400).json({ success: false, message: 'Invalid PayOS signature' });
     }
 
-    const orderCode = verifiedData?.orderCode || webhookBody?.data?.orderCode || webhookBody?.orderCode;
-    const code = webhookBody?.code || verifiedData?.code || '00';
+    const orderCode = verifiedData.orderCode;
+    const code = verifiedData.code;
     console.log(`[PayOS Webhook] Nhận thông báo giao dịch cho Order #${orderCode}, mã kết quả:`, code);
 
     const order = orders.get(Number(orderCode));
-    if (order) {
+    if (order && code === '00' && verifiedData.amount === order.amount) {
       order.status = 'PAID';
       order.paidAt = new Date().toISOString();
       order.webhookPayload = verifiedData;
@@ -217,9 +239,28 @@ const getPaymentStatus = async (req, res) => {
   try {
     const { orderCode } = req.params;
     const numOrderCode = Number(orderCode);
+    if (!Number.isSafeInteger(numOrderCode) || numOrderCode <= 0) {
+      return res.status(400).json({ success: false, message: 'Invalid order code' });
+    }
     const order = orders.get(numOrderCode);
 
     if (!order) {
+      const token = req.get('Authorization')?.match(/^Bearer (\S+)$/i)?.[1];
+      const patientId = await clinicOrders.getPatient(token);
+      const cloudOrder = patientId && await clinicOrders.getOrder(numOrderCode);
+      if (cloudOrder && cloudOrder.patient_id === patientId) {
+        let paidAt = cloudOrder.paid_at;
+        if (!paidAt) {
+          const payosOrder = await getPayOSClient()?.paymentRequests.get(numOrderCode);
+          if (isPaidInFull(payosOrder, numOrderCode, cloudOrder.amount)) {
+            paidAt = await clinicOrders.markPaid(numOrderCode);
+          }
+        }
+        return res.json({
+          success: true,
+          data: { orderCode: numOrderCode, status: paidAt ? 'PAID' : 'PENDING', paidAt },
+        });
+      }
       return res.status(404).json({ success: false, message: 'Không tìm thấy mã đơn hàng' });
     }
 
@@ -235,7 +276,7 @@ const getPaymentStatus = async (req, res) => {
     if (payos) {
       try {
         const payosOrder = await payos.paymentRequests.get(numOrderCode);
-        if (payosOrder && (payosOrder.status === 'PAID' || payosOrder.status === 'SUCCESS')) {
+        if (isPaidInFull(payosOrder, numOrderCode, order.amount)) {
           order.status = 'PAID';
           order.paidAt = new Date().toISOString();
           if (order.appointmentId) {
@@ -262,6 +303,11 @@ const getPaymentStatus = async (req, res) => {
     return res.status(500).json({ success: false, message: err.message });
   }
 };
+
+function isPaidInFull(payment, orderCode, amount) {
+  return payment?.orderCode === orderCode && payment.status === 'PAID' &&
+    payment.amount === amount && payment.amountPaid >= amount && payment.amountRemaining === 0;
+}
 
 module.exports = {
   createPaymentLink,

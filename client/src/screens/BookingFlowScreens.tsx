@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -42,7 +42,7 @@ import { findHospitalForDoctor } from '../utils/mapNavigation';
 import { shareDoctorProfile } from '../utils/shareUtils';
 import { useAppContext } from '../context/AppContext';
 import { calculateBhytBenefit } from '../services/clinicAdmin';
-import { CLOUD_MODE } from '../services/supabaseClient';
+import { CLOUD_MODE, getSupabase } from '../services/supabaseClient';
 import { listClinicSlots, toClinicStart } from '../services/clinicCloud';
 import {
   hasPatientBookingErrors,
@@ -667,6 +667,26 @@ export const BookingSlotScreen: React.FC<BookingSlotScreenProps> = ({
 // ============================================================================
 export type PaymentMethodType = 'at_clinic' | 'at_clinic_bhyt' | 'vietqr' | 'vnpay' | 'momo';
 
+interface PayOsBookingOrder {
+  orderCode: number;
+  amount: number;
+  bankName?: string;
+  bin?: string;
+  accountName?: string;
+  accountNumber?: string;
+  description?: string;
+  qrCode?: string;
+  checkoutUrl?: string;
+  patientInfo: PatientBookingInfo;
+}
+
+async function payOsHeaders(): Promise<Record<string, string>> {
+  if (!CLOUD_MODE) return {};
+  const { data, error } = await getSupabase().auth.getSession();
+  if (error || !data.session) throw new Error('Vui lòng đăng nhập lại.');
+  return { Authorization: `Bearer ${data.session.access_token}` };
+}
+
 export interface BookingPaymentScreenProps {
   doctor: DoctorItem;
   day?: any;
@@ -681,8 +701,9 @@ export interface BookingPaymentScreenProps {
   onBack: () => void;
   onPaymentSuccess: (
     method: PaymentMethodType,
-    patientInfo: PatientBookingInfo
-  ) => void | Promise<void>;
+    patientInfo: PatientBookingInfo,
+    payOsOrderCode?: number
+  ) => Promise<boolean>;
 }
 
 export const BookingPaymentScreen: React.FC<BookingPaymentScreenProps> = ({
@@ -700,9 +721,9 @@ export const BookingPaymentScreen: React.FC<BookingPaymentScreenProps> = ({
   const [submitting, setSubmitting] = useState(false);
   const [payOsModalVisible, setPayOsModalVisible] = useState(false);
   const [payOsLoading, setPayOsLoading] = useState(false);
-  const [payOsData, setPayOsData] = useState<any>(null);
+  const [payOsData, setPayOsData] = useState<PayOsBookingOrder | null>(null);
   const [payOsPaid, setPayOsPaid] = useState(false);
-  const pollTimerRef = useRef<any>(null);
+  const [finalizing, setFinalizing] = useState(false);
   const [activeBhytCode, setActiveBhytCode] = useState<string>(
     patient?.bhytCode ?? patientProfile.bhytCode ?? ''
   );
@@ -786,6 +807,10 @@ export const BookingPaymentScreen: React.FC<BookingPaymentScreenProps> = ({
     setPatientInfo(normalized);
 
     if (method === 'vietqr') {
+      if (payOsData) {
+        setPayOsModalVisible(true);
+        return;
+      }
       setPayOsLoading(true);
       setPayOsPaid(false);
       const controller = new AbortController();
@@ -794,18 +819,20 @@ export const BookingPaymentScreen: React.FC<BookingPaymentScreenProps> = ({
         const serverUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
         const res = await fetch(`${serverUrl}/payments/create-payment-link`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...await payOsHeaders() },
           signal: controller.signal,
           body: JSON.stringify({
             amount: doctor.feeNumeric,
             description: `MEDICARE ${doctor.name.slice(0, 10)}`,
             patientName: normalized.fullName,
             patientPhone: normalized.phone,
+            ...(CLOUD_MODE ? { doctorId: doctor.id, startsAt: toClinicStart(currentDay, currentSlot) } : {}),
           }),
         });
         const json = await res.json();
-        if (json.success && json.data) {
-          setPayOsData(json.data);
+        if (res.ok && json.success && Number.isSafeInteger(json.data?.orderCode) &&
+            json.data.amount === doctor.feeNumeric) {
+          setPayOsData({ ...json.data, patientInfo: normalized });
           setPayOsModalVisible(true);
           return;
         }
@@ -828,34 +855,51 @@ export const BookingPaymentScreen: React.FC<BookingPaymentScreenProps> = ({
   };
 
   useEffect(() => {
-    if (!payOsModalVisible || !payOsData?.orderCode || payOsPaid) {
-      if (pollTimerRef.current) clearInterval(pollTimerRef.current);
-      return;
-    }
-
-    const serverUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
-    pollTimerRef.current = setInterval(async () => {
+    if (!payOsModalVisible || !payOsData || payOsPaid) return;
+    let active = true;
+    let timer: ReturnType<typeof setTimeout>;
+    let request: AbortController | undefined;
+    const poll = async () => {
+      if (!active) return;
+      request = new AbortController();
+      const timeout = setTimeout(() => request?.abort(), 8000);
       try {
-        const res = await fetch(`${serverUrl}/payments/status/${payOsData.orderCode}`);
+        const serverUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
+        const res = await fetch(`${serverUrl}/payments/status/${payOsData.orderCode}`, {
+          headers: await payOsHeaders(), signal: request.signal,
+        });
         const json = await res.json();
-        if (json.success && json.data?.status === 'PAID') {
-          if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+        if (active && res.ok && json.success && json.data?.orderCode === payOsData.orderCode &&
+            json.data.status === 'PAID') {
           setPayOsPaid(true);
-          setTimeout(async () => {
-            setPayOsModalVisible(false);
-            const normalized = normalizePatientBookingInfo(patientInfo);
-            await onPaymentSuccess('vietqr', normalized);
-          }, 1500);
+          return;
         }
       } catch {
-        // Polling retry
+        // Retry after a transient connection failure.
+      } finally {
+        clearTimeout(timeout);
       }
-    }, 2000);
-
-    return () => {
-      if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+      if (active) timer = setTimeout(poll, 2000);
     };
-  }, [payOsModalVisible, payOsData, payOsPaid, patientInfo, onPaymentSuccess]);
+    timer = setTimeout(poll, 2000);
+    return () => {
+      active = false;
+      clearTimeout(timer);
+      request?.abort();
+    };
+  }, [payOsModalVisible, payOsData, payOsPaid]);
+
+  const finalizePaidBooking = async () => {
+    if (!payOsData || finalizing) return;
+    setFinalizing(true);
+    try {
+      if (await onPaymentSuccess('vietqr', payOsData.patientInfo, payOsData.orderCode)) {
+        setPayOsModalVisible(false);
+      }
+    } finally {
+      setFinalizing(false);
+    }
+  };
 
   const patientForm = (<AnimatedEntry delay={70} direction="up">
           <View style={[styles.card, SHADOWS.sm, { marginBottom: 16 }]}>
@@ -1275,9 +1319,10 @@ export const BookingPaymentScreen: React.FC<BookingPaymentScreenProps> = ({
                 <Ionicons name="checkmark-circle" size={64} color={COLORS.success} />
                 <Text style={styles.payOsSuccessTitle}>Thanh toán thành công!</Text>
                 <Text style={styles.payOsSuccessSub}>
-                  Hệ thống PayOS đã xác nhận chuyển khoản {formatCurrency(payOsData.amount)}.
+                  Hệ thống PayOS đã xác nhận chuyển khoản {payOsData && formatCurrency(payOsData.amount)}.
                 </Text>
-                <ActivityIndicator size="small" color={COLORS.success} style={{ marginTop: 12 }} />
+                <Text style={styles.payOsSuccessSub}>Mã giao dịch: {payOsData?.orderCode}</Text>
+                <AppButton title="Hoàn tất đặt lịch" loading={finalizing} onPress={finalizePaidBooking} />
               </View>
             ) : (
               <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ alignItems: 'center' }}>
@@ -1307,19 +1352,19 @@ export const BookingPaymentScreen: React.FC<BookingPaymentScreenProps> = ({
                   <View style={styles.payOsInfoRow}>
                     <Text style={styles.payOsLabel}>Ngân hàng thụ hưởng:</Text>
                     <Text style={styles.payOsValue}>
-                      {payOsData?.bankName || (payOsData?.bin === '970422' ? 'MB Bank (Quân Đội)' : 'MB Bank')}
+                      {payOsData?.bankName || payOsData?.bin || '—'}
                     </Text>
                   </View>
                   <View style={styles.payOsInfoRow}>
                     <Text style={styles.payOsLabel}>Chủ tài khoản:</Text>
                     <Text style={[styles.payOsValue, { fontWeight: '700' }]}>
-                      {payOsData?.accountName || 'MEDICARE PLUS'}
+                      {payOsData?.accountName || '—'}
                     </Text>
                   </View>
                   <View style={styles.payOsInfoRow}>
                     <Text style={styles.payOsLabel}>Số tài khoản:</Text>
                     <Text style={[styles.payOsValue, { color: COLORS.primary, fontWeight: '700' }]}>
-                      {payOsData?.accountNumber || 'VQRQANUZS2008'}
+                      {payOsData?.accountNumber || '—'}
                     </Text>
                   </View>
                   <View style={styles.payOsInfoRow}>
@@ -1331,7 +1376,7 @@ export const BookingPaymentScreen: React.FC<BookingPaymentScreenProps> = ({
                   <View style={styles.payOsInfoRow}>
                     <Text style={styles.payOsLabel}>Nội dung chuyển khoản:</Text>
                     <Text style={[styles.payOsValue, { fontWeight: '700' }]}>
-                      {payOsData?.description || 'KHAM MEDICARE'}
+                      {payOsData?.description || '—'}
                     </Text>
                   </View>
                 </View>

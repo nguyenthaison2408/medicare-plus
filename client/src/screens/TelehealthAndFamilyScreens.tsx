@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import QRCode from 'react-native-qrcode-svg';
 import { CLOUD_MODE } from '../services/supabaseClient';
 import { ClinicPatientRecordsScreen } from './ClinicPatientScreens';
+import { visitDiagnosisText } from '../services/clinicAdapters';
 import { LabFileViewerModal } from '../components/medical/LabFileViewerModal';
 import type { LabResultItem } from '../types/labResults';
 import {
@@ -1789,10 +1790,11 @@ export const TeleconsultationScreen: React.FC<{
 // SCREEN 17B: TÓM TẮT KẾT QUẢ KHÁM & ĐƠN THUỐC SAU TƯ VẤN
 // ============================================================================
 export const PostConsultSummaryScreen: React.FC<{
+  appointmentId?: string;
   onBack?: () => void;
   onNavigate?: (routeKey: string) => void;
   onRebookDoctor?: (doctor: DoctorItem) => void;
-}> = ({ onBack, onNavigate, onRebookDoctor }) => {
+}> = ({ appointmentId, onBack, onNavigate, onRebookDoctor }) => {
   const { prescriptions, addDoctorReview, appointments } = useAppContext();
   const doctor = appointments.find(a => a.status === 'completed')?.doctor || DOCTORS[0];
   const [rating, setRating] = useState(5);
@@ -1819,8 +1821,30 @@ export const PostConsultSummaryScreen: React.FC<{
 
   if (CLOUD_MODE) return <View style={styles.screen}>
     <AppHeader title="Kết quả khám đã lưu" onBack={onBack} />
-    <ClinicPatientRecordsScreen />
+    <ClinicPatientRecordsScreen appointmentId={appointmentId} />
   </View>;
+
+  if (appointmentId) {
+    const visit = appointments.find(a => a.id === appointmentId && a.status === 'completed');
+    return (
+      <View style={styles.screen}>
+        <AppHeader title="Kết quả khám" onBack={onBack} />
+        <ScrollView contentContainerStyle={styles.scrollPad}>
+          <View style={[styles.card, SHADOWS.sm]}>
+            {visit ? (
+              <>
+                <Text style={styles.docName}>{visit.doctor.name}</Text>
+                <Text style={styles.docSub}>{visit.timeRange}</Text>
+                <Text style={styles.checkItemText}>{visitDiagnosisText(visit)}</Text>
+              </>
+            ) : (
+              <Text style={styles.checkItemText}>Không tìm thấy lịch khám này.</Text>
+            )}
+          </View>
+        </ScrollView>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.screen}>

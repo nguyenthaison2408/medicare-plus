@@ -6,6 +6,11 @@ export function clinicRecord(appointment: ClinicAppointment): ClinicMedicalRecor
   return Array.isArray(record) ? record[0] || null : record || null;
 }
 
+export function visitDiagnosisText(appointment: Pick<AppointmentItem, 'diagnosis'>): string {
+  const diagnosis = appointment.diagnosis?.trim();
+  return diagnosis ? `Chẩn đoán: ${diagnosis}` : 'Chưa có chẩn đoán được bác sĩ lưu.';
+}
+
 export function clinicAppointmentToItem(appointment: ClinicAppointment): AppointmentItem {
   const doctor = DOCTORS.find(d => d.id === appointment.doctor_id);
   if (!doctor) throw new Error('Thông tin bác sĩ chưa được đồng bộ với ứng dụng.');

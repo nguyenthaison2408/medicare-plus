@@ -28,6 +28,7 @@ import {
 import { useAppContext } from '../context/AppContext';
 import { CLOUD_MODE } from '../services/supabaseClient';
 import { ClinicPatientRecordsScreen } from './ClinicPatientScreens';
+import { visitDiagnosisText } from '../services/clinicAdapters';
 import { refineFollowUp } from '../services/aiConversation';
 import { runClinicalTriage } from '../services/aiTriageEngine';
 import { checkEHRSafetyGuardrails } from '../services/aiSafetyGuardrails';
@@ -824,7 +825,7 @@ export interface AppointmentsScreenProps {
   onSelectDoctor: (doctor: DoctorItem) => void;
   onFocusDoctor?: (doctor: DoctorItem) => void;
   onBookNew: () => void;
-  onNavigate: (routeKey: string) => void;
+  onNavigate: (routeKey: string, appointmentId?: string) => void;
 }
 
 export const AppointmentsScreen: React.FC<AppointmentsScreenProps> = ({
@@ -987,7 +988,7 @@ export const AppointmentsScreen: React.FC<AppointmentsScreenProps> = ({
                   Khám Chuyên khoa {apt.doctor.specialty} — {apt.doctor.name}
                 </Text>
                 <Text style={styles.sectionCardSub}>
-                  Chẩn đoán: Đau nửa đầu Migraine (G43.0) • Thời gian: {apt.timeRange}
+                  {visitDiagnosisText(apt)} • Thời gian: {apt.timeRange}
                 </Text>
                 <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
                   <AppButton
@@ -997,7 +998,7 @@ export const AppointmentsScreen: React.FC<AppointmentsScreenProps> = ({
                     leftIcon="document-text-outline"
                     fullWidth={false}
                     style={{ flex: 1 }}
-                    onPress={() => onNavigate('postConsultSummary')}
+                    onPress={() => onNavigate('postConsultSummary', apt.id)}
                   />
                   <AppButton
                     title="Đặt lịch tái khám"

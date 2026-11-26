@@ -2,7 +2,10 @@ import { Linking, Platform } from 'react-native';
 import Constants from 'expo-constants';
 import type { DaySlotItem, DoctorItem, TimeSlotItem } from '../data/mockData';
 import type { PatientBookingInfo } from '../utils/bookingValidation';
+import { toClinicStart } from '../utils/bookingSlots';
 import { getSupabase } from './supabaseClient';
+
+export { toClinicStart };
 
 export type ClinicRole = 'patient' | 'doctor' | 'reception' | 'admin';
 export interface ClinicDoctor {
@@ -271,11 +274,6 @@ export async function listClinicDoctors(): Promise<ClinicDoctor[]> {
     .select('*').eq('active', true);
   checkError(error);
   return (data || []) as ClinicDoctor[];
-}
-
-export function toClinicStart(day: DaySlotItem, slot: TimeSlotItem): string {
-  const [date, month, year] = day.fullDate.split('/');
-  return `${year}-${month.padStart(2, '0')}-${date.padStart(2, '0')}T${slot.time}:00+07:00`;
 }
 
 export async function listClinicSlots(doctorId: string, day: DaySlotItem): Promise<{ starts_at: string; is_booked: boolean }[]> {

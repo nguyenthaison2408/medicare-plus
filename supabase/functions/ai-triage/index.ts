@@ -18,6 +18,8 @@ Deno.serve(async (req) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
+  if (req.method !== 'POST') return new Response(JSON.stringify({error:'METHOD_NOT_ALLOWED'}),{status:405,headers:{...corsHeaders,'Content-Type':'application/json',Allow:'POST, OPTIONS'}});
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
   try {
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
@@ -41,10 +43,14 @@ Deno.serve(async (req) => {
       );
     }
 
-    const body = await req.json();
+    const rawBody = await req.text();
+    if (rawBody.length > 16000) return new Response(JSON.stringify({error:'REQUEST_TOO_LARGE'}),{status:413,headers:{...corsHeaders,'Content-Type':'application/json'}});
+    let body;
+    try { body = JSON.parse(rawBody); } catch { return new Response(JSON.stringify({error:'INVALID_JSON'}),{status:400,headers:{...corsHeaders,'Content-Type':'application/json'}}); }
+    if (!body || typeof body !== 'object' || Array.isArray(body)) return new Response(JSON.stringify({error:'INVALID_BODY'}),{status:400,headers:{...corsHeaders,'Content-Type':'application/json'}});
     const message = typeof body?.message === 'string' ? body.message.trim() : '';
-    const allergies = Array.isArray(body?.allergies) ? body.allergies : [];
-    const history = Array.isArray(body?.history) ? body.history.slice(-6) : [];
+    const allergies: string[] = Array.isArray(body?.allergies) ? body.allergies.filter((v: unknown): v is string => typeof v === 'string').slice(0,20).map((v: string)=>v.slice(0,100)) : [];
+    const history: {role:'user'|'model';text:string}[] = Array.isArray(body?.history) ? body.history.filter((h: unknown): h is {role:'user'|'model';text:string} => !!h && typeof h === 'object' && ['user','model'].includes((h as {role:string}).role) && typeof (h as {text:string}).text === 'string').slice(-6) : [];
 
     if (!message || message.length > 2000) {
       return new Response(
@@ -77,13 +83,13 @@ Deno.serve(async (req) => {
     ];
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 12000);
+    timeoutId = setTimeout(() => controller.abort(), 12000);
 
     const geminiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`,
       {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': geminiKey },
         signal: controller.signal,
         body: JSON.stringify({
           systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
@@ -95,11 +101,11 @@ Deno.serve(async (req) => {
         }),
       }
     );
-    clearTimeout(timeoutId);
+
 
     const geminiData = await geminiRes.json();
     if (!geminiRes.ok) {
-      throw new Error(geminiData?.error?.message || 'Lỗi từ Gemini API');
+      throw new Error('AI_PROVIDER_FAILED');
     }
 
     const reply =
@@ -111,10 +117,13 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (err) {
-    const msg = err instanceof Error ? err.message : 'Lỗi máy chủ xử lý AI';
+    void err;
+    const msg = 'Dịch vụ AI tạm thời chưa khả dụng. Vui lòng thử lại sau.';
     return new Response(JSON.stringify({ error: msg }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
+  } finally {
+    if (timeoutId !== undefined) clearTimeout(timeoutId);
   }
 });

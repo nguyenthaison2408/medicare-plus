@@ -35,6 +35,8 @@ export async function askGeminiEdgeAssistant(params: {
   const cleanMessage = (params.message || '').trim();
   if (!cleanMessage) return null;
 
+  const controller = new AbortController();
+  let timeout: ReturnType<typeof setTimeout> | undefined;
   try {
     const supabase = getSupabase();
     const {
@@ -43,6 +45,7 @@ export async function askGeminiEdgeAssistant(params: {
     if (!session) return null;
 
     const invokePromise = supabase.functions.invoke('ai-triage', {
+      signal: controller.signal,
       body: {
         message: cleanMessage.slice(0, 2000),
         allergies: params.allergies || [],
@@ -50,9 +53,9 @@ export async function askGeminiEdgeAssistant(params: {
       },
     });
 
-    const timeoutPromise = new Promise<null>((resolve) =>
-      setTimeout(() => resolve(null), EDGE_TIMEOUT_MS)
-    );
+    const timeoutPromise = new Promise<null>((resolve) => {
+      timeout = setTimeout(() => { controller.abort(); resolve(null); }, EDGE_TIMEOUT_MS);
+    });
 
     const result = await Promise.race([invokePromise, timeoutPromise]);
     if (!result) return null;
@@ -71,5 +74,7 @@ export async function askGeminiEdgeAssistant(params: {
     };
   } catch {
     return null;
+  } finally {
+    if (timeout !== undefined) clearTimeout(timeout);
   }
 }

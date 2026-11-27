@@ -46,3 +46,19 @@ test("reception search matches Vietnamese patient names without diacritics and p
 test('queue displays the server-issued number regardless of scope or cancellation',()=>{const{computeQueueNumber}=receptionHelpers();const target={id:'t',booking_code:'MC-T',queue_number:3},other={id:'o',booking_code:'MC-O',queue_number:2,status:'CANCELLED'};assert.equal(computeQueueNumber([target,other],'t'),'STT 03');assert.equal(computeQueueNumber([target],'t'),'STT 03');assert.equal(computeQueueNumber([],'unknown'),'Chưa cấp STT');});
 for(const status of ['cancelled','completed'])test('mock check-in rejects '+status,async()=>{let writes=0;const fn=vm.runInNewContext(declaration('checkInByCode','toggleMedicationTaken')+';checkInByCode',{CLOUD_MODE:false,appointments:[{id:'qa',code:'MC-QA',status}],setAppointments:()=>writes++,Alert:{alert:()=>{}}});assert.equal(await fn('MC-QA'),false);assert.equal(writes,0);});
 test('web printing uses text content and reports popup blocking truthfully',async()=>{const s=fs.readFileSync(new URL('client/src/screens/ClinicStaffScreen.tsx',root),'utf8');const begin=s.indexOf('  const handlePrintOrShareTicket =');const end=s.indexOf('  const canPrescribe =',begin);let prints=0,error='',body='';const popup={opener:{},document:{createElement:()=>({style:{},textContent:''}),body:{appendChild:e=>{body=e.textContent;}}},focus:()=>{},print:()=>prints++,close:()=>{}};const env={checkedInTicket:{queueNumber:'STT 03',patientName:'<script>QA</script>'},Platform:{OS:'web'},window:{open:()=>popup},setError:e=>error=e};const fn=vm.runInNewContext(stripTypeScriptTypes(s.slice(begin,end))+';handlePrintOrShareTicket',env);await fn();assert.equal(prints,1);assert.ok(body.includes('<script>QA</script>'));env.window.open=()=>null;await fn();assert.ok(error.includes('chặn'));assert.equal(prints,1);});
+
+
+async function doctorCreation(overrides={}) {
+ let saved=[];const ref={current:'admin-a'};
+ const context={CLOUD_MODE:true,Error,cloudUserIdRef:ref,createDoctorCloud:async()=>({id:'db-doctor',name:'Saved',active:false}),clinicDoctorToItem:row=>({...row,verified:row.active}),setDoctors:f=>{saved=f(saved);},...overrides};
+ return {invoke:vm.runInNewContext(declaration('addDoctor','approveDoctor')+';addDoctor',context),saved:()=>saved,ref};
+}
+test('doctor creation rejection leaves no phantom local doctor',async()=>{const p=await doctorCreation({createDoctorCloud:async()=>{throw Error('denied');}});await assert.rejects(p.invoke({name:'QA'}));assert.equal(p.saved().length,0);});
+test('doctor creation uses the server identity and pending status',async()=>{const p=await doctorCreation();await p.invoke({name:'QA'});assert.equal(p.saved()[0].id,'db-doctor');assert.equal(p.saved()[0].verified,false);});
+test('doctor creation does not update a different login session',async()=>{let resolve;const pending=new Promise(r=>resolve=r);const p=await doctorCreation({createDoctorCloud:()=>pending});const request=p.invoke({name:'QA'});p.ref.current='patient-b';resolve({id:'db-doctor'});await assert.rejects(request);assert.equal(p.saved().length,0);});
+test('appointment adapter supports a newly approved cloud doctor and the stored queue',()=>{
+ const source=fs.readFileSync(new URL('client/src/services/clinicAdapters.ts',root),'utf8').replace(/^import .*;\r?\n/gm,'').replace(/export /g,'');
+ const adapter=vm.runInNewContext(stripTypeScriptTypes(source)+';clinicAppointmentToItem',{DOCTORS:[]});
+ const visit=adapter({id:'visit',doctor_id:'new-doctor',starts_at:'2026-11-27T01:00:00Z',status:'CONFIRMED',queue_number:8,clinic_doctors:{id:'new-doctor',name:'QA Doctor',specialty:'General',hospital:'QA',active:true,fee_vnd:250000,profile_details:{experienceYears:3}}});
+ assert.equal(visit.doctor.name,'QA Doctor');assert.equal(visit.doctor.feeNumeric,250000);assert.equal(visit.doctor.verified,true);assert.equal(visit.queueNumber,'STT 08');
+});

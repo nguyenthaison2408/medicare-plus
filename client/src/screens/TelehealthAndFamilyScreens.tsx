@@ -2008,10 +2008,9 @@ export const LabAndImagingResultsScreen: React.FC<{
   onBack?: () => void;
   onDownloadPDF?: () => void;
   onOpenTeleconsult?: () => void;
-}> = ({ onBack, onDownloadPDF, onOpenTeleconsult }) => {
+}> = ({ onBack, onOpenTeleconsult }) => {
   const { labResults, patientProfile } = useAppContext();
   const [tab, setTab] = useState<'all' | 'imaging' | 'blood'>('all');
-  const [pdfToast, setPdfToast] = useState(false);
   const [viewingItem, setViewingItem] = useState<LabResultItem | null>(null);
 
   const imagingItems = labResults.filter((r) => r.category === 'imaging');
@@ -2052,7 +2051,8 @@ export const LabAndImagingResultsScreen: React.FC<{
 
           <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
             <AppButton
-              title={labResults[0] ? 'Mở kết quả mới nhất' : 'Lưu Kết Quả PDF'}
+              title={labResults[0] ? 'Mở kết quả mới nhất' : 'Chưa có tệp kết quả'}
+              disabled={!labResults[0]}
               variant="primary"
               size="sm"
               leftIcon="eye-outline"
@@ -2061,10 +2061,6 @@ export const LabAndImagingResultsScreen: React.FC<{
               onPress={() => {
                 if (labResults[0]) {
                   setViewingItem(labResults[0]);
-                } else if (onDownloadPDF) {
-                  onDownloadPDF();
-                } else {
-                  setPdfToast(true);
                 }
               }}
             />
@@ -2231,12 +2227,6 @@ export const LabAndImagingResultsScreen: React.FC<{
         visible={Boolean(viewingItem)}
         item={viewingItem}
         onClose={() => setViewingItem(null)}
-      />
-      <ToastBanner
-        visible={pdfToast}
-        title="Lưu PDF Thành Công"
-        message="Đã tải phiếu kết quả cận lâm sàng về máy."
-        onDismiss={() => setPdfToast(false)}
       />
     </View>
   );

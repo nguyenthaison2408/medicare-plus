@@ -287,5 +287,42 @@ try{
  await as(ids.reception);const receptionQueue=(await db.query('select queue_number from clinic_appointments where id=$1',[q2.id])).rows[0].queue_number;
  await as(ids.doctor);await check('reception and assigned doctor read the same stored number',async()=>assert.equal((await db.query('select queue_number from clinic_appointments where id=$1',[q2.id])).rows[0].queue_number,receptionQueue));
  await check('authenticated users cannot manipulate queue counters',async()=>denied(()=>db.query('update clinic_private.daily_queue_counters set last_number=0')));
+
+ const doctorInput={name:'QA New Doctor',specialty:'Nội khoa',hospital:'QA Hospital',degree:'BS',address:'QA Address',feeNumeric:250000,experienceYears:3,licenseCode:'QA-CCHN',latitude:10.8,longitude:106.7};
+ const createDoctor=input=>db.query('select clinic_admin_create_doctor($1::jsonb) as doctor',[JSON.stringify(input)]);
+ for(const role of ['a','doctor','reception']) {
+  await as(ids[role]);
+  await check(role+' cannot create or approve doctors',async()=>{
+   await denied(()=>createDoctor(doctorInput));
+   await denied(()=>db.query("select clinic_admin_approve_doctor('doc-1')"));
+  });
+ }
+ await as(null);
+ await check('anonymous cannot invoke doctor administration RPCs',()=>denied(()=>createDoctor(doctorInput)));
+ await as(ids.admin);
+ for(const input of [{...doctorInput,name:''},{...doctorInput,feeNumeric:1},{...doctorInput,experienceYears:-1},{...doctorInput,latitude:100}])
+  await check('admin doctor validation rejects '+JSON.stringify(input),()=>assert.rejects(()=>createDoctor(input),e=>e.code==='22023'));
+ const added=(await createDoctor(doctorInput)).rows[0].doctor;
+ await check('admin creates a persisted pending doctor with full profile',async()=>{
+  assert.equal(added.active,false);assert.equal(added.fee_vnd,250000);
+  assert.equal(added.profile_details.licenseCode,'QA-CCHN');
+  assert.equal((await db.query('select id from clinic_doctors where id=$1',[added.id])).rows.length,1);
+ });
+ await as(ids.a);
+ await check('patients cannot see or book pending doctors',async()=>{
+  assert.equal((await db.query('select id from clinic_doctors where id=$1',[added.id])).rows.length,0);
+  await assert.rejects(()=>db.query("select clinic_book_appointment($1,now()+interval '2 days')",[added.id]));
+ });
+ await as(ids.admin);
+ await check('admin approval is persistent and idempotent',async()=>{
+  assert.equal((await db.query('select clinic_admin_approve_doctor($1) as doctor',[added.id])).rows[0].doctor.active,true);
+  assert.equal((await db.query('select clinic_admin_approve_doctor($1) as doctor',[added.id])).rows[0].doctor.active,true);
+ });
+ await as(ids.a);
+ await check('approved new doctor is public and bookable',async()=>{
+  assert.equal((await db.query('select id from clinic_doctors where id=$1',[added.id])).rows.length,1);
+  const visit=(await db.query('select clinic_book_appointment($1,$2) as visit',[added.id,new Date(new Date(paidSlot).getTime()+3*60*60000)])).rows[0].visit;
+  assert.equal(visit.doctor_id,added.id);
+ });
  console.log(count+' PostgreSQL extension checks passed.');
 }finally{await db.close();}

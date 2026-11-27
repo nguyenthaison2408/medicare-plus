@@ -301,7 +301,7 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({
             })
           : hospitals.find((h) => h.id === newDocHospitalId) || hospitals[0];
       if (!hospital) throw new Error('Vui lòng chọn cơ sở y tế công tác.');
-      const created = addDoctor({
+      const created = await addDoctor({
         name: newDocName,
         degree: newDocDegree,
         specialty: newDocSpecialty,
@@ -1042,12 +1042,14 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({
                 leftIcon="shield-checkmark-outline"
                 fullWidth={false}
                 style={{ flex: 1 }}
-                onPress={() => {
-                  approveDoctor(doc.id);
-                  setDocFilter('all');
-                  setAdminToast(
-                    `Đã duyệt CCHN cho ${doc.name}. Bác sĩ đã hiển thị trên Trang chủ Bệnh nhân!`
-                  );
+                onPress={async () => {
+                  try {
+                    await approveDoctor(doc.id);
+                    setDocFilter('all');
+                    setAdminToast(`Đã duyệt CCHN cho ${doc.name}. Bác sĩ đã hiển thị trên Trang chủ Bệnh nhân!`);
+                  } catch (error) {
+                    setAdminToast(error instanceof Error ? error.message : 'Chưa duyệt được bác sĩ.');
+                  }
                 }}
               />
             ) : (
@@ -2210,7 +2212,7 @@ export const DoctorDashboardScreen: React.FC<DoctorDashboardScreenProps> = ({
           <AnimatedEntry key={pt.id} delay={100 + idx * 70} direction="up">
             <View style={[styles.card, SHADOWS.sm]}>
               <View style={styles.aptRowTop}>
-                <Badge label={`STT #${idx + 1} • ${pt.timeRange || pt.dateLabel}`} variant="blue" />
+                <Badge label={`${pt.queueNumber || 'Chưa cấp STT'} • ${pt.timeRange || pt.dateLabel}`} variant="blue" />
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                   {pt.status === 'upcoming' && <PulsingDot color={COLORS.secondary} size={6} />}
                   <Badge label={queueStatuses[pt.id] || pt.statusBadge} variant={pt.status === 'completed' ? 'teal' : 'blue'} showDot />

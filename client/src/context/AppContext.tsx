@@ -5,7 +5,7 @@ import {
   bookClinicAppointment, cancelClinicAppointment, checkInClinic, completeClinicAppointment, listClinicAppointments, listClinicDoctors,
   loadClinicProfile, subscribeClinicAppointments, toClinicStart, updateClinicProfile, type ClinicProfile, type ClinicAppointment, type ClinicMedication,
 } from '../services/clinicCloud';
-import { clinicAppointmentToItem, clinicPrescriptions, clinicRecord } from '../services/clinicAdapters';
+import { clinicDoctorToItem, clinicAppointmentToItem, clinicPrescriptions, clinicRecord } from '../services/clinicAdapters';
 import {
   fetchDoctorReviewsCloud,
   fetchAdminDoctorReviewsCloud,
@@ -21,6 +21,8 @@ import {
   type FamilyMemberInput,
 } from '../services/clinicFamily';
 import {
+  createDoctorCloud,
+  approveDoctorCloud,
   fetchDoctorSchedulesCloud,
   upsertDoctorScheduleCloud,
   deleteDoctorScheduleCloud,
@@ -215,8 +217,8 @@ interface AppContextValue {
   diagnosisNote: string;
   setDiagnosisNote: (note: string) => void;
   doctors: DoctorItem[];
-  addDoctor: (input: NewDoctorInput) => DoctorItem;
-  approveDoctor: (doctorId: string) => void;
+  addDoctor: (input: NewDoctorInput) => Promise<DoctorItem>;
+  approveDoctor: (doctorId: string) => Promise<void>;
   updateDoctorAvatar: (doctorId: string, avatarUrl: string) => Promise<void>;
   hospitals: HospitalItem[];
   addHospital: (input: NewHospitalInput) => Promise<HospitalItem>;
@@ -514,42 +516,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
           listClinicDoctors().then(cloudDoctors => {
             if (mounted && cloudDoctors && cloudDoctors.length > 0) {
               setDoctors(prev =>
-                cloudDoctors.map(cd => {
-                  const existing = prev.find(p => p.id === cd.id) || DOCTORS.find(d => d.id === cd.id);
-                  if (existing) {
-                    return {
-                      ...existing,
-                      name: cd.name || existing.name,
-                      specialty: cd.specialty || existing.specialty,
-                      hospital: cd.hospital || existing.hospital,
-                      avatar: cd.avatar_url?.trim() || existing.avatar,
-                      fee: cd.fee_vnd ? `${cd.fee_vnd.toLocaleString('vi-VN')} đ` : existing.fee,
-                      feeNumeric: cd.fee_vnd ?? existing.feeNumeric,
-                    };
-                  }
-                  return {
-                    id: cd.id,
-                    name: cd.name,
-                    degree: 'Bác sĩ chuyên khoa',
-                    specialty: cd.specialty,
-                    subSpecialty: cd.specialty,
-                    hospital: cd.hospital,
-                    address: cd.hospital,
-                    experienceYears: 10,
-                    rating: 4.9,
-                    reviewCount: 50,
-                    patientCount: '1k+',
-                    responseTime: '< 15p',
-                    fee: `${(cd.fee_vnd ?? 300000).toLocaleString('vi-VN')} đ`,
-                    feeNumeric: cd.fee_vnd ?? 300000,
-                    bhytSupport: 'Hỗ trợ BHYT',
-                    availableText: 'Trống hôm nay',
-                    avatar: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=300&auto=format&fit=crop&q=80',
-                    verified: true,
-                    bio: `Bác sĩ ${cd.name} chuyên khoa ${cd.specialty} tại ${cd.hospital}.`,
-                    strengths: [cd.specialty],
-                  };
-                })
+                cloudDoctors.map(cd => clinicDoctorToItem(cd, prev.find(p => p.id === cd.id)))
               );
             }
           }).catch(() => {});
@@ -584,42 +551,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         if (!mounted || request !== generation) return;
         if (cloudDoctors && cloudDoctors.length > 0) {
           setDoctors(prev =>
-            cloudDoctors.map(cd => {
-              const existing = prev.find(p => p.id === cd.id) || DOCTORS.find(d => d.id === cd.id);
-              if (existing) {
-                return {
-                  ...existing,
-                  name: cd.name || existing.name,
-                  specialty: cd.specialty || existing.specialty,
-                  hospital: cd.hospital || existing.hospital,
-                  avatar: cd.avatar_url?.trim() || existing.avatar,
-                  fee: cd.fee_vnd ? `${cd.fee_vnd.toLocaleString('vi-VN')} đ` : existing.fee,
-                  feeNumeric: cd.fee_vnd ?? existing.feeNumeric,
-                };
-              }
-              return {
-                id: cd.id,
-                name: cd.name,
-                degree: 'Bác sĩ chuyên khoa',
-                specialty: cd.specialty,
-                subSpecialty: cd.specialty,
-                hospital: cd.hospital,
-                address: cd.hospital,
-                experienceYears: 10,
-                rating: 4.9,
-                reviewCount: 50,
-                patientCount: '1k+',
-                responseTime: '< 15p',
-                fee: `${(cd.fee_vnd ?? 300000).toLocaleString('vi-VN')} đ`,
-                feeNumeric: cd.fee_vnd ?? 300000,
-                bhytSupport: 'Hỗ trợ BHYT',
-                availableText: 'Trống hôm nay',
-                avatar: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=300&auto=format&fit=crop&q=80',
-                verified: true,
-                bio: `Bác sĩ ${cd.name} chuyên khoa ${cd.specialty} tại ${cd.hospital}.`,
-                strengths: [cd.specialty],
-              };
-            })
+            cloudDoctors.map(cd => clinicDoctorToItem(cd, prev.find(p => p.id === cd.id)))
           );
         }
         setCloudProfile(profile);
@@ -1245,7 +1177,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     setDoctorReviews((prev) => prev.filter((r) => r.id !== reviewId));
   };
 
-  const addDoctor = (input: NewDoctorInput): DoctorItem => {
+  const addDoctor = async (input: NewDoctorInput): Promise<DoctorItem> => {
+    if (CLOUD_MODE) {
+      const expectedUser = cloudUserIdRef.current;
+      if (!expectedUser) throw new Error('Vui lòng đăng nhập lại.');
+      const saved = await createDoctorCloud(input);
+      if (cloudUserIdRef.current !== expectedUser) throw new Error('Phiên đăng nhập đã thay đổi.');
+      const doctor = clinicDoctorToItem(saved);
+      setDoctors(prev => [doctor, ...prev.filter(d => d.id !== doctor.id)]);
+      return doctor;
+    }
     const name = input.name.trim();
     const newDoctor: DoctorItem = {
       id: `doc-new-${doctors.length + 1}`,
@@ -1279,7 +1220,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     return newDoctor;
   };
 
-  const approveDoctor = (doctorId: string) => {
+  const approveDoctor = async (doctorId: string): Promise<void> => {
+    if (CLOUD_MODE) {
+      const expectedUser = cloudUserIdRef.current;
+      if (!expectedUser) throw new Error('Vui lòng đăng nhập lại.');
+      const saved = await approveDoctorCloud(doctorId);
+      if (cloudUserIdRef.current !== expectedUser) throw new Error('Phiên đăng nhập đã thay đổi.');
+      setDoctors(prev => prev.map(d => d.id === doctorId ? clinicDoctorToItem(saved, d) : d));
+      return;
+    }
     setDoctors((prev) =>
       prev.map((d) =>
         d.id === doctorId

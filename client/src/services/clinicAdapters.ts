@@ -1,5 +1,28 @@
-import { DOCTORS, type AppointmentItem, type PrescriptionDrug } from '../data/mockData';
-import type { ClinicAppointment, ClinicMedicalRecord } from './clinicCloud';
+import { DOCTORS, type AppointmentItem, type DoctorItem, type PrescriptionDrug } from '../data/mockData';
+import type { ClinicDoctor, ClinicAppointment, ClinicMedicalRecord } from './clinicCloud';
+
+export function clinicDoctorToItem(row: ClinicDoctor, fallback?: DoctorItem): DoctorItem {
+  const seed = fallback || DOCTORS.find(d => d.id === row.id);
+  const details = row.profile_details || {};
+  const fee = row.fee_vnd ?? seed?.feeNumeric ?? 0;
+  return {
+    id: row.id, name: row.name, specialty: row.specialty, hospital: row.hospital,
+    degree: details.degree || seed?.degree || 'Bác sĩ chuyên khoa',
+    subSpecialty: seed?.subSpecialty || row.specialty,
+    address: details.address || seed?.address || row.hospital,
+    latitude: details.latitude ?? seed?.latitude, longitude: details.longitude ?? seed?.longitude,
+    experienceYears: details.experienceYears ?? seed?.experienceYears ?? 0,
+    rating: seed?.rating ?? 0, reviewCount: seed?.reviewCount ?? 0,
+    patientCount: seed?.patientCount || '0', responseTime: seed?.responseTime || '—',
+    fee: `${fee.toLocaleString('vi-VN')} đ`, feeNumeric: fee,
+    bhytSupport: seed?.bhytSupport || 'Hỗ trợ BHYT theo quy định',
+    availableText: row.active ? 'Xem lịch khám' : 'Chờ duyệt CCHN',
+    avatar: row.avatar_url || seed?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(row.name)}`,
+    verified: row.active,
+    bio: details.licenseCode ? `Mã chứng chỉ hành nghề: ${details.licenseCode}.` : seed?.bio || '',
+    strengths: seed?.strengths || [row.specialty],
+  };
+}
 
 export function clinicRecord(appointment: ClinicAppointment): ClinicMedicalRecord | null {
   const record = appointment.clinic_medical_records;
@@ -12,7 +35,7 @@ export function visitDiagnosisText(appointment: Pick<AppointmentItem, 'diagnosis
 }
 
 export function clinicAppointmentToItem(appointment: ClinicAppointment): AppointmentItem {
-  const doctor = DOCTORS.find(d => d.id === appointment.doctor_id);
+  const doctor = appointment.clinic_doctors ? clinicDoctorToItem(appointment.clinic_doctors) : DOCTORS.find(d => d.id === appointment.doctor_id);
   if (!doctor) throw new Error('Thông tin bác sĩ chưa được đồng bộ với ứng dụng.');
   const date = new Date(appointment.starts_at);
   const label = date.toLocaleString('vi-VN', {

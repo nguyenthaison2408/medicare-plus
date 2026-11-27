@@ -14,6 +14,7 @@ export interface ClinicDoctor {
   specialty: string;
   hospital: string;
   active: boolean;
+  profile_details?: { degree?: string; address?: string; latitude?: number; longitude?: number; experienceYears?: number; licenseCode?: string };
   fee_vnd?: number;
   avatar_url?: string;
   created_at?: string;
@@ -67,6 +68,7 @@ export interface ClinicAppointment {
   queue_number?: number | null;
   payment_method: string;
   payment_status: 'UNPAID' | 'PAID';
+  clinic_doctors?: ClinicDoctor | null;
   clinic_medical_records?: ClinicMedicalRecord | ClinicMedicalRecord[] | null;
 }
 
@@ -265,7 +267,7 @@ export async function signOutClinic(): Promise<void> {
 
 export async function listClinicAppointments(patientId?: string): Promise<ClinicAppointment[]> {
   const query = getSupabase().from('clinic_appointments')
-    .select('*, clinic_medical_records(diagnosis, medications, notes)');
+    .select('*, clinic_doctors(*), clinic_medical_records(diagnosis, medications, notes)');
   if (patientId) query.eq('patient_id', patientId);
   const { data, error } = await query.order('starts_at', { ascending: false });
   checkError(error);
@@ -274,7 +276,7 @@ export async function listClinicAppointments(patientId?: string): Promise<Clinic
 
 export async function listClinicDoctors(): Promise<ClinicDoctor[]> {
   const { data, error } = await getSupabase().from('clinic_doctors')
-    .select('*').eq('active', true);
+    .select('*');
   checkError(error);
   return (data || []) as ClinicDoctor[];
 }
@@ -309,7 +311,12 @@ export async function bookClinicAppointment(
     ? await supabase.rpc('clinic_book_paid_appointment', { ...booking, p_order_code: payOsOrderCode })
     : await supabase.rpc('clinic_book_appointment', { ...booking, p_payment_method: paymentMethod });
   checkError(error);
-  return data as ClinicAppointment;
+  return { ...data, clinic_doctors: {
+    id: doctor.id, name: doctor.name, specialty: doctor.specialty, hospital: doctor.hospital,
+    active: doctor.verified, fee_vnd: doctor.feeNumeric, avatar_url: doctor.avatar,
+    profile_details: { degree: doctor.degree, address: doctor.address, latitude: doctor.latitude,
+      longitude: doctor.longitude, experienceYears: doctor.experienceYears },
+  } } as ClinicAppointment;
 }
 
 export async function cancelClinicAppointment(id: string): Promise<void> {

@@ -1,4 +1,5 @@
 import React from 'react';
+import type { AppointmentItem } from '../../data/mockData';
 import {
   View,
   Text,
@@ -97,10 +98,11 @@ export const SmartPromoBanner: React.FC<SmartPromoBannerProps> = ({
 };
 
 export interface AIReminderCardProps {
+  appointment: AppointmentItem;
   style?: ViewStyle;
 }
 
-export const AIReminderCard: React.FC<AIReminderCardProps> = ({ style }) => {
+export const AIReminderCard: React.FC<AIReminderCardProps> = ({ style, appointment }) => {
   return (
     <View style={[styles.reminderCard, style]}>
       <View style={styles.reminderIconCircle}>
@@ -110,13 +112,11 @@ export const AIReminderCard: React.FC<AIReminderCardProps> = ({ style }) => {
         <View style={styles.reminderTopRow}>
           <Text style={styles.reminderBadgeText}>NHẮC NHỞ LỊCH KHÁM</Text>
           <View style={styles.greenDot} />
-          <Text style={styles.reminderTimeText}>Hôm nay</Text>
+          <Text style={styles.reminderTimeText}>{appointment.dateLabel}</Text>
         </View>
         <Text style={styles.reminderBody}>
-          Vui lòng chuẩn bị sẵn{' '}
-          <Text style={styles.highlightText}>CCCD gắn chip</Text> và{' '}
-          <Text style={styles.highlightText}>kết quả chụp MRI cũ</Text> cho buổi
-          khám Thần kinh lúc 09:30 sáng nay.
+          Lịch khám với <Text style={styles.highlightText}>{appointment.doctor.name}</Text>
+          {' • '}{appointment.timeRange}. Vui lòng kiểm tra thông tin lịch hẹn và hướng dẫn của cơ sở y tế.
         </Text>
       </View>
     </View>

@@ -212,3 +212,16 @@ export async function updateDoctorAvatarCloud(
   }
   return (data.avatar_url as string) || cleanUrl;
 }
+
+
+export async function createDoctorCloud(input: import('../context/AppContext').NewDoctorInput): Promise<import('./clinicCloud').ClinicDoctor> {
+  const { data, error } = await getSupabase().rpc('clinic_admin_create_doctor', { p_details: input });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export async function approveDoctorCloud(doctorId: string): Promise<import('./clinicCloud').ClinicDoctor> {
+  const { data, error } = await getSupabase().rpc('clinic_admin_approve_doctor', { p_doctor_id: doctorId });
+  if (error) throw new Error(error.message);
+  return data;
+}

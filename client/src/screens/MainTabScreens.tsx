@@ -877,7 +877,7 @@ export const AppointmentsScreen: React.FC<AppointmentsScreenProps> = ({
           <>
             {upcomingList.length > 0 && (
               <AnimatedEntry delay={20} direction="up">
-                <AIReminderCard style={{ marginBottom: 14 }} />
+                <AIReminderCard appointment={upcomingList[0]} style={{ marginBottom: 14 }} />
               </AnimatedEntry>
             )}
 
@@ -1406,7 +1406,7 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
   onNavigate,
   onSwitchTab,
 }) => {
-  const { appointments, familyMembers, takenMap, resetAppData, patientProfile, updatePatientProfile } = useAppContext();
+  const { appointments, prescriptions, familyMembers, takenMap, resetAppData, patientProfile, updatePatientProfile } = useAppContext();
   const [pillReminder, setPillReminder] = useState(true);
   const [aptAlert, setAptAlert] = useState(true);
   const [labAlert, setLabAlert] = useState(true);
@@ -1580,7 +1580,7 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
               </View>
               <Badge label={`${takenCount}/${totalDoses} cữ (${adherencePct}%)`} variant="teal" />
             </View>
-            <Text style={[styles.statBigNum, { color: COLORS.secondary }]}>1</Text>
+            <Text style={[styles.statBigNum, { color: COLORS.secondary }]}>{new Set(prescriptions.map(drug => drug.appointmentId || 'local-prescription')).size}</Text>
             <Text style={styles.statBoxTitle} numberOfLines={1}>
               Toa thuốc đang uống
             </Text>

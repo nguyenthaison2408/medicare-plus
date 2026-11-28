@@ -1,0 +1,24 @@
+{
+  "file": "MediCarePlus_Demo_HD_DayDu_ChatRieng.mp4",
+  "duration": 289.5,
+  "resolution": [
+    720,
+    1560
+  ],
+  "fps": 30,
+  "continuousRecording": true,
+  "sceneCuts": 0,
+  "typingActions": 38,
+  "clicks": 121,
+  "scrolls": 11,
+  "vietnameseVoice": true,
+  "subtitles": true,
+  "audioDuration": 289.5,
+  "chapters": 15,
+  "pageErrors": [],
+  "cleanupSucceeded": true,
+  "bytes": 26908226,
+  "sha256": "ee056d434cc5bbe8e422aedd1361fe4bf87739a89a79272fce28748adeaa2d22",
+  "main": "bffbde896a12788ff35347415466773222760cf4",
+  "evidenceDate": "2026-11-27"
+}

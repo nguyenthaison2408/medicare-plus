@@ -1,31 +1,31 @@
 # MediCare Plus
 
-Đồ án Quản trị dự án phần mềm — VKU, Nhóm 04. Giảng viên: TS. Nguyễn Thanh Tuấn. Báo cáo: **23/11/2026**.
+Đồ án Quản trị dự án phần mềm — VKU, Nhóm 04. Giảng viên: TS. Nguyễn Thanh Tuấn. Mốc báo cáo: **23/11/2026**; hồ sơ bàn giao đối chiếu đến **28/11/2026**.
 
 ## Nhóm và trách nhiệm
 
 | Thành viên | MSV | Trách nhiệm | Tỷ lệ nhóm chốt |
 |---|---|---|---:|
 | Nguyễn Thái Sơn | 23IT.EB086 | PM/Scrum Master, QA, Supabase và tích hợp | 30% |
-| Vi Hữu Thành | 23IT.EB096 | Tech Lead/CI, backend, trợ lý phân luồng theo luật | 22% |
-| Đặng Thanh Vũ | 23IT.EB120 | Frontend/Mobile, các cổng người dùng và tích hợp UI | 28% |
+| Vi Hữu Thành | 23IT.EB096 | Backend/CI, trợ lý AI và hỗ trợ review | 22% |
+| Đặng Thanh Vũ | 23IT.EB120 | Tech Lead, điều phối kỹ thuật, Frontend/Mobile và tích hợp UI/cloud | 28% |
 | Nguyễn Từ Anh Nguyên | 23IT.EB064 | Full-stack/Booking, tủ thuốc, bệnh viện | 20% |
 
 Tỷ lệ do trưởng nhóm quyết định sau đối chiếu công việc. Số commit không phải giờ công hoặc công thức chia tỷ lệ.
 
 ## Sản phẩm và phạm vi nghiệm thu
 
-- Client Expo 58/React Native/TypeScript gọi Supabase Auth, Data API, RPC và PostgreSQL/RLS. Express là API demo lưu trong bộ nhớ, chạy độc lập.
-- Demo cốt lõi: đăng nhập đúng vai trò → đặt lịch chống trùng → phiếu QR → tiếp đón đúng ngày → bác sĩ lưu EMR → bệnh nhân đọc lại.
-- Main **602b76c** ngày 22/11 gồm PR #23–#27, #29–#32 và #43: UI/mobile, check-in, EMR, người thân, review, tủ thuốc, bệnh viện, trợ lý, hồ sơ/avatar, ca trực, BHYT, chat và email tùy chọn.
-- Trợ lý sử dụng từ khóa/luật cục bộ, không gọi Gemini/OpenAI hoặc LLM. Không xem kết quả là chẩn đoán lâm sàng.
-- OTP đăng ký do Supabase Auth xác minh; app không tự tạo hoặc đối chiếu mã để xác nhận email. Liên kết/mã email phụ thuộc template và chính sách Auth của project.
-- Email phiếu hẹn đã có mã nhưng chưa có bằng chứng thư đến hộp nhận thực. Webhook phải trả JSON {"ok":true} sau khi xử lý thành công; lỗi HTTP, HTML hoặc phản hồi thiếu xác nhận không được coi là đã gửi.
-- Avatar picker hiện hỗ trợ web; BHYT là cấu hình/ước tính, chưa tích hợp xác minh quyền lợi. Redis, video, eKYC và thanh toán online chưa triển khai.
+- Main **bffbde8** có cùng cây mã với head PR #59 đã được kiểm tra; mốc đối chiếu mã nguồn 28/11/2026, bộ kiểm thử mới nhất 27/11.
+- Expo 58/React Native/TypeScript gọi Supabase Auth, Data API/RPC, PostgreSQL/RLS và Realtime. Storage riêng lưu tệp xét nghiệm. Express có API demo độc lập và backend PayOS kết nối Supabase.
+- Luồng chính: đăng nhập đúng vai trò → đặt/hủy lịch chống trùng → phiếu QR → tiếp đón đúng ngày và cấp STT → bác sĩ lưu EMR → bệnh nhân đọc kết quả/đánh giá. Chat riêng hai chiều, hồ sơ gia đình, nhật ký/tủ thuốc, hồ sơ cá nhân và lưu/duyệt bác sĩ có kiểm tra trên web.
+- AI có luật cục bộ và Gemini qua Edge Function; khóa Gemini giữ ở server. Đã có kiểm tra gọi Gemini thật; kết quả hỗ trợ thông tin, không phải chẩn đoán lâm sàng.
+- PayOS có backend/webhook, đối chiếu số tiền/quyền sở hữu và lưu giao dịch Supabase. Kiểm tra kỹ thuật dùng provider/webhook giả lập; chưa chứng minh chuyển tiền thật.
+- OTP do Supabase Auth xác minh. Email phiếu hẹn đã có mã; cần xác nhận thư đến hộp nhận thực. Webhook chỉ báo thành công khi trả JSON xác nhận hợp lệ.
+- BHYT là cấu hình/ước tính; Redis, gọi video và eKYC chưa triển khai. Camera/thiết bị, Google OAuth, triển khai giao diện công khai và UAT cần nghiệm thu riêng. Hai tab EHR/kê đơn cloud đang dùng chung màn; đường mở chức năng tải xét nghiệm của bác sĩ còn cần hoàn thiện.
 
 ## Database và triển khai
 
-Supabase project medicare-plus lưu dữ liệu trực tuyến. Source có **12 tệp SQL**; ledger ngày 22/11 ghi **10 migration**. Cloud đã có bảng chat và cột người thân mới nhưng chưa ghi ledger 007/008; [Issue #44](https://github.com/nguyenthaison2408/medicare-plus/issues/44) theo dõi đối chiếu schema/RLS/trigger/publication và checksum trước khi reconcile. Không chạy lại SQL hoặc ghi ledger chỉ vì bảng đã tồn tại.
+Supabase project medicare-plus lưu dữ liệu trực tuyến với **14 bảng clinic_***. Source có **21 tệp SQL**; ledger ghi **18 migration** khi đối chiếu ngày 28/11. Ba tệp `202611200007_clinic_family_members_enhancements.sql`, `202611200008_clinic_consult_messages.sql`, `202611220009_clinic_doctors_avatar.sql` chưa có ledger dù các cấu trúc tương ứng đã xuất hiện. Cần đối chiếu schema/RLS/trigger/publication và checksum trước khi reconcile; không chạy lại SQL chỉ theo số đếm. Migration quản trị bác sĩ `202611270001_clinic_admin_doctors.sql` đã triển khai và có ledger.
 
 Các thành viên đăng nhập ứng dụng bằng tài khoản được cấp vai trò; quyền quản trị dashboard Supabase được cấp riêng. Cấu hình: [supabase/README.md](supabase/README.md), [client/.env.example](client/.env.example). Publishable key được phép ở client; mật khẩu database và service-role key phải giữ ngoài client/Git.
 
@@ -64,16 +64,17 @@ Khi kiểm tra, chọn bác sĩ và đối chiếu phí khám với số tiền 
 
 ## Bằng chứng kỹ thuật
 
-- Main/PR #43: CI Node 22 và 24 đạt. Bộ local gồm **241 ca**: 16 trợ lý, 27 portal, 32 staff, 5 auth, 5 validation, 29 SQL lõi, 93 SQL mở rộng và 34 API/hồi quy.
-- Cloud: bộ 28 checks ngày 19/11 và bộ 29 checks ngày 21/11 có phiên bản/phạm vi khác nhau. Không cộng chúng thành một lần nghiệm thu trên main mới.
-- k6 ngày 19/11: tra cứu 100 VU/30 giây, 8.596 request, p95 137,53 ms, lỗi HTTP 0%; tranh chấp 50 request: một thành công/49 xung đột. Chưa chạy lại toàn bộ benchmark trên main 602b76c.
-- Chưa có kết luận UAT, camera/chat hai thiết bị hoặc gửi email thực trên bản cuối. [#13](https://github.com/nguyenthaison2408/medicare-plus/issues/13), [#14](https://github.com/nguyenthaison2408/medicare-plus/issues/14), [#18](https://github.com/nguyenthaison2408/medicare-plus/issues/18), [#45](https://github.com/nguyenthaison2408/medicare-plus/issues/45) theo dõi phần còn lại.
+- [Tổng hợp QA 27/11](docs/evidence/2026-11-27-qa-summary.json): **414/414 ca đạt**, gồm 123 logic ứng dụng, 164 SQL/RLS, 15 API + 24 hồi quy, 60 cloud và 28 UI web. Tổng cục bộ là **326**; không dùng số ca để suy phần trăm coverage.
+- CI Node 22/24, lint, TypeScript và Expo web đạt trên head PR #59. Main bffbde8 giữ cùng cây mã; bảo vệ nhánh yêu cầu một phê duyệt và kiểm tra bắt buộc, áp dụng cả admin. Các ngoại lệ do chủ kho cho phép được ghi riêng trước khi khôi phục chính sách.
+- [Demo web](docs/evidence/2026-11-28-demo-verification.json): **4 phút 50 giây**, 720×1560, giọng/phụ đề tiếng Việt, 15 phần, 121 lượt bấm và 38 lần nhập dữ liệu; có chat riêng bệnh nhân–bác sĩ hai chiều. MP4 được bàn giao riêng. Đây là thao tác web với tài khoản giả, không thay thử camera hoặc chat trên hai thiết bị.
+- Các số k6 19/11 (100 VU/30 giây, 8.596 request, p95 137,53 ms và ca tranh chấp 1 thành công/49 xung đột) là phép đo lịch sử, chưa chạy lại benchmark đầy đủ trên bffbde8.
+- Chưa có kết luận UAT/sign-off, gửi email thật, Google OAuth, camera vật lý hoặc thanh toán tiền thật trên bản bàn giao. Các bộ kiểm tra 19–22/11 được giữ theo phiên bản, không cộng trùng với bộ 27/11.
 
 ## Scrum và hồ sơ
 
-[Scrum Project](https://github.com/users/nguyenthaison2408/projects/1): 31 thẻ, 4 Done / 20 In Review / 4 In Progress / 2 Ready / 1 Backlog tại mốc đối chiếu 22/11. Giữ 136 SP đường cơ sở; Sprint 6 có 123 SP, gồm 5 Done và 118 chưa Done. Thẻ bổ sung chưa ước lượng để trống SP. Không suy velocity hoặc nghiệm thu Sprint từ ngày commit.
+Ảnh chụp [Scrum Project](https://github.com/users/nguyenthaison2408/projects/1) ngày 22/11: 31 thẻ, 4 Done / 20 In Review / 4 In Progress / 2 Ready / 1 Backlog tại mốc đối chiếu 22/11. Giữ 136 SP đường cơ sở; Sprint 6 có 123 SP, gồm 5 Done và 118 chưa Done. Thẻ bổ sung chưa ước lượng để trống SP. Không suy velocity hoặc nghiệm thu Sprint từ ngày commit.
 
-Toàn bộ 17 nhánh có 115 commit khác nhau: 111 trên main và 4 ngoài main; merge commit và công việc chưa tích hợp được phân biệt.
+Đối chiếu main ngày 28/11 có **186 commit: 140 commit thường, 46 merge**. Gộp bí danh tác giả: Sơn 36, Thành 35, Vũ 49, Nguyên 20. Thống kê 17 nhánh/115 commit trong hồ sơ 22/11 là ảnh chụp lịch sử. Vai trò Tech Lead của Vũ và tỷ lệ nhóm được ghi riêng, không suy từ số commit.
 
 Năm Sprint gốc và M1–M5 giữ làm đường cơ sở; Sprint 6: 16–22/11, tổng duyệt 22/11, báo cáo 23/11. [Ma trận toàn bộ commit](docs/evidence/2026-11-22-commit-traceability.csv) phân biệt tác giả, merge và hạng mục liên quan; [hồ sơ đối chiếu](docs/evidence/2026-11-22-full-history-audit.json) có phạm vi/giới hạn.
 
@@ -87,4 +88,17 @@ Bảy tệp nộp chính:
 6. [Scope Change Record](docs/06_Scope_Change_Control_Record.docx)
 7. [PowerPoint 9 slide](docs/08_Presentation_Slide_Deck.pptx)
 
-Không tạo tệp 07 tùy chọn. Word/Excel/PowerPoint là bản nguồn giữ định dạng; node scripts/export-word-reports.cjs chỉ sao chép/kiểm tra các bản Office, không sinh lại từ bản thảo Markdown. Bằng chứng nằm trong docs/evidence; hướng dẫn thao tác nằm trong demo. PR tài liệu #22 được PR #46 thay thế; bằng chứng riêng của #22 được lưu trong docs/evidence. PR #28 về dữ liệu bệnh án/identity vẫn cần review/tích hợp vì còn sửa app chưa vào main.
+Không tạo tệp 07 tùy chọn. Word/Excel/PowerPoint là bản nguồn giữ định dạng; node scripts/export-word-reports.cjs chỉ sao chép/kiểm tra các bản Office, không sinh lại từ bản thảo Markdown. Bằng chứng nằm trong docs/evidence; hướng dẫn thao tác nằm trong demo. PR tài liệu #22 được PR #46 thay thế; bằng chứng riêng của #22 được lưu trong docs/evidence. PR #28 về dữ liệu bệnh án/identity đã merge ngày 22/11. Các thống kê Board/Sprint cũ là số liệu tại thời điểm chụp, không phải trạng thái hiện tại.
+
+
+### Bản PDF để nộp
+
+PDF được xuất trực tiếp từ các bản Word/Excel/PowerPoint đang duy trì; bảng phân công ghi Vũ là Tech Lead, tỷ lệ 30–22–28–20 giữ nguyên.
+
+- [01 — Báo cáo kỹ thuật](docs/01_Final_Technical_Report.pdf)
+- [02 — Project Charter](docs/02_Project_Charter_Signed.pdf)
+- [03 — WBS và từ điển](docs/03_WBS_and_WBS_Dictionary.pdf)
+- [04 — Risk Register](docs/04_Risk_Register_Evolution.pdf)
+- [05 — Sprint Retrospectives](docs/05_Sprint_Retrospectives.pdf)
+- [06 — Scope Change Record](docs/06_Scope_Change_Control_Record.pdf)
+- [08 — Slide thuyết trình](docs/08_Presentation_Slide_Deck.pdf)

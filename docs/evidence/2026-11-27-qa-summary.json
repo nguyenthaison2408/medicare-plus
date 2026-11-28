@@ -1,0 +1,45 @@
+{
+  "date": "2026-11-27",
+  "timezone": "Asia/Saigon",
+  "testedCommit": "db7ae2fad580521eafac8e5a1d19f89f9648c774",
+  "pr": "https://github.com/nguyenthaison2408/medicare-plus/pull/59",
+  "applicationTests": 123,
+  "postgresChecks": 164,
+  "apiScenarios": 15,
+  "apiRegressions": 24,
+  "cloudChecks": 60,
+  "uiCases": 28,
+  "total": 414,
+  "passed": 414,
+  "pageErrors": 0,
+  "cleanupSucceeded": true,
+  "migration": "202611270001_clinic_admin_doctors.sql",
+  "migrationDeployed": true,
+  "fixed": [
+    "Thêm và duyệt bác sĩ lưu thật lên Supabase, tồn tại sau tải lại; bệnh nhân đặt được lịch với bác sĩ mới.",
+    "STT ở trang tổng quan bác sĩ trùng số đã cấp tại tiếp đón.",
+    "Nhắc lịch hiển thị đúng bác sĩ và thời gian của lịch hẹn; bỏ hướng dẫn MRI viết sẵn.",
+    "Chưa có kết quả xét nghiệm: nút mở tệp bị vô hiệu hóa; không báo lưu PDF thành công.",
+    "Hồ sơ chưa có đơn thuốc hiển thị 0 toa."
+  ],
+  "limitations": [
+    "Chưa kiểm thử camera/QR và quyền Android/iOS trên thiết bị thật.",
+    "PayOS giả lập provider và webhook; lưu trữ và kiểm tra quyền trên Supabase thật, không chuyển tiền thật.",
+    "Chưa gửi email thật, đăng nhập Google OAuth, in máy in vật lý hoặc kiểm tra GPS thực địa."
+  ],
+  "merged": true,
+  "mergeCommit": "bffbde896a12788ff35347415466773222760cf4",
+  "ci": [
+    {
+      "name": "code-quality-and-test (22.x)",
+      "conclusion": "success",
+      "url": "https://github.com/nguyenthaison2408/medicare-plus/actions/runs/45973896159/job/140420735212"
+    },
+    {
+      "name": "code-quality-and-test (24.x)",
+      "conclusion": "success",
+      "url": "https://github.com/nguyenthaison2408/medicare-plus/actions/runs/45973896159/job/140420734752"
+    }
+  ],
+  "branchProtectionRestored": true
+}

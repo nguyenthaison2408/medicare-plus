@@ -1,0 +1,181 @@
+{
+  "date": "2026-11-28",
+  "main": "bffbde896a12788ff35347415466773222760cf4",
+  "allPassed": true,
+  "role": "Đặng Thanh Vũ — Tech Lead / Frontend-Mobile",
+  "contributionPercent": {
+    "Sơn": 30,
+    "Thành": 22,
+    "Vũ": 28,
+    "Nguyên": 20
+  },
+  "officeFiles": [
+    {
+      "file": "01_Final_Technical_Report.docx",
+      "formatPreserved": true,
+      "percentValuesPreserved": true,
+      "changedParts": [
+        "word/document.xml"
+      ]
+    },
+    {
+      "file": "02_Project_Charter_Signed.docx",
+      "formatPreserved": true,
+      "percentValuesPreserved": true,
+      "changedParts": [
+        "word/document.xml"
+      ]
+    },
+    {
+      "file": "03_WBS_and_WBS_Dictionary.docx",
+      "formatPreserved": true,
+      "percentValuesPreserved": true,
+      "changedParts": [
+        "word/document.xml"
+      ]
+    },
+    {
+      "file": "05_Sprint_Retrospectives.docx",
+      "formatPreserved": true,
+      "percentValuesPreserved": true,
+      "changedParts": [
+        "word/document.xml"
+      ]
+    },
+    {
+      "file": "06_Scope_Change_Control_Record.docx",
+      "formatPreserved": true,
+      "percentValuesPreserved": true,
+      "changedParts": [
+        "word/document.xml"
+      ]
+    },
+    {
+      "file": "04_Risk_Register_Evolution.xlsx",
+      "formatPreserved": true,
+      "percentValuesPreserved": true,
+      "changedParts": [
+        "xl/sharedStrings.xml"
+      ]
+    },
+    {
+      "file": "08_Presentation_Slide_Deck.pptx",
+      "formatPreserved": true,
+      "percentValuesPreserved": true,
+      "changedParts": [
+        "ppt/slides/slide2.xml",
+        "ppt/slides/slide6.xml",
+        "ppt/slides/slide8.xml",
+        "ppt/slides/slide9.xml",
+        "ppt/slides/slide1.xml",
+        "ppt/notesSlides/notesSlide3.xml",
+        "ppt/notesSlides/notesSlide2.xml",
+        "ppt/notesSlides/notesSlide1.xml",
+        "ppt/notesSlides/notesSlide4.xml",
+        "ppt/notesSlides/notesSlide5.xml",
+        "ppt/notesSlides/notesSlide9.xml",
+        "ppt/notesSlides/notesSlide8.xml",
+        "ppt/notesSlides/notesSlide6.xml"
+      ]
+    },
+    {
+      "file": "13_Huong_Dan_Demo_Tung_Buoc.docx",
+      "formatPreserved": true,
+      "percentValuesPreserved": true,
+      "changedParts": [
+        "word/document.xml"
+      ]
+    }
+  ],
+  "riskFormulasAndNumbersPreserved": true,
+  "slides": 9,
+  "pdfs": [
+    {
+      "file": "01_Final_Technical_Report.pdf",
+      "pages": 25,
+      "bytes": 662235,
+      "sha256": "69b0e7f64eafa13cac7ff4dc69f7265384733591686ec8145a3aaef41c0083d2"
+    },
+    {
+      "file": "02_Project_Charter_Signed.pdf",
+      "pages": 5,
+      "bytes": 271464,
+      "sha256": "495cdc2c88a392663e7acfc026545762f4fb70f233283e469584820d90f2eb40"
+    },
+    {
+      "file": "03_WBS_and_WBS_Dictionary.pdf",
+      "pages": 8,
+      "bytes": 334328,
+      "sha256": "d7f8fb9584c819c6956480eb7d4635aa7a7d36cefe180f8512646f227a1f91e0"
+    },
+    {
+      "file": "04_Risk_Register_Evolution.pdf",
+      "pages": 3,
+      "bytes": 317429,
+      "sha256": "b54bbea289d66fcff18768337e6a2dd0ff882c2c54b0efdfab8e858594f84bf6"
+    },
+    {
+      "file": "05_Sprint_Retrospectives.pdf",
+      "pages": 3,
+      "bytes": 246350,
+      "sha256": "040b7f1c69e29eff49a595a41c78a6e6520085f33d1b45bf3d0e14fdfee28d32"
+    },
+    {
+      "file": "06_Scope_Change_Control_Record.pdf",
+      "pages": 3,
+      "bytes": 251382,
+      "sha256": "4f2b441d2e7941847736256f082c6d785e7304b9ef1504bb509f99b1348bf1b8"
+    },
+    {
+      "file": "08_Presentation_Slide_Deck.pdf",
+      "pages": 9,
+      "bytes": 342969,
+      "sha256": "cef9f0ea3ebcb9d2053d889b899bb97981b251d45d1e4339e822f7487d80f200"
+    }
+  ],
+  "optional07Created": false,
+  "officeSources": [
+    {
+      "file": "docs\\01_Final_Technical_Report.docx",
+      "sha256": "c507c1db4f15888f6f18653b02236208db34dc96c479d5856082d5e892f9b899"
+    },
+    {
+      "file": "docs\\02_Project_Charter_Signed.docx",
+      "sha256": "14527b2522da8cc07cf1c0ab59e50636f79ed32b4900573ecdaa056318bef8b3"
+    },
+    {
+      "file": "docs\\03_WBS_and_WBS_Dictionary.docx",
+      "sha256": "f7e7f1bc805d1434deb8275bd288aa1eb0b35803f0e1bdb3896825c85bbb04e2"
+    },
+    {
+      "file": "docs\\05_Sprint_Retrospectives.docx",
+      "sha256": "d81965da9b3df1ca3e51b3411ec7d939d858737ef13cfbfaf33d49f1cf067a3b"
+    },
+    {
+      "file": "docs\\06_Scope_Change_Control_Record.docx",
+      "sha256": "c19e48db6d291d38ee9dbf9e56d87c1e5f3464b519444c35c9fde47bc55da66e"
+    },
+    {
+      "file": "docs\\04_Risk_Register_Evolution.xlsx",
+      "sha256": "543587f88f3ef00ca08f3869f309a77cd668f43d59605dc72d546ae4d7f58ee7"
+    },
+    {
+      "file": "docs\\08_Presentation_Slide_Deck.pptx",
+      "sha256": "cb8674bcd414a1c59e1128a1b0f2dbe20a8e1597642bc01caf05b3086f2450db"
+    },
+    {
+      "file": "demo\\13_Huong_Dan_Demo_Tung_Buoc.docx",
+      "sha256": "08ebf61e253a766497a3931df883ff9e8d6c2f77b6d19b72b0e769ea8ba96e3c"
+    }
+  ],
+  "checks": {
+    "officeStylesPreserved": true,
+    "riskFormulasPreserved": true,
+    "visualInspectionPassed": true,
+    "riskPdfPages": 3,
+    "riskPdfExport": "One page per worksheet; export-only scaling",
+    "formalUatSignoff": false,
+    "appCodeChanged": false,
+    "historicalScrumSnapshotKept": true
+  }
+}

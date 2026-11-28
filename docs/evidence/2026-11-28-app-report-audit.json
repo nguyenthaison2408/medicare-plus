@@ -1,0 +1,153 @@
+{
+  "date": "2026-11-28",
+  "main": "bffbde896a12788ff35347415466773222760cf4",
+  "commitCount": 186,
+  "normalCommits": 140,
+  "mergeCommits": 46,
+  "sourceMigrations": [
+    "202611190001_clinic_core.sql",
+    "202611190002_demo_catalog_alignment.sql",
+    "202611190003_booking_patient_details.sql",
+    "202611200001_clinic_doctor_reviews.sql",
+    "202611200002_clinic_family_members.sql",
+    "202611200003_clinic_medicine_cabinet.sql",
+    "202611200004_clinic_hospitals.sql",
+    "202611200004_clinic_reviews_moderation.sql",
+    "202611200005_clinic_profile_avatar.sql",
+    "202611200006_clinic_profile_shifts_bhyt.sql",
+    "202611200007_clinic_family_members_enhancements.sql",
+    "202611200008_clinic_consult_messages.sql",
+    "202611220009_clinic_doctors_avatar.sql",
+    "202611250001_clinic_lab_results.sql",
+    "202611250002_clinic_lab_results_rls_rpc.sql",
+    "202611250003_clinic_lab_results_storage.sql",
+    "202611260001_clinic_payos_orders.sql",
+    "202611260001_clinic_reception_queue.sql",
+    "202611260002_clinic_patient_slot_uniqueness.sql",
+    "202611260003_clinic_payos_service_access.sql",
+    "202611270001_clinic_admin_doctors.sql"
+  ],
+  "ledger": [
+    "202611190001_clinic_core.sql",
+    "202611190002_demo_catalog_alignment.sql",
+    "202611190003_booking_patient_details.sql",
+    "202611200001_clinic_doctor_reviews.sql",
+    "202611200002_clinic_family_members.sql",
+    "202611200003_clinic_medicine_cabinet.sql",
+    "202611200004_clinic_hospitals.sql",
+    "202611200004_clinic_reviews_moderation.sql",
+    "202611200005_clinic_profile_avatar.sql",
+    "202611200006_clinic_profile_shifts_bhyt.sql",
+    "202611250001_clinic_lab_results.sql",
+    "202611250002_clinic_lab_results_rls_rpc.sql",
+    "202611250003_clinic_lab_results_storage.sql",
+    "202611260001_clinic_payos_orders.sql",
+    "202611260001_clinic_reception_queue.sql",
+    "202611260002_clinic_patient_slot_uniqueness.sql",
+    "202611260003_clinic_payos_service_access.sql",
+    "202611270001_clinic_admin_doctors.sql"
+  ],
+  "clinicTables": [
+    "clinic_appointments",
+    "clinic_bhyt_configs",
+    "clinic_consult_messages",
+    "clinic_doctor_reviews",
+    "clinic_doctor_schedules",
+    "clinic_doctors",
+    "clinic_family_members",
+    "clinic_hospitals",
+    "clinic_lab_results",
+    "clinic_medical_records",
+    "clinic_medication_logs",
+    "clinic_medicine_cabinet",
+    "clinic_payos_orders",
+    "clinic_profiles"
+  ],
+  "unledgeredSource": [
+    "202611200007_clinic_family_members_enhancements.sql",
+    "202611200008_clinic_consult_messages.sql",
+    "202611220009_clinic_doctors_avatar.sql"
+  ],
+  "prs": {
+    "22": {
+      "state": "closed",
+      "merged": false,
+      "mergedAt": null,
+      "title": "docs: finalize submission reports and PowerPoint deck"
+    },
+    "28": {
+      "state": "closed",
+      "merged": true,
+      "mergedAt": "2026-11-22T09:58:54Z",
+      "title": "fix: display saved cloud patient records and correct family identity"
+    },
+    "43": {
+      "state": "closed",
+      "merged": true,
+      "mergedAt": "2026-11-22T08:33:02Z",
+      "title": "feat: cloud family profiles, doctor chat and QR reception"
+    },
+    "46": {
+      "state": "closed",
+      "merged": true,
+      "mergedAt": "2026-11-22T09:21:34Z",
+      "title": "docs: reconcile complete project history, Scrum and submission reports"
+    },
+    "55": {
+      "state": "closed",
+      "merged": true,
+      "mergedAt": "2026-11-26T08:33:49Z",
+      "title": "feat(reception): Vietnamese search, status filters, queue slip and mock mode routing"
+    },
+    "56": {
+      "state": "closed",
+      "merged": true,
+      "mergedAt": "2026-11-26T09:07:18Z",
+      "title": "Sửa luồng thanh toán VietQR qua PayOS và đồng bộ Supabase"
+    },
+    "57": {
+      "state": "closed",
+      "merged": true,
+      "mergedAt": "2026-11-26T09:00:43Z",
+      "title": "Chặn đặt lịch trùng giờ và ẩn khung giờ đã qua"
+    },
+    "58": {
+      "state": "closed",
+      "merged": true,
+      "mergedAt": "2026-11-26T09:57:43Z",
+      "title": "Hiển thị bệnh án theo từng lịch khám và thông báo từ lịch hẹn"
+    },
+    "59": {
+      "state": "closed",
+      "merged": true,
+      "mergedAt": "2026-11-27T09:29:14Z",
+      "title": "Fix five QA defects and persist doctor administration"
+    }
+  },
+  "protection": {
+    "approvals": 1,
+    "requiredChecks": [
+      "code-quality-and-test (22.x)",
+      "code-quality-and-test (24.x)"
+    ],
+    "enforceAdmins": true
+  },
+  "authors": {
+    "Sơn": 36,
+    "Thành": 35,
+    "Vũ": 49,
+    "Nguyên": 20
+  },
+  "roles": {
+    "Sơn": "PM / Scrum Master / QA và tích hợp",
+    "Thành": "Backend / CI / AI",
+    "Vũ": "Tech Lead / Frontend-Mobile",
+    "Nguyên": "Full-stack / Booking"
+  },
+  "contributionPercent": {
+    "Sơn": 30,
+    "Thành": 22,
+    "Vũ": 28,
+    "Nguyên": 20
+  }
+}
